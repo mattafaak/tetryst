@@ -12,13 +12,12 @@ export const BUFFER_HEIGHT = 20;
 export const SPAWN_POSITION: Position = { x: 3, y: 19 };
 export const I_SPAWN_POSITION: Position = { x: 3, y: 18 };
 
-// Timing constants (ms)
-export const DAS_DELAY = 167;
-export const ARR_RATE = 33;
-export const LOCK_DELAY = 500;
-export const MAX_LOCK_RESETS = 15;
-export const ENTRY_DELAY = 267;
-export const LINE_CLEAR_ANIM_DURATION = 300;
+// Timing constants (ms) — aligned with TDG §13
+export const DAS_DELAY = 300;   // was 167 (TDG: ~300ms initial delay before autorepeat)
+export const ARR_RATE = 50;     // was 33  (TDG: ~50ms between autorepeat steps)
+export const LOCK_DELAY = 500;  // unchanged (TDG: 500ms lock delay)
+export const MAX_LOCK_RESETS = 15; // unchanged
+export const ENTRY_DELAY = 200; // was 267 (TDG: 200ms between piece lock and spawn)
 
 // Piece colors (strings for Canvas fillStyle)
 export const PIECE_COLORS: Record<TetriminoType, string> = {

@@ -76,7 +76,7 @@ describe("entry-delay", () => {
       expect(result.state.phase).toBe(GamePhase.Playing);
     });
 
-    it("timer accumulates exactly to threshold with 100 + 100 + 67 = 267", () => {
+    it("timer accumulates exactly to threshold with 100 + 100 = 200", () => {
       const state = createTestState({
         phase: GamePhase.EntryDelay,
         entryDelayTimer: 0,
@@ -87,14 +87,9 @@ describe("entry-delay", () => {
       expect(r1.state.phase).toBe(GamePhase.EntryDelay);
 
       const r2 = updateEntryDelay(r1.state, 100);
-      expect(r2.ready).toBe(false);
+      expect(r2.ready).toBe(true);
       expect(r2.state.entryDelayTimer).toBe(200);
-      expect(r2.state.phase).toBe(GamePhase.EntryDelay);
-
-      const r3 = updateEntryDelay(r2.state, 67);
-      expect(r3.ready).toBe(true);
-      expect(r3.state.entryDelayTimer).toBe(267);
-      expect(r3.state.phase).toBe(GamePhase.Playing);
+      expect(r2.state.phase).toBe(GamePhase.Playing);
     });
   });
 });
