@@ -327,7 +327,7 @@ function drawGameOver(
 
   ctx.font = "18px monospace";
   ctx.fillStyle = "#aaa";
-  ctx.fillText(`Level: ${state.level}  Lines: ${state.lines}`, canvasWidth / 2, canvasHeight / 2 + 35);
+  ctx.fillText(`Level: ${state.level + 1}  Lines: ${state.lines}`, canvasWidth / 2, canvasHeight / 2 + 35);
 
   ctx.font = "16px monospace";
   ctx.fillStyle = "#888";
@@ -357,7 +357,7 @@ function drawHUD(
   ctx.fillText("LEVEL", hudX, hudY + 80);
   ctx.fillStyle = "#fff";
   ctx.font = "20px monospace";
-  ctx.fillText(state.level.toString(), hudX, hudY + 105);
+  ctx.fillText((state.level + 1).toString(), hudX, hudY + 105);
 
   // Lines
   ctx.font = "bold 16px monospace";
