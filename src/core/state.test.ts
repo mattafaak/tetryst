@@ -272,7 +272,7 @@ describe("state", () => {
 
     it("game over when collision at spawn", () => {
       const board = createBoard();
-      board[20][4] = "X"; // Blocks T-piece at spawn (3, 20)
+      board[20][4] = "X"; // Blocks T-piece at spawn (3, 19)
 
       const state: GameState = {
         ...createInitialState(),
@@ -352,8 +352,8 @@ describe("state", () => {
 
     it("game over for O-piece collision at spawn", () => {
       const board = createBoard();
-      // O-piece spawns at (3, 20).  Filled cells at (3,20), (4,20),
-      // (3,21), (4,21).  Block one of those.
+      // O-piece spawns at (3, 19).  Filled cells at (3,19), (4,19),
+      // (3,20), (4,20).  Block one of those.
       board[20][3] = "X";
 
       const state: GameState = {
