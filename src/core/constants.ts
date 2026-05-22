@@ -8,9 +8,9 @@ export const BUFFER_HEIGHT = 20;
 
 // Spawn positions (in board coordinates)
 // Board is 40 rows: rows 0-19 = buffer (hidden), rows 20-39 = visible
-// Spawn at the first visible row so pieces appear immediately
-export const SPAWN_POSITION: Position = { x: 3, y: 20 };
-export const I_SPAWN_POSITION: Position = { x: 3, y: 19 };
+// Spawn 1 row into buffer zone (TDG: pieces spawn just above skyline)
+export const SPAWN_POSITION: Position = { x: 3, y: 19 };
+export const I_SPAWN_POSITION: Position = { x: 3, y: 18 };
 
 // Timing constants (ms)
 export const DAS_DELAY = 167;
