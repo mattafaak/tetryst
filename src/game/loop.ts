@@ -106,18 +106,12 @@ export class Game {
     }
   }
 
-  private playLockSFX(piece: import("../core/types.ts").Piece, linesCleared: number): void {
+  private playLockSFX(linesCleared: number, tSpinResult: import("../core/types.ts").TSpinResult): void {
     if (!this.audioEnabled) return;
     if (linesCleared === 4) {
       playSFX("tetris");
-    } else if (linesCleared > 0 && piece.type === TetriminoType.T) {
-      // Check if it was a T-spin
-      const tSpinResult = detectTSpin(this.state.board, piece);
-      if (tSpinResult.isTSpin) {
-        playSFX("tspin");
-      } else {
-        playSFX("clear");
-      }
+    } else if (tSpinResult.isTSpin && linesCleared > 0) {
+      playSFX("tspin");
     } else if (linesCleared > 0) {
       playSFX("clear");
     }
@@ -214,7 +208,7 @@ export class Game {
 
     if (clearResult.linesCleared > 0) {
       this.state.clearedRowIndices = clearResult.clearedRowIndices;
-      this.playLockSFX(lockedPiece, clearResult.linesCleared);
+      this.playLockSFX(clearResult.linesCleared, tSpinResult);
 
       const comboResult = updateCombo(this.state, clearResult.linesCleared);
       this.state = comboResult.state;
