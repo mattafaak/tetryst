@@ -367,8 +367,22 @@ function drawHUD(
   ctx.font = "20px monospace";
   ctx.fillText(state.lines.toString(), hudX, hudY + 165);
 
+  // B2B indicator
+  if (state.backToBack) {
+    ctx.font = "bold 13px monospace";
+    ctx.fillStyle = "#f0a000";
+    ctx.fillText("B2B", hudX, hudY + 195);
+  }
+
+  // Combo counter (shown when active: combo >= 0)
+  if (state.combo >= 0) {
+    ctx.font = "bold 13px monospace";
+    ctx.fillStyle = "#00f0f0";
+    ctx.fillText(`${state.combo + 1}× COMBO`, hudX, state.backToBack ? hudY + 212 : hudY + 195);
+  }
+
   // Hold piece
-  const holdY = hudY + 210;
+  const holdY = hudY + 235;
   ctx.font = "bold 16px monospace";
   ctx.fillStyle = "#888";
   ctx.fillText("HOLD", hudX, holdY);
