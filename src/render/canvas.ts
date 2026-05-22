@@ -57,20 +57,18 @@ export function renderFrame(
   ctx.strokeRect(boardX, boardY, boardPixelWidth, boardPixelHeight);
 
   // Draw grid lines
+  ctx.beginPath();
   ctx.strokeStyle = "#222";
   ctx.lineWidth = 0.5;
   for (let row = 1; row < VISIBLE_HEIGHT; row++) {
-    ctx.beginPath();
     ctx.moveTo(boardX, boardY + row * cellSize);
     ctx.lineTo(boardX + boardPixelWidth, boardY + row * cellSize);
-    ctx.stroke();
   }
   for (let col = 1; col < BOARD_WIDTH; col++) {
-    ctx.beginPath();
     ctx.moveTo(boardX + col * cellSize, boardY);
     ctx.lineTo(boardX + col * cellSize, boardY + boardPixelHeight);
-    ctx.stroke();
   }
+  ctx.stroke();
 
   // Draw locked cells (only visible portion)
   for (let row = 0; row < VISIBLE_HEIGHT; row++) {
