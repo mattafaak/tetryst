@@ -44,8 +44,8 @@ export class Game {
     });
     this.keyboard.attach();
     this.lastTime = performance.now();
-    this.loop(this.lastTime);
     this.cellSize = this.calculateCellSize();
+    this.loop(this.lastTime);
   }
 
   stop(): void {

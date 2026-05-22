@@ -13,21 +13,6 @@ import {
   PIECE_SHAPES,
 } from "../core/constants.ts";
 
-export function calculateCellSize(
-  canvasWidth: number,
-  canvasHeight: number
-): number {
-  const dpr = window.devicePixelRatio || 1;
-  const logicalWidth = canvasWidth / dpr;
-  const logicalHeight = canvasHeight / dpr;
-  const byWidth = Math.floor((logicalWidth * 0.5) / BOARD_WIDTH);
-  const byHeight = Math.floor((logicalHeight * 0.9) / VISIBLE_HEIGHT);
-  return Math.min(byWidth, byHeight, 36);
-}
-
-export function setCellSize(_size: number): void {
-  // Cell size is derived from canvas, stored per-frame in render calls
-}
 
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
