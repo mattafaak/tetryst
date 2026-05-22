@@ -124,6 +124,7 @@ export class Game {
     if (dt > MAX_DT) dt = MAX_DT;
     if (dt < 0) dt = 0;
 
+    this.cellSize = this.calculateCellSize();
     this.update(dt);
     renderFrame(this.ctx, this.state, this.cellSize, this.isAttractMode);
 
