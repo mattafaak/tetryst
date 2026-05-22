@@ -17,8 +17,11 @@ export function calculateCellSize(
   canvasWidth: number,
   canvasHeight: number
 ): number {
-  const byWidth = Math.floor((canvasWidth * 0.5) / BOARD_WIDTH);
-  const byHeight = Math.floor((canvasHeight * 0.9) / VISIBLE_HEIGHT);
+  const dpr = window.devicePixelRatio || 1;
+  const logicalWidth = canvasWidth / dpr;
+  const logicalHeight = canvasHeight / dpr;
+  const byWidth = Math.floor((logicalWidth * 0.5) / BOARD_WIDTH);
+  const byHeight = Math.floor((logicalHeight * 0.9) / VISIBLE_HEIGHT);
   return Math.min(byWidth, byHeight, 36);
 }
 
@@ -32,8 +35,12 @@ export function renderFrame(
   cellSize: number,
   isAttractMode?: boolean,
 ): void {
-  const canvasWidth = ctx.canvas.width;
-  const canvasHeight = ctx.canvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  const canvasWidth = ctx.canvas.width / dpr;
+  const canvasHeight = ctx.canvas.height / dpr;
+
+  ctx.save();
+  ctx.scale(dpr, dpr);
 
   // Clear
   ctx.fillStyle = "#0a0a0a";
@@ -130,6 +137,8 @@ export function renderFrame(
       cellSize
     );
   }
+
+  ctx.restore();
 }
 
 function drawCell(

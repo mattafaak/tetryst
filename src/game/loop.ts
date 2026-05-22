@@ -57,9 +57,12 @@ export class Game {
   }
 
   private calculateCellSize(): number {
+    const dpr = window.devicePixelRatio || 1;
     const { width, height } = this.ctx.canvas;
-    const byWidth = Math.floor((width * 0.5) / 10);
-    const byHeight = Math.floor((height * 0.9) / 20);
+    const logicalWidth = width / dpr;
+    const logicalHeight = height / dpr;
+    const byWidth = Math.floor((logicalWidth * 0.5) / 10);
+    const byHeight = Math.floor((logicalHeight * 0.9) / 20);
     return Math.min(byWidth, byHeight, 36);
   }
 
