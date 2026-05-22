@@ -366,8 +366,8 @@ function drawHUD(
     ctx.fillText("B2B", hudX, hudY + 195);
   }
 
-  // Combo counter (shown when active: combo >= 0)
-  if (state.combo >= 0) {
+  // Combo counter (shown when active: combo >= 1, so 0-bonus first clears are not shown)
+  if (state.combo >= 1) {
     ctx.font = "bold 13px monospace";
     ctx.fillStyle = "#00f0f0";
     ctx.fillText(`${state.combo + 1}× COMBO`, hudX, state.backToBack ? hudY + 212 : hudY + 195);

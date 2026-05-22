@@ -203,12 +203,10 @@ export class Game {
     const lockedPiece = this.state.activePiece;
     this.state.board = lockPiece(this.state.board, lockedPiece);
     this.state.activePiece = null;
+    const tSpinResult = detectTSpin(this.state.board, lockedPiece);  // detect on locked-but-pre-clear board
 
     const clearResult = clearLines(this.state.board);
     this.state.board = clearResult.board;
-
-    // Detect T-spin regardless of lines cleared
-    const tSpinResult = detectTSpin(this.state.board, lockedPiece);
 
     if (clearResult.linesCleared > 0) {
       this.state.clearedRowIndices = clearResult.clearedRowIndices;

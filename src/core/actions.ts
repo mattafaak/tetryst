@@ -127,8 +127,8 @@ function handleHardDrop(state: GameState): GameState {
 
   // Hard drop: piece locks immediately, bypass lock delay
   const lockedBoard = lockPiece(state.board, dropped);
+  const tSpinResult = detectTSpin(lockedBoard, dropped);  // before clearLines
   const clearResult = clearLines(lockedBoard);
-  const tSpinResult = detectTSpin(clearResult.board, dropped);
 
   let nextState: GameState = {
     ...state,
@@ -136,7 +136,7 @@ function handleHardDrop(state: GameState): GameState {
     activePiece: null,
     score: state.score + addHardDropScore(state, rows),
     ghostY: droppedY,
-    lockState: { timer: 0, resets: 0, onGround: false },
+    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
   };
 
   if (clearResult.linesCleared > 0) {

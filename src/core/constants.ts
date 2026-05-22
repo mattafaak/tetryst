@@ -18,6 +18,7 @@ export const ARR_RATE = 50;     // was 33  (TDG: ~50ms between autorepeat steps)
 export const LOCK_DELAY = 500;  // unchanged (TDG: 500ms lock delay)
 export const MAX_LOCK_RESETS = 15; // unchanged
 export const ENTRY_DELAY = 200; // was 267 (TDG: 200ms between piece lock and spawn)
+export const LINE_CLEAR_ANIM_DURATION = 300; // ms — line clear flash animation duration
 
 // Piece colors (strings for Canvas fillStyle)
 export const PIECE_COLORS: Record<TetriminoType, string> = {
