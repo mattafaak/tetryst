@@ -93,12 +93,14 @@ export function clearLines(board: Board): ClearResult {
 
 export function isLockOut(piece: Piece): boolean {
   const shape = PIECE_SHAPES[piece.type][piece.rotation];
+  let hasMino = false;
   for (let r = 0; r < shape.length; r++) {
     for (let c = 0; c < shape[r].length; c++) {
-      if (shape[r][c] && (piece.pos.y + r) >= BUFFER_HEIGHT) {
-        return false; // at least one mino is in the visible area
+      if (shape[r][c]) {
+        hasMino = true;
+        if ((piece.pos.y + r) >= BUFFER_HEIGHT) return false;
       }
     }
   }
-  return true; // all minos above skyline
+  return hasMino;
 }

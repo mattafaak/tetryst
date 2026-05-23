@@ -1,7 +1,7 @@
 import { type GameState, type InputAction, GamePhase, TetriminoType } from "../core/types.ts";
 import { processAction } from "../core/actions.ts";
 import { applyGravity } from "../core/gravity.ts";
-import { shouldLock as checkLock } from "../core/lock-delay.ts";
+import { shouldLock as checkLock, resetLockState } from "../core/lock-delay.ts";
 import { lockPiece, clearLines, isLockOut } from "../core/board.ts";
 import { updateEntryDelay } from "../core/entry-delay.ts";
 import { updateCombo } from "../core/combo.ts";
@@ -206,6 +206,7 @@ export class Game {
 
     // Lock-Out: all minos in buffer zone ends the game (TDG §8)
     if (isLockOut(lockedPiece)) {
+      this.state.lockState = resetLockState();
       this.state.phase = GamePhase.GameOver;
       return;
     }
