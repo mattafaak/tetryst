@@ -17,6 +17,17 @@ import {
 } from "../core/constants.ts";
 import { loadHighScores } from "../core/high-scores.ts";
 
+// ── Design tokens ──────────────────────────────────────────────────────
+const TEXT       = "#e2e2e2";
+const TEXT_DIM   = "#777";
+const TEXT_FAINT = "#444";
+const ACCENT     = "#00e5ff";
+const AMBER      = "#ffb300";
+const RED        = "#ff5252";
+
+function fmtScore(n: number): string {
+  return n.toLocaleString("en-US");
+}
 
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
@@ -42,22 +53,20 @@ export function renderFrame(
   const boardPixelWidth = BOARD_WIDTH * cellSize;
   const boardPixelHeight = VISIBLE_HEIGHT * cellSize;
   const boardX = Math.floor((canvasWidth - boardPixelWidth) / 2);
-  const boardY = Math.floor(
-    (canvasHeight - boardPixelHeight) / 2
-  );
+  const boardY = Math.floor((canvasHeight - boardPixelHeight) / 2);
 
   // Draw board background
   ctx.fillStyle = "#1a1a2e";
   ctx.fillRect(boardX, boardY, boardPixelWidth, boardPixelHeight);
 
   // Draw board border
-  ctx.strokeStyle = "#444";
+  ctx.strokeStyle = "#2a2a3e";
   ctx.lineWidth = 2;
   ctx.strokeRect(boardX, boardY, boardPixelWidth, boardPixelHeight);
 
   // Draw grid lines
   ctx.beginPath();
-  ctx.strokeStyle = "#222";
+  ctx.strokeStyle = "#1e1e2e";
   ctx.lineWidth = 0.5;
   for (let row = 1; row < VISIBLE_HEIGHT; row++) {
     ctx.moveTo(boardX, boardY + row * cellSize);
@@ -88,24 +97,12 @@ export function renderFrame(
 
   // Draw active piece
   if (state.activePiece && state.phase === GamePhase.Playing) {
-    drawPiece(
-      ctx,
-      boardX,
-      boardY,
-      state.activePiece,
-      cellSize
-    );
+    drawPiece(ctx, boardX, boardY, state.activePiece, cellSize);
   }
 
   // Draw line clear animation
   if (state.phase === GamePhase.LineClear) {
-    drawLineClearAnimation(
-      ctx,
-      boardX,
-      boardY,
-      state,
-      cellSize
-    );
+    drawLineClearAnimation(ctx, boardX, boardY, state, cellSize);
   }
 
   // Draw popups (floating action text)
@@ -115,7 +112,7 @@ export function renderFrame(
 
   // Draw overlays
   if (isAttractMode) {
-    drawAttractOverlay(ctx, canvasWidth, canvasHeight, state);
+    drawAttractOverlay(ctx, canvasWidth, canvasHeight);
   } else if (state.phase === GamePhase.Menu) {
     drawMenu(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0, audioEnabled ?? true);
   } else if (state.phase === GamePhase.Paused) {
@@ -128,14 +125,7 @@ export function renderFrame(
 
   // Draw HUD
   if (!isAttractMode) {
-    drawHUD(
-      ctx,
-      boardX + boardPixelWidth + 20,
-      boardY,
-      state,
-      cellSize,
-      audioEnabled ?? true,
-    );
+    drawHUD(ctx, boardX + boardPixelWidth + 20, boardY, state, cellSize, audioEnabled ?? true);
   }
 
   ctx.restore();
@@ -184,15 +174,7 @@ function drawPiece(
         const visibleRow = piece.pos.y + r - BUFFER_HEIGHT;
         const boardCol = piece.pos.x + c;
         if (visibleRow >= 0 && visibleRow < VISIBLE_HEIGHT) {
-          drawCell(
-            ctx,
-            boardX,
-            boardY,
-            boardCol,
-            visibleRow,
-            color,
-            cellSize
-          );
+          drawCell(ctx, boardX, boardY, boardCol, visibleRow, color, cellSize);
         }
       }
     }
@@ -223,12 +205,7 @@ function drawGhost(
           ctx.strokeStyle = color;
           ctx.globalAlpha = GHOST_OPACITY;
           ctx.lineWidth = 2;
-          ctx.strokeRect(
-            x + inset + 1,
-            y + inset + 1,
-            cellSize - inset * 2 - 2,
-            cellSize - inset * 2 - 2
-          );
+          ctx.strokeRect(x + inset + 1, y + inset + 1, cellSize - inset * 2 - 2, cellSize - inset * 2 - 2);
           ctx.globalAlpha = 1;
         }
       }
@@ -243,7 +220,6 @@ function drawLineClearAnimation(
   state: GameState,
   cellSize: number
 ): void {
-  // Flash cleared rows white, alternating every ~105ms
   const flash = Math.sin(state.lineClearTimer * 0.03) > 0;
   if (!flash) return;
 
@@ -251,15 +227,42 @@ function drawLineClearAnimation(
   for (const boardRow of state.clearedRowIndices) {
     const visibleRow = boardRow - BUFFER_HEIGHT;
     if (visibleRow >= 0 && visibleRow < VISIBLE_HEIGHT) {
-      ctx.fillRect(
-        boardX,
-        boardY + visibleRow * cellSize,
-        BOARD_WIDTH * cellSize,
-        cellSize
-      );
+      ctx.fillRect(boardX, boardY + visibleRow * cellSize, BOARD_WIDTH * cellSize, cellSize);
     }
   }
 }
+
+// ── Overlay helpers ────────────────────────────────────────────────────
+
+function overlayBg(ctx: CanvasRenderingContext2D, w: number, h: number, alpha = 0.82): void {
+  ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function drawTitle(ctx: CanvasRenderingContext2D, cx: number, y: number): void {
+  ctx.letterSpacing = "6px";
+  ctx.font = "bold 52px monospace";
+  ctx.fillStyle = TEXT;
+  ctx.fillText("TETRYST", cx, y);
+  ctx.letterSpacing = "0px";
+}
+
+function rule(ctx: CanvasRenderingContext2D, cx: number, y: number, halfW = 110): void {
+  ctx.strokeStyle = "#2a2a3e";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - halfW, y);
+  ctx.lineTo(cx + halfW, y);
+  ctx.stroke();
+}
+
+function hudLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
+  ctx.font = "bold 11px monospace";
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText(text, x, y);
+}
+
+// ── Screen functions ───────────────────────────────────────────────────
 
 function drawMenu(
   ctx: CanvasRenderingContext2D,
@@ -269,108 +272,188 @@ function drawMenu(
   selectedStartLevel: number,
   audioEnabled: boolean,
 ): void {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 48px monospace";
+  overlayBg(ctx, canvasWidth, canvasHeight, 0.85);
   ctx.textAlign = "center";
-  ctx.fillText("TETRYST", canvasWidth / 2, canvasHeight / 2 - 80);
+
+  drawTitle(ctx, cx, cy - 96);
+  rule(ctx, cx, cy - 70);
 
   // Mode selector
-  ctx.font = "bold 18px monospace";
-  ctx.fillStyle = "#888";
-  ctx.fillText("MODE", canvasWidth / 2, canvasHeight / 2 - 28);
-  ctx.font = "bold 24px monospace";
-  ctx.fillStyle = "#00f0f0";
-  ctx.fillText(`< ${selectedMode} >`, canvasWidth / 2, canvasHeight / 2);
+  ctx.font = "bold 11px monospace";
+  ctx.fillStyle = TEXT_FAINT;
+  ctx.fillText("MODE", cx, cy - 46);
 
-  // Level selector (not shown for Sprint/Ultra)
+  ctx.font = "bold 26px monospace";
+  ctx.fillStyle = ACCENT;
+  ctx.fillText(`‹  ${selectedMode}  ›`, cx, cy - 18);
+
+  // Level selector (Marathon only)
   if (selectedMode === GameMode.Marathon) {
-    ctx.font = "bold 18px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("START LEVEL", canvasWidth / 2, canvasHeight / 2 + 34);
-    ctx.font = "bold 24px monospace";
-    ctx.fillStyle = "#f0a000";
-    ctx.fillText(`↑ ${selectedStartLevel + 1} ↓`, canvasWidth / 2, canvasHeight / 2 + 58);
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = TEXT_FAINT;
+    ctx.fillText("START LEVEL", cx, cy + 22);
+
+    ctx.font = "bold 26px monospace";
+    ctx.fillStyle = AMBER;
+    ctx.fillText((selectedStartLevel + 1).toString(), cx, cy + 50);
   }
 
-  ctx.font = "20px monospace";
-  ctx.fillStyle = "#ddd";
-  ctx.fillText("Press ENTER to start", canvasWidth / 2, canvasHeight / 2 + 100);
+  const promptY = selectedMode === GameMode.Marathon ? cy + 96 : cy + 30;
 
-  ctx.font = "13px monospace";
-  ctx.fillStyle = "#555";
-  const controlsHint = selectedMode === GameMode.Marathon
-    ? "Mode: ←/→  |  Start level: ↑/↓  |  Start: Enter  |  Mute: M"
-    : "Mode: ←/→  |  Start: Enter  |  Mute: M";
-  ctx.fillText(controlsHint, canvasWidth / 2, canvasHeight / 2 + 130);
+  ctx.font = "bold 15px monospace";
+  ctx.fillStyle = AMBER;
+  ctx.fillText("PRESS  ENTER  TO  START", cx, promptY);
 
-  const muteLabel = audioEnabled ? "♪ ON" : "♪ OFF";
+  ctx.font = "12px monospace";
+  ctx.fillStyle = TEXT_FAINT;
+  const hint = selectedMode === GameMode.Marathon
+    ? "← → mode  ·  ↑ ↓ start level  ·  M mute"
+    : "← → mode  ·  M mute";
+  ctx.fillText(hint, cx, promptY + 24);
+
+  ctx.font = "12px monospace";
+  ctx.fillStyle = audioEnabled ? "#44aa66" : "#885555";
+  ctx.fillText(audioEnabled ? "♪  on" : "♪  off", cx, promptY + 44);
+}
+
+function drawAttractOverlay(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
+
+  overlayBg(ctx, canvasWidth, canvasHeight, 0.58);
+  ctx.textAlign = "center";
+
+  drawTitle(ctx, cx, cy - 58);
+
+  ctx.font = "bold 15px monospace";
+  ctx.fillStyle = AMBER;
+  ctx.fillText("PRESS  ENTER  TO  PLAY", cx, cy - 8);
+
+  ctx.font = "12px monospace";
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText("any key to select mode", cx, cy + 14);
+
+  // Top Marathon scores
+  const topScores = loadHighScores(GameMode.Marathon).slice(0, 3);
+  if (topScores.length > 0) {
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = AMBER;
+    ctx.fillText("TOP  SCORES", cx, cy + 50);
+    ctx.font = "13px monospace";
+    ctx.fillStyle = TEXT_DIM;
+    topScores.forEach((s, i) => {
+      ctx.fillText(
+        `${i + 1}.  ${fmtScore(s.score)}   Lv ${s.level + 1}`,
+        cx,
+        cy + 68 + i * 18,
+      );
+    });
+  }
+
+  // Controls bar
+  const barH = 38;
+  ctx.fillStyle = "rgba(0,0,0,0.82)";
+  ctx.fillRect(0, canvasHeight - barH, canvasWidth, barH);
   ctx.font = "13px monospace";
-  ctx.fillStyle = audioEnabled ? "#4a4" : "#a44";
-  ctx.fillText(muteLabel, canvasWidth / 2, canvasHeight / 2 + 155);
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText(
+    "← → move  ·  Z / X rotate  ·  Space drop  ·  C hold  ·  M mute",
+    cx,
+    canvasHeight - barH / 2 + 5,
+  );
 }
 
 function drawPause(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
-  canvasHeight: number
+  canvasHeight: number,
 ): void {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 36px monospace";
+  overlayBg(ctx, canvasWidth, canvasHeight, 0.72);
   ctx.textAlign = "center";
-  ctx.fillText("PAUSED", canvasWidth / 2, canvasHeight / 2);
 
-  ctx.font = "16px monospace";
-  ctx.fillStyle = "#888";
-  ctx.fillText("Press P to resume", canvasWidth / 2, canvasHeight / 2 + 40);
+  ctx.letterSpacing = "6px";
+  ctx.font = "bold 40px monospace";
+  ctx.fillStyle = TEXT;
+  ctx.fillText("PAUSED", cx, cy - 4);
+  ctx.letterSpacing = "0px";
+
+  ctx.font = "13px monospace";
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText("press P to resume", cx, cy + 28);
 }
 
 function drawGameOver(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   canvasHeight: number,
-  state: GameState
+  state: GameState,
 ): void {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
 
-  ctx.fillStyle = "#f44";
-  ctx.font = "bold 48px monospace";
+  overlayBg(ctx, canvasWidth, canvasHeight);
   ctx.textAlign = "center";
-  ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2 - 80);
 
-  ctx.fillStyle = "#fff";
-  ctx.font = "24px monospace";
-  ctx.fillText(`Score: ${state.score}`, canvasWidth / 2, canvasHeight / 2 - 36);
+  ctx.letterSpacing = "4px";
+  ctx.font = "bold 44px monospace";
+  ctx.fillStyle = RED;
+  ctx.fillText("GAME  OVER", cx, cy - 90);
+  ctx.letterSpacing = "0px";
 
-  ctx.font = "18px monospace";
-  ctx.fillStyle = "#aaa";
-  ctx.fillText(`Level: ${state.level + 1}  Lines: ${state.lines}`, canvasWidth / 2, canvasHeight / 2 - 4);
+  rule(ctx, cx, cy - 66);
 
-  // Top 5 high scores
+  // Primary stat
+  if (state.mode === GameMode.Sprint) {
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = TEXT_FAINT;
+    ctx.fillText("TIME", cx, cy - 44);
+    ctx.font = "bold 26px monospace";
+    ctx.fillStyle = TEXT;
+    ctx.fillText(formatMs(state.modeTimer), cx, cy - 18);
+  } else {
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = TEXT_FAINT;
+    ctx.fillText("SCORE", cx, cy - 44);
+    ctx.font = "bold 26px monospace";
+    ctx.fillStyle = TEXT;
+    ctx.fillText(fmtScore(state.score), cx, cy - 18);
+  }
+
+  ctx.font = "14px monospace";
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
+
+  // High scores
   const scores = loadHighScores(state.mode).slice(0, 5);
   if (scores.length > 0) {
-    ctx.font = "bold 14px monospace";
-    ctx.fillStyle = "#f0a000";
-    ctx.fillText("BEST SCORES", canvasWidth / 2, canvasHeight / 2 + 28);
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = AMBER;
+    ctx.fillText("BEST  SCORES", cx, cy + 40);
     ctx.font = "13px monospace";
-    ctx.fillStyle = "#ccc";
+    ctx.fillStyle = TEXT_DIM;
     scores.forEach((s, i) => {
-      const label = state.mode === GameMode.Sprint
-        ? formatMs(s.score)
-        : s.score.toString();
-      ctx.fillText(`${i + 1}. ${label}  Lv${s.level + 1}  ${s.lines}L`, canvasWidth / 2, canvasHeight / 2 + 48 + i * 18);
+      const primary = state.mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
+      ctx.fillText(
+        `${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`,
+        cx,
+        cy + 58 + i * 18,
+      );
     });
   }
 
-  ctx.font = "16px monospace";
-  ctx.fillStyle = "#888";
-  ctx.fillText("Press ENTER to restart", canvasWidth / 2, canvasHeight / 2 + 148);
+  ctx.font = "bold 14px monospace";
+  ctx.fillStyle = AMBER;
+  ctx.fillText("PRESS  ENTER  TO  PLAY  AGAIN", cx, cy + 152);
 }
 
 function drawVictory(
@@ -379,56 +462,74 @@ function drawVictory(
   canvasHeight: number,
   state: GameState,
 ): void {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
 
+  overlayBg(ctx, canvasWidth, canvasHeight);
   ctx.textAlign = "center";
 
+  let headline: string;
+  let headlineColor: string;
+  let primaryLabel: string;
+  let primaryValue: string;
+
   if (state.mode === GameMode.Sprint) {
-    ctx.fillStyle = "#00f0f0";
-    ctx.font = "bold 36px monospace";
-    ctx.fillText("SPRINT COMPLETE!", canvasWidth / 2, canvasHeight / 2 - 80);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 28px monospace";
-    ctx.fillText(formatMs(state.modeTimer > 0 ? state.modeTimer : 0), canvasWidth / 2, canvasHeight / 2 - 40);
+    headline = "SPRINT  CLEAR";
+    headlineColor = ACCENT;
+    primaryLabel = "TIME";
+    primaryValue = formatMs(state.modeTimer > 0 ? state.modeTimer : 0);
   } else if (state.mode === GameMode.Ultra) {
-    ctx.fillStyle = "#f0a000";
-    ctx.font = "bold 36px monospace";
-    ctx.fillText("TIME'S UP!", canvasWidth / 2, canvasHeight / 2 - 80);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 28px monospace";
-    ctx.fillText(`Score: ${state.score}`, canvasWidth / 2, canvasHeight / 2 - 40);
+    headline = "TIME'S  UP";
+    headlineColor = AMBER;
+    primaryLabel = "SCORE";
+    primaryValue = fmtScore(state.score);
   } else {
-    ctx.fillStyle = "#f0a000";
-    ctx.font = "bold 48px monospace";
-    ctx.fillText("YOU WIN!", canvasWidth / 2, canvasHeight / 2 - 80);
-    ctx.fillStyle = "#fff";
-    ctx.font = "24px monospace";
-    ctx.fillText(`Score: ${state.score}`, canvasWidth / 2, canvasHeight / 2 - 36);
+    headline = "YOU  WIN";
+    headlineColor = AMBER;
+    primaryLabel = "SCORE";
+    primaryValue = fmtScore(state.score);
   }
 
-  ctx.font = "18px monospace";
-  ctx.fillStyle = "#aaa";
-  ctx.fillText(`Level: ${state.level + 1}  Lines: ${state.lines}`, canvasWidth / 2, canvasHeight / 2);
+  ctx.letterSpacing = "4px";
+  ctx.font = "bold 44px monospace";
+  ctx.fillStyle = headlineColor;
+  ctx.fillText(headline, cx, cy - 90);
+  ctx.letterSpacing = "0px";
 
+  rule(ctx, cx, cy - 66);
+
+  ctx.font = "bold 11px monospace";
+  ctx.fillStyle = TEXT_FAINT;
+  ctx.fillText(primaryLabel, cx, cy - 44);
+  ctx.font = "bold 26px monospace";
+  ctx.fillStyle = TEXT;
+  ctx.fillText(primaryValue, cx, cy - 18);
+
+  ctx.font = "14px monospace";
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
+
+  // High scores
   const scores = loadHighScores(state.mode).slice(0, 5);
   if (scores.length > 0) {
-    ctx.font = "bold 14px monospace";
-    ctx.fillStyle = "#f0a000";
-    ctx.fillText("BEST SCORES", canvasWidth / 2, canvasHeight / 2 + 34);
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = AMBER;
+    ctx.fillText("BEST  SCORES", cx, cy + 40);
     ctx.font = "13px monospace";
-    ctx.fillStyle = "#ccc";
+    ctx.fillStyle = TEXT_DIM;
     scores.forEach((s, i) => {
-      const label = state.mode === GameMode.Sprint
-        ? formatMs(s.score)
-        : s.score.toString();
-      ctx.fillText(`${i + 1}. ${label}  Lv${s.level + 1}  ${s.lines}L`, canvasWidth / 2, canvasHeight / 2 + 54 + i * 18);
+      const primary = state.mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
+      ctx.fillText(
+        `${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`,
+        cx,
+        cy + 58 + i * 18,
+      );
     });
   }
 
-  ctx.font = "16px monospace";
-  ctx.fillStyle = "#888";
-  ctx.fillText("Press ENTER for menu", canvasWidth / 2, canvasHeight / 2 + 154);
+  ctx.font = "bold 14px monospace";
+  ctx.fillStyle = AMBER;
+  ctx.fillText("PRESS  ENTER  FOR  MENU", cx, cy + 152);
 }
 
 function formatMs(ms: number): string {
@@ -449,113 +550,82 @@ function drawHUD(
 ): void {
   ctx.textAlign = "left";
 
+  // Mode name
+  ctx.font = "bold 11px monospace";
+  ctx.fillStyle = TEXT_FAINT;
+  ctx.fillText(state.mode.toUpperCase(), hudX, hudY + 14);
+
   if (state.mode === GameMode.Sprint) {
-    // Sprint: elapsed time + lines remaining
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("TIME", hudX, hudY + 20);
-    ctx.fillStyle = "#fff";
+    hudLabel(ctx, "TIME", hudX, hudY + 40);
     ctx.font = "20px monospace";
-    ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 45);
+    ctx.fillStyle = TEXT;
+    ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 62);
 
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("LINES LEFT", hudX, hudY + 80);
-    ctx.fillStyle = "#00f0f0";
+    hudLabel(ctx, "LINES LEFT", hudX, hudY + 96);
     ctx.font = "20px monospace";
-    const linesLeft = Math.max(0, 40 - state.lines);
-    ctx.fillText(linesLeft.toString(), hudX, hudY + 105);
+    ctx.fillStyle = ACCENT;
+    ctx.fillText(Math.max(0, 40 - state.lines).toString(), hudX, hudY + 118);
+
   } else if (state.mode === GameMode.Ultra) {
-    // Ultra: countdown timer + score
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("TIME LEFT", hudX, hudY + 20);
-    const timeColor = state.modeTimer < 30000 ? "#f44" : "#fff";
-    ctx.fillStyle = timeColor;
-    ctx.font = "bold 22px monospace";
-    ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 48);
+    hudLabel(ctx, "TIME LEFT", hudX, hudY + 40);
+    ctx.font = "bold 20px monospace";
+    ctx.fillStyle = state.modeTimer < 30000 ? RED : TEXT;
+    ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 62);
 
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("SCORE", hudX, hudY + 82);
-    ctx.fillStyle = "#fff";
+    hudLabel(ctx, "SCORE", hudX, hudY + 96);
     ctx.font = "20px monospace";
-    ctx.fillText(state.score.toString(), hudX, hudY + 107);
+    ctx.fillStyle = TEXT;
+    ctx.fillText(fmtScore(state.score), hudX, hudY + 118);
+
   } else {
-    // Marathon: score + level + lines
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("SCORE", hudX, hudY + 20);
-    ctx.fillStyle = "#fff";
+    // Marathon
+    hudLabel(ctx, "SCORE", hudX, hudY + 40);
     ctx.font = "20px monospace";
-    ctx.fillText(state.score.toString(), hudX, hudY + 45);
+    ctx.fillStyle = TEXT;
+    ctx.fillText(fmtScore(state.score), hudX, hudY + 62);
 
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("LEVEL", hudX, hudY + 80);
-    ctx.fillStyle = "#fff";
+    hudLabel(ctx, "LEVEL", hudX, hudY + 96);
     ctx.font = "20px monospace";
-    ctx.fillText((state.level + 1).toString(), hudX, hudY + 105);
+    ctx.fillStyle = TEXT;
+    ctx.fillText((state.level + 1).toString(), hudX, hudY + 118);
 
-    ctx.font = "bold 16px monospace";
-    ctx.fillStyle = "#888";
-    ctx.fillText("LINES", hudX, hudY + 140);
-    ctx.fillStyle = "#fff";
+    hudLabel(ctx, "LINES", hudX, hudY + 152);
     ctx.font = "20px monospace";
-    ctx.fillText(state.lines.toString(), hudX, hudY + 165);
+    ctx.fillStyle = TEXT;
+    ctx.fillText(state.lines.toString(), hudX, hudY + 174);
   }
 
-  // B2B indicator
+  // B2B / combo indicators
   if (state.backToBack) {
-    ctx.font = "bold 13px monospace";
-    ctx.fillStyle = "#f0a000";
-    ctx.fillText("B2B", hudX, hudY + 195);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = AMBER;
+    ctx.fillText("B2B", hudX, hudY + 204);
   }
-
-  // Combo counter (shown when active: combo >= 1, so 0-bonus first clears are not shown)
   if (state.combo >= 1) {
-    ctx.font = "bold 13px monospace";
-    ctx.fillStyle = "#00f0f0";
-    ctx.fillText(`${state.combo + 1}× COMBO`, hudX, state.backToBack ? hudY + 212 : hudY + 195);
+    ctx.font = "bold 12px monospace";
+    ctx.fillStyle = ACCENT;
+    ctx.fillText(`${state.combo + 1}× COMBO`, hudX, state.backToBack ? hudY + 220 : hudY + 204);
   }
 
   // Hold piece
-  const holdY = hudY + 235;
-  ctx.font = "bold 16px monospace";
-  ctx.fillStyle = "#888";
-  ctx.fillText("HOLD", hudX, holdY);
+  const holdY = hudY + 240;
+  hudLabel(ctx, "HOLD", hudX, holdY);
 
   if (state.heldPiece !== null) {
-    drawSmallPiece(
-      ctx,
-      hudX,
-      holdY + 10,
-      state.heldPiece,
-      cellSize * 0.5,
-      state.hasSwappedThisTurn ? 0.3 : 1
-    );
+    drawSmallPiece(ctx, hudX, holdY + 8, state.heldPiece, cellSize * 0.5, state.hasSwappedThisTurn ? 0.3 : 1);
   }
 
   // Mute indicator
-  ctx.font = "12px monospace";
-  ctx.fillStyle = audioEnabled ? "#4a4" : "#a44";
-  ctx.fillText(audioEnabled ? "♪ ON" : "♪ OFF", hudX, holdY + 90);
+  ctx.font = "11px monospace";
+  ctx.fillStyle = audioEnabled ? "#44aa66" : "#885555";
+  ctx.fillText(audioEnabled ? "♪  on" : "♪  off", hudX, holdY + 90);
 
   // Next queue
   const nextY = holdY + 110;
-  ctx.font = "bold 16px monospace";
-  ctx.fillStyle = "#888";
-  ctx.fillText("NEXT", hudX, nextY);
+  hudLabel(ctx, "NEXT", hudX, nextY);
 
   for (let i = 0; i < Math.min(state.nextQueue.length, NEXT_QUEUE_SIZE); i++) {
-    drawSmallPiece(
-      ctx,
-      hudX,
-      nextY + 10 + i * (cellSize * 0.5 * 4 + 8),
-      state.nextQueue[i].type,
-      cellSize * 0.5,
-      1
-    );
+    drawSmallPiece(ctx, hudX, nextY + 10 + i * (cellSize * 0.5 * 4 + 8), state.nextQueue[i].type, cellSize * 0.5, 1);
   }
 }
 
@@ -603,54 +673,4 @@ function drawPopups(
     ctx.fillText(p.text, cx, baseY + i * 28 + dy);
   });
   ctx.globalAlpha = 1;
-}
-
-function drawAttractOverlay(
-  ctx: CanvasRenderingContext2D,
-  canvasWidth: number,
-  canvasHeight: number,
-  _state: GameState,
-): void {
-  // Dim the entire screen so the board is visible behind
-  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-  ctx.textAlign = "center";
-
-  // Title
-  ctx.fillStyle = "#fff";
-  ctx.font = "bold 48px monospace";
-  ctx.fillText("TETRYST", canvasWidth / 2, canvasHeight / 2 - 70);
-
-  // Start prompt
-  ctx.font = "20px monospace";
-  ctx.fillStyle = "#ddd";
-  ctx.fillText("Press ENTER to start", canvasWidth / 2, canvasHeight / 2 + 10);
-
-  // Top 3 Marathon scores
-  const topScores = loadHighScores(GameMode.Marathon).slice(0, 3);
-  if (topScores.length > 0) {
-    ctx.font = "bold 13px monospace";
-    ctx.fillStyle = "#f0a000";
-    ctx.fillText("TOP SCORES", canvasWidth / 2, canvasHeight / 2 + 44);
-    ctx.font = "13px monospace";
-    ctx.fillStyle = "#aaa";
-    topScores.forEach((s, i) => {
-      ctx.fillText(`${i + 1}. ${s.score}  Lv${s.level + 1}`, canvasWidth / 2, canvasHeight / 2 + 62 + i * 16);
-    });
-  }
-
-  // Dark bar behind control instructions for readability
-  const barHeight = 40;
-  ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-  ctx.fillRect(0, canvasHeight - barHeight, canvasWidth, barHeight);
-
-  // Single-line control legend centered in the dark bar
-  ctx.font = "14px monospace";
-  ctx.fillStyle = "#aaa";
-  ctx.fillText(
-    "Arrows: Move  |  Z: Rotate  |  Space: Drop  |  C: Hold  |  P: Pause",
-    canvasWidth / 2,
-    canvasHeight - barHeight / 2 + 5
-  );
 }
