@@ -395,7 +395,7 @@ export function getWallKicks(
 // Scoring table: index = lines cleared (0-4), value = base points
 export const LINE_CLEAR_SCORES = [0, 100, 300, 500, 800];
 
-// T-spin scores (× level)
+// T-spin scores (× (level + 1))
 export const TSPIN_SCORES: Record<string, number> = {
   "0": 400, // T-spin with no lines
   "1": 800, // T-spin single
@@ -404,9 +404,9 @@ export const TSPIN_SCORES: Record<string, number> = {
 };
 
 export const TSPIN_MINI_SCORES: Record<string, number> = {
-  "0": 100, // T-spin Mini with no lines (TDG §7: 100 × Level)
-  "1": 200, // T-spin Mini single (TDG §7: 200 × Level)
-  "2": 400, // T-spin Mini double (TDG §7: 400 × Level)
+  "0": 100, // T-spin Mini with no lines (TDG §7: 100 × (level + 1))
+  "1": 200, // T-spin Mini single (TDG §7: 200 × (level + 1))
+  "2": 400, // T-spin Mini double (TDG §7: 400 × (level + 1))
 };
 
 export const PERFECT_CLEAR_BASE = 800;
@@ -414,7 +414,7 @@ export const PERFECT_CLEAR_BASE = 800;
 // Back-to-back multiplier
 export const B2B_MULTIPLIER = 1.5;
 
-// Combo scoring: 50 × combo × level
+// Combo scoring: 50 × combo × (level + 1)
 export const COMBO_BASE = 50;
 
 // Soft drop: 1 point per cell

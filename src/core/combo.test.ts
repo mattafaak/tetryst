@@ -31,7 +31,7 @@ function createTestState(overrides?: Partial<GameState>): GameState {
 
 describe("combo", () => {
   it("first clear starts combo at 0 (combo was -1 on init)", () => {
-    const state = createTestState({ combo: -1, level: 1 });
+    const state = createTestState({ combo: -1, level: 0 });
     const result = updateCombo(state, 1);
     expect(result.state.combo).toBe(0);
     expect(result.bonusScore).toBe(COMBO_BASE * 0 * 1);
@@ -45,7 +45,7 @@ describe("combo", () => {
   });
 
   it("combo resets to -1 on non-clearing piece", () => {
-    const state = createTestState({ combo: 3, level: 1 });
+    const state = createTestState({ combo: 3, level: 0 });
     const result = updateCombo(state, 0);
     expect(result.state.combo).toBe(-1);
     expect(result.bonusScore).toBe(0);
@@ -86,7 +86,7 @@ describe("combo edge cases", () => {
   });
 
   it("combo resets on linesCleared=0 even after deep chain", () => {
-    const state = createTestState({ combo: 10, level: 1 });
+    const state = createTestState({ combo: 10, level: 0 });
     const result = updateCombo(state, 0);
     expect(result.state.combo).toBe(-1);
     expect(result.bonusScore).toBe(0);
