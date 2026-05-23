@@ -7,7 +7,7 @@ export function updateCombo(
 ): { state: GameState; bonusScore: number } {
   if (linesCleared > 0) {
     const newCombo = state.combo + 1;
-    const bonusScore = COMBO_BASE * newCombo * state.level;
+    const bonusScore = COMBO_BASE * newCombo * (state.level + 1);
     return {
       state: { ...state, combo: newCombo },
       bonusScore,

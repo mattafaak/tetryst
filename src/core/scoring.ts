@@ -156,17 +156,17 @@ export function evaluateClear(
 
   // Base score
   if (tSpinResult.isTSpin && !tSpinResult.isMini) {
-    score = (TSPIN_SCORES[String(Math.min(linesCleared, 3))] ?? 0) * level;
+    score = (TSPIN_SCORES[String(Math.min(linesCleared, 3))] ?? 0) * (level + 1);
   } else if (tSpinResult.isMini) {
     score =
-      (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 2))] ?? 0) * level;
+      (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 2))] ?? 0) * (level + 1);
   } else {
-    score = (LINE_CLEAR_SCORES[linesCleared] ?? 0) * level;
+    score = (LINE_CLEAR_SCORES[linesCleared] ?? 0) * (level + 1);
   }
 
   // Perfect clear bonus
   if (isPerfectClear) {
-    score += PERFECT_CLEAR_BASE * level;
+    score += PERFECT_CLEAR_BASE * (level + 1);
   }
 
   // Back-to-back logic

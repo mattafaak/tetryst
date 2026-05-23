@@ -13,7 +13,7 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     hasSwappedThisTurn: false,
     nextQueue: [],
     score: 0,
-    level: 1,
+    level: 0,
     lines: 0,
     combo: -1,
     backToBack: false,
@@ -38,7 +38,7 @@ describe("combo", () => {
   });
 
   it("subsequent clears increment combo", () => {
-    const state = createTestState({ combo: 0, level: 1 });
+    const state = createTestState({ combo: 0, level: 0 });
     const result = updateCombo(state, 2);
     expect(result.state.combo).toBe(1);
     expect(result.bonusScore).toBe(COMBO_BASE * 1 * 1);
@@ -52,7 +52,7 @@ describe("combo", () => {
   });
 
   it("bonus score calculation: 50 x combo x level", () => {
-    const state = createTestState({ combo: 2, level: 5 });
+    const state = createTestState({ combo: 2, level: 4 });
     const result = updateCombo(state, 1);
     expect(result.state.combo).toBe(3);
     expect(result.bonusScore).toBe(COMBO_BASE * 3 * 5);
@@ -60,13 +60,6 @@ describe("combo", () => {
 });
 
 describe("combo edge cases", () => {
-  it("combo at level 0 produces 0 bonus regardless of combo count", () => {
-    const state = createTestState({ combo: 2, level: 0 });
-    const result = updateCombo(state, 1);
-    expect(result.state.combo).toBe(3);
-    expect(result.bonusScore).toBe(0); // 50 * 3 * 0 = 0
-  });
-
   it("linesCleared=0 when combo is already -1 stays -1", () => {
     const state = createTestState({ combo: -1, level: 1 });
     const result = updateCombo(state, 0);
@@ -75,7 +68,7 @@ describe("combo edge cases", () => {
   });
 
   it("triple combo increments across three consecutive clears", () => {
-    let state = createTestState({ combo: -1, level: 1 });
+    let state = createTestState({ combo: -1, level: 0 });
 
     const r1 = updateCombo(state, 1);
     expect(r1.state.combo).toBe(0);
@@ -100,9 +93,15 @@ describe("combo edge cases", () => {
   });
 
   it("level affects bonus: combo 5 at level 3 = 750", () => {
-    const state = createTestState({ combo: 4, level: 3 });
+    const state = createTestState({ combo: 4, level: 2 });
     const result = updateCombo(state, 1);
     expect(result.state.combo).toBe(5);
     expect(result.bonusScore).toBe(50 * 5 * 3);
   });
+});
+
+it("combo bonus at game start (level 0) is non-zero", () => {
+  const state = createTestState({ combo: 0, level: 0 });
+  const result = updateCombo(state, 1);
+  expect(result.bonusScore).toBe(50 * 1 * 1); // 50 × combo(1) × (level+1=1)
 });

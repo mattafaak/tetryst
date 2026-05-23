@@ -95,31 +95,31 @@ describe("evaluateClear", () => {
   const r = { isTSpin: false, isMini: false };
 
   it("should score line clears × level", () => {
-    expect(evaluateClear(1, r, 1, false, false).score).toBe(100);
-    expect(evaluateClear(2, r, 1, false, false).score).toBe(300);
-    expect(evaluateClear(3, r, 1, false, false).score).toBe(500);
-    expect(evaluateClear(4, r, 1, false, false).score).toBe(800);
-    expect(evaluateClear(1, r, 5, false, false).score).toBe(500);
+    expect(evaluateClear(1, r, 0, false, false).score).toBe(100);
+    expect(evaluateClear(2, r, 0, false, false).score).toBe(300);
+    expect(evaluateClear(3, r, 0, false, false).score).toBe(500);
+    expect(evaluateClear(4, r, 0, false, false).score).toBe(800);
+    expect(evaluateClear(1, r, 4, false, false).score).toBe(500);
   });
 
   it("should score T-spin bonuses", () => {
     const ts = { isTSpin: true, isMini: false };
-    expect(evaluateClear(0, ts, 1, false, false).score).toBe(400);
-    expect(evaluateClear(1, ts, 1, false, false).score).toBe(800);
-    expect(evaluateClear(2, ts, 1, false, false).score).toBe(1200);
-    expect(evaluateClear(3, ts, 1, false, false).score).toBe(1600);
+    expect(evaluateClear(0, ts, 0, false, false).score).toBe(400);
+    expect(evaluateClear(1, ts, 0, false, false).score).toBe(800);
+    expect(evaluateClear(2, ts, 0, false, false).score).toBe(1200);
+    expect(evaluateClear(3, ts, 0, false, false).score).toBe(1600);
   });
 
   it("should score T-spin Mini bonuses", () => {
     const m = { isTSpin: true, isMini: true };
-    expect(evaluateClear(0, m, 1, false, false).score).toBe(100);
-    expect(evaluateClear(1, m, 1, false, false).score).toBe(200);
-    expect(evaluateClear(2, m, 1, false, false).score).toBe(400);
+    expect(evaluateClear(0, m, 0, false, false).score).toBe(100);
+    expect(evaluateClear(1, m, 0, false, false).score).toBe(200);
+    expect(evaluateClear(2, m, 0, false, false).score).toBe(400);
   });
 
   it("should apply back-to-back multiplier", () => {
     const ts = { isTSpin: true, isMini: false };
-    const result = evaluateClear(2, ts, 1, true, false);
+    const result = evaluateClear(2, ts, 0, true, false);
     expect(result.score).toBe(1200 * 1.5);
     expect(result.isB2B).toBe(true);
   });
@@ -132,8 +132,20 @@ describe("evaluateClear", () => {
   });
 
   it("should add perfect clear bonus", () => {
-    const result = evaluateClear(4, r, 1, false, true);
+    const result = evaluateClear(4, r, 0, false, true);
     expect(result.score).toBe(800 + 800);
+  });
+
+  it("scores 100 at game start (level 0 = TDG Level 1)", () => {
+    expect(evaluateClear(1, { isTSpin: false, isMini: false }, 0, false, false).score).toBe(100);
+  });
+
+  it("scores 800 for Tetris at game start (level 0 = TDG Level 1)", () => {
+    expect(evaluateClear(4, { isTSpin: false, isMini: false }, 0, false, false).score).toBe(800);
+  });
+
+  it("scores 400 for T-spin no-clear at game start", () => {
+    expect(evaluateClear(0, { isTSpin: true, isMini: false }, 0, false, false).score).toBe(400);
   });
 });
 
@@ -142,22 +154,22 @@ describe("Mini T-Spin scoring", () => {
     const result = evaluateClear(
       0,
       { isTSpin: true, isMini: true },
-      1,   // level
+      0,   // level (0-based, so TDG Level 1)
       false,
       false,
     );
-    expect(result.score).toBe(100); // 100 × 1
+    expect(result.score).toBe(100); // 100 × (0+1) = 100
   });
 
   it("Mini T-Spin with 0 lines at level 3 scores 300", () => {
     const result = evaluateClear(
       0,
       { isTSpin: true, isMini: true },
-      3,
+      2,   // level (0-based, so TDG Level 3)
       false,
       false,
     );
-    expect(result.score).toBe(300); // 100 × 3
+    expect(result.score).toBe(300); // 100 × (2+1) = 300
   });
 });
 
@@ -390,25 +402,25 @@ describe("evaluateClear - level scaling", () => {
   const r = { isTSpin: false, isMini: false };
 
   it("all line clear values scaled by level 5", () => {
-    expect(evaluateClear(1, r, 5, false, false).score).toBe(500);  // 100 * 5
-    expect(evaluateClear(2, r, 5, false, false).score).toBe(1500); // 300 * 5
-    expect(evaluateClear(3, r, 5, false, false).score).toBe(2500); // 500 * 5
-    expect(evaluateClear(4, r, 5, false, false).score).toBe(4000); // 800 * 5
+    expect(evaluateClear(1, r, 4, false, false).score).toBe(500);  // 100 * (4+1)
+    expect(evaluateClear(2, r, 4, false, false).score).toBe(1500); // 300 * (4+1)
+    expect(evaluateClear(3, r, 4, false, false).score).toBe(2500); // 500 * (4+1)
+    expect(evaluateClear(4, r, 4, false, false).score).toBe(4000); // 800 * (4+1)
   });
 
   it("T-spin scores scaled by level 5", () => {
     const ts = { isTSpin: true, isMini: false };
-    expect(evaluateClear(0, ts, 5, false, false).score).toBe(2000);  // 400 * 5
-    expect(evaluateClear(1, ts, 5, false, false).score).toBe(4000);  // 800 * 5
-    expect(evaluateClear(2, ts, 5, false, false).score).toBe(6000);  // 1200 * 5
-    expect(evaluateClear(3, ts, 5, false, false).score).toBe(8000);  // 1600 * 5
+    expect(evaluateClear(0, ts, 4, false, false).score).toBe(2000);  // 400 * (4+1)
+    expect(evaluateClear(1, ts, 4, false, false).score).toBe(4000);  // 800 * (4+1)
+    expect(evaluateClear(2, ts, 4, false, false).score).toBe(6000);  // 1200 * (4+1)
+    expect(evaluateClear(3, ts, 4, false, false).score).toBe(8000);  // 1600 * (4+1)
   });
 
   it("T-spin Mini scores scaled by level 5", () => {
     const m = { isTSpin: true, isMini: true };
-    expect(evaluateClear(0, m, 5, false, false).score).toBe(500); // 100 * 5
-    expect(evaluateClear(1, m, 5, false, false).score).toBe(1000); // 200 * 5
-    expect(evaluateClear(2, m, 5, false, false).score).toBe(2000); // 400 * 5
+    expect(evaluateClear(0, m, 4, false, false).score).toBe(500); // 100 * (4+1)
+    expect(evaluateClear(1, m, 4, false, false).score).toBe(1000); // 200 * (4+1)
+    expect(evaluateClear(2, m, 4, false, false).score).toBe(2000); // 400 * (4+1)
   });
 });
 
@@ -418,7 +430,7 @@ describe("evaluateClear - back-to-back", () => {
 
   it("B2B becomes true on first eligible clear but no multiplier yet", () => {
     // Tetris eligible, isB2BActive=false -> streak starts, no multiplier
-    const result = evaluateClear(4, r, 1, false, false);
+    const result = evaluateClear(4, r, 0, false, false);
     expect(result.score).toBe(800);
     expect(result.isB2B).toBe(true);
     expect(result.isB2BBroken).toBe(false);
@@ -426,14 +438,14 @@ describe("evaluateClear - back-to-back", () => {
 
   it("second consecutive eligible clear gets B2B multiplier", () => {
     // Tetris eligible, isB2BActive=true -> streak continues, multiplier applied
-    const result = evaluateClear(4, r, 1, true, false);
+    const result = evaluateClear(4, r, 0, true, false);
     expect(result.score).toBe(Math.floor(800 * 1.5));
     expect(result.isB2B).toBe(true);
     expect(result.isB2BBroken).toBe(false);
   });
 
   it("first T-spin with isB2BActive=false starts B2B without multiplier", () => {
-    const result = evaluateClear(1, ts, 1, false, false);
+    const result = evaluateClear(1, ts, 0, false, false);
     expect(result.score).toBe(800); // base T-spin single, no multiplier
     expect(result.isB2B).toBe(true);
     expect(result.isB2BBroken).toBe(false);
@@ -443,15 +455,15 @@ describe("evaluateClear - back-to-back", () => {
 describe("evaluateClear - perfect clear", () => {
   it("perfect clear with 0 lines (T-spin no lines) adds 800 x level bonus", () => {
     const ts = { isTSpin: true, isMini: false };
-    // T-spin 0 lines at level 1: 400 + 800 = 1200
-    const result = evaluateClear(0, ts, 1, false, true);
+    // T-spin 0 lines at level 0 (TDG Level 1): 400*(0+1) + 800*(0+1) = 1200
+    const result = evaluateClear(0, ts, 0, false, true);
     expect(result.score).toBe(400 + 800);
   });
 
   it("perfect clear bonus stacks on top of normal line clear score", () => {
     const r = { isTSpin: false, isMini: false };
-    // Tetris at level 2 with perfect clear: (800 * 2) + (800 * 2) = 3200
-    const result = evaluateClear(4, r, 2, false, true);
+    // Tetris at level 1 (0-based) with perfect clear: (800 * 2) + (800 * 2) = 3200
+    const result = evaluateClear(4, r, 1, false, true);
     expect(result.score).toBe(800 * 2 + 800 * 2);
   });
 });
