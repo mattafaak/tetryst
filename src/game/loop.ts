@@ -109,11 +109,11 @@ export class Game {
         this.selectedMode = GAME_MODES[(idx + 1) % GAME_MODES.length];
         return;
       }
-      if (action.type === "RotateCW" || action.type === "SoftDrop") {
+      if (action.type === "RotateCW") {
         this.selectedStartLevel = Math.min(MARATHON_MAX_LEVEL - 1, this.selectedStartLevel + 1);
         return;
       }
-      if (action.type === "RotateCCW" || action.type === "HardDrop") {
+      if (action.type === "RotateCCW" || action.type === "SoftDrop") {
         this.selectedStartLevel = Math.max(0, this.selectedStartLevel - 1);
         return;
       }
