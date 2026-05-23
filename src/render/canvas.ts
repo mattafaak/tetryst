@@ -13,6 +13,7 @@ import {
   PIECE_COLORS,
   GHOST_OPACITY,
   PIECE_SHAPES,
+  NEXT_QUEUE_SIZE,
 } from "../core/constants.ts";
 import { loadHighScores } from "../core/high-scores.ts";
 
@@ -533,7 +534,7 @@ function drawHUD(
   ctx.fillStyle = "#888";
   ctx.fillText("NEXT", hudX, nextY);
 
-  for (let i = 0; i < Math.min(state.nextQueue.length, 5); i++) {
+  for (let i = 0; i < Math.min(state.nextQueue.length, NEXT_QUEUE_SIZE); i++) {
     drawSmallPiece(
       ctx,
       hudX,
