@@ -35,6 +35,7 @@ export class Game {
   private aiController: AIController | null = null;
   private audioEnabled: boolean = true;
   private isAttractMode: boolean = false;
+  private menuIsStatic: boolean = false;
   private attractNeedsReset: boolean = false;
   private selectedMode: GameMode = GameMode.Marathon;
   private selectedStartLevel: number = 0;
@@ -84,11 +85,14 @@ export class Game {
         this.state = startGame(this.state, this.selectedStartLevel);
         return;
       }
-      // Navigation and other keys fall through to the Menu handler below.
+      // Navigation and other keys return to the static menu.
+      this.menuIsStatic = true;
+      // Fall through to the Menu handler below.
     }
 
     if (this.state.phase === GamePhase.Menu) {
       if (action.type === "Start") {
+        this.menuIsStatic = false;
         this.state = startGame(
           createInitialState(this.selectedMode),
           this.selectedStartLevel,
@@ -131,6 +135,7 @@ export class Game {
     }
 
     if (action.type === "Start" && this.state.phase === GamePhase.Victory) {
+      this.menuIsStatic = false;
       this.state = createInitialState(this.selectedMode);
       return;
     }
@@ -203,11 +208,12 @@ export class Game {
 
     switch (this.state.phase) {
       case GamePhase.Menu:
-        // Start attract mode AI immediately on the menu screen
-        if (!this.isAttractMode) {
+        if (!this.isAttractMode && !this.menuIsStatic) {
           this.startAttractMode();
         }
-        this.updateAttractGame(dt);
+        if (this.isAttractMode) {
+          this.updateAttractGame(dt);
+        }
         break;
       case GamePhase.Playing:
         if (this.isAttractMode) {
