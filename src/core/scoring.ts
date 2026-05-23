@@ -16,7 +16,6 @@ import {
   B2B_MULTIPLIER,
   SOFT_DROP_SCORE,
   HARD_DROP_SCORE,
-  LINES_PER_LEVEL,
   BOARD_WIDTH,
   EFFECTIVE_LINE_COUNTS,
   LEVEL_GOAL_CUMULATIVE,
@@ -229,14 +228,6 @@ export function addHardDropScore(
   rowsDropped: number,
 ): number {
   return rowsDropped * HARD_DROP_SCORE;
-}
-
-/**
- * Calculate player level from total lines cleared.
- * Level 0 at start, increments every 10 lines.
- */
-export function calculateLevel(totalLines: number): number {
-  return Math.floor(totalLines / LINES_PER_LEVEL);
 }
 
 /**

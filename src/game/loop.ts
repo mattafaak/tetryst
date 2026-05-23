@@ -300,6 +300,7 @@ export class Game {
       this.state = comboResult.state;
 
       const isPerfectClear = this.checkPerfectClear();
+      const wasB2BActive = this.state.backToBack;
       const scoreResult = evaluateClear(
         clearResult.linesCleared,
         tSpinResult,
@@ -316,7 +317,7 @@ export class Game {
         const eff = effectiveLinesFor(
           clearResult.linesCleared,
           tSpinResult,
-          scoreResult.isB2B,
+          scoreResult.isB2B && wasB2BActive,
         );
         this.state.effectiveLines += eff;
         const newLevel = calculateLevelFromEffective(this.state.effectiveLines);
@@ -350,6 +351,7 @@ export class Game {
 
       // Award T-spin no-clear bonus if applicable
       if (tSpinResult.isTSpin) {
+        const wasB2BActive = this.state.backToBack;
         const scoreResult = evaluateClear(
           0,
           tSpinResult,
@@ -360,7 +362,7 @@ export class Game {
         this.state.score += scoreResult.score;
         this.state.backToBack = scoreResult.isB2B;
         if (this.state.mode === GameMode.Marathon) {
-          const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B);
+          const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B && wasB2BActive);
           this.state.effectiveLines += eff;
           const newLevel = calculateLevelFromEffective(this.state.effectiveLines);
           if (newLevel > this.state.level) {

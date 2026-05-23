@@ -19,6 +19,7 @@ describe("state", () => {
       expect(state.score).toBe(0);
       expect(state.level).toBe(0);
       expect(state.lines).toBe(0);
+      expect(state.effectiveLines).toBe(0);
       expect(state.combo).toBe(-1);
       expect(state.backToBack).toBe(false);
       expect(state.phase).toBe(GamePhase.Menu);
@@ -76,6 +77,7 @@ describe("state", () => {
       expect(newState.score).toBe(0);
       expect(newState.level).toBe(0);
       expect(newState.lines).toBe(0);
+      expect(newState.effectiveLines).toBe(0);
       expect(newState.combo).toBe(-1);
       expect(newState.heldPiece).toBeNull();
       expect(newState.hasSwappedThisTurn).toBe(false);
@@ -114,6 +116,7 @@ describe("state", () => {
       expect(newState.score).toBe(0);
       expect(newState.level).toBe(0);
       expect(newState.lines).toBe(0);
+      expect(newState.effectiveLines).toBe(0);
       expect(newState.combo).toBe(-1);
       expect(newState.backToBack).toBe(false);
       expect(newState.lastClearWasB2B).toBe(false);

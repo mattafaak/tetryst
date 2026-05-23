@@ -445,9 +445,6 @@ export const GRAVITY_SPEED_CURVE: number[] = [
   5, // Level 15+
 ];
 
-// Lines per level (standard: level up every 10 lines)
-export const LINES_PER_LEVEL = 10;
-
 export const MARATHON_MAX_LEVEL = 15;
 export const ULTRA_DURATION_MS = 3 * 60 * 1000;
 export const SPRINT_LINE_TARGET = 40;

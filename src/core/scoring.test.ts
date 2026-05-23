@@ -5,7 +5,6 @@ import {
   isB2BEligible,
   addSoftDropScore,
   addHardDropScore,
-  calculateLevel,
   effectiveLinesFor,
   calculateLevelFromEffective,
 } from "./scoring.ts";
@@ -190,16 +189,6 @@ describe("drop scoring", () => {
   });
   it("should score hard drop 2 per cell", () => {
     expect(addHardDropScore(s, 5)).toBe(10);
-  });
-});
-
-describe("calculateLevel", () => {
-  it("should level up every 10 lines", () => {
-    expect(calculateLevel(0)).toBe(0);
-    expect(calculateLevel(9)).toBe(0);
-    expect(calculateLevel(10)).toBe(1);
-    expect(calculateLevel(20)).toBe(2);
-    expect(calculateLevel(100)).toBe(10);
   });
 });
 
@@ -497,22 +486,6 @@ describe("drop scoring - level independence", () => {
     const high = { level: 99 } as GameState;
     expect(addHardDropScore(low, 5)).toBe(10);
     expect(addHardDropScore(high, 5)).toBe(10);
-  });
-});
-
-describe("calculateLevel - edge cases", () => {
-  it("level 0 at 0 lines", () => {
-    expect(calculateLevel(0)).toBe(0);
-  });
-
-  it("level 10 at exactly 100 lines", () => {
-    expect(calculateLevel(100)).toBe(10);
-  });
-
-  it("level stays same below next threshold", () => {
-    expect(calculateLevel(101)).toBe(10);
-    expect(calculateLevel(109)).toBe(10);
-    expect(calculateLevel(110)).toBe(11);
   });
 });
 

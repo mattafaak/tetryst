@@ -157,6 +157,7 @@ function handleHardDrop(state: GameState): GameState {
     nextState.score += comboResult.bonusScore;
 
     const perfectClear = checkPerfectClear(nextState.board);
+    const wasB2BActive = nextState.backToBack;
     const scoreResult = evaluateClear(
       clearResult.linesCleared,
       tSpinResult,
@@ -173,7 +174,7 @@ function handleHardDrop(state: GameState): GameState {
       const eff = effectiveLinesFor(
         clearResult.linesCleared,
         tSpinResult,
-        scoreResult.isB2B,
+        scoreResult.isB2B && wasB2BActive,
       );
       nextState.effectiveLines += eff;
       const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
@@ -190,6 +191,7 @@ function handleHardDrop(state: GameState): GameState {
     nextState = comboResult.state;
 
     if (tSpinResult.isTSpin) {
+      const wasB2BActive = nextState.backToBack;
       const scoreResult = evaluateClear(
         0,
         tSpinResult,
@@ -200,7 +202,7 @@ function handleHardDrop(state: GameState): GameState {
       nextState.score += scoreResult.score;
       nextState.backToBack = scoreResult.isB2B;
       if (nextState.mode === GameMode.Marathon) {
-        const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B);
+        const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B && wasB2BActive);
         nextState.effectiveLines += eff;
         const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
         if (newLevel > nextState.level) {
