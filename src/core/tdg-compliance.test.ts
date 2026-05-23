@@ -231,21 +231,20 @@ describe("TDG §3: Super Rotation System", () => {
     const piece = { type: TetriminoType.T, pos: { x: 0, y: 22 }, rotation: RotationState.R };
     expect(tryRotateCW(piece, board)).not.toBeNull();
   });
-  it("rotation returns null when truly blocked", () => {
-    // Surround an O-piece completely
+  it("O-piece rotation is identity — piece stays in same position through full cycle", () => {
     const board = emptyBoard();
-    for (let row = 20; row <= 23; row++) {
-      for (let col = 0; col <= 3; col++) {
-        board[row][col] = TetriminoType.Z;
-      }
+    const piece = spawnPiece(TetriminoType.O);
+    // O rotates through all 4 states but mino positions never change
+    let current = piece;
+    for (let i = 0; i < 4; i++) {
+      const result = tryRotateCW(current, board);
+      expect(result).not.toBeNull();
+      current = result!.piece;
     }
-    const piece = { type: TetriminoType.O, pos: { x: 1, y: 21 }, rotation: RotationState.ZERO };
-    // O-piece rotation is identity — it should succeed because it doesn't move
-    // Just verify no crash
-    const result = tryRotateCW(piece, board);
-    // O-piece uses identity rotation, so this depends on implementation
-    // Just verify we get back a result or null without crashing
-    expect(result === null || result.piece.type === TetriminoType.O).toBe(true);
+    // After 4 rotations, back to original position
+    expect(current.pos.x).toBe(piece.pos.x);
+    expect(current.pos.y).toBe(piece.pos.y);
+    expect(current.rotation).toBe(piece.rotation);
   });
 });
 
