@@ -116,4 +116,5 @@ export type InputAction =
   | { type: "RotateCCW" }
   | { type: "Hold" }
   | { type: "Pause" }
-  | { type: "Start" };
+  | { type: "Start" }
+  | { type: "Mute" };

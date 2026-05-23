@@ -113,6 +113,16 @@ export class Game {
       }
     }
 
+    if (action.type === "Mute") {
+      this.audioEnabled = !this.audioEnabled;
+      if (!this.audioEnabled) {
+        stopMusic();
+      } else if (this.state.phase === GamePhase.Playing) {
+        playMusic();
+      }
+      return;
+    }
+
     if (action.type === "Start" && this.state.phase === GamePhase.GameOver) {
       this.state = startGame(createInitialState(this.selectedMode), this.selectedStartLevel);
       return;
@@ -174,6 +184,7 @@ export class Game {
       this.isAttractMode,
       this.selectedMode,
       this.selectedStartLevel,
+      this.audioEnabled,
     );
 
     this.animFrameId = requestAnimationFrame(this.loop);

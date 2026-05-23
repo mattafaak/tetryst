@@ -21,6 +21,7 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     score: 0,
     level: 0,
     lines: 0,
+    effectiveLines: 0,
     combo: -1,
     backToBack: false,
     phase: GamePhase.Playing,

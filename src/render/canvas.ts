@@ -25,6 +25,7 @@ export function renderFrame(
   isAttractMode?: boolean,
   selectedMode?: GameMode,
   selectedStartLevel?: number,
+  audioEnabled?: boolean,
 ): void {
   const dpr = window.devicePixelRatio || 1;
   const canvasWidth = ctx.canvas.width / dpr;
@@ -116,7 +117,7 @@ export function renderFrame(
   if (isAttractMode) {
     drawAttractOverlay(ctx, canvasWidth, canvasHeight, state);
   } else if (state.phase === GamePhase.Menu) {
-    drawMenu(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0);
+    drawMenu(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0, audioEnabled ?? true);
   } else if (state.phase === GamePhase.Paused) {
     drawPause(ctx, canvasWidth, canvasHeight);
   } else if (state.phase === GamePhase.GameOver) {
@@ -132,7 +133,8 @@ export function renderFrame(
       boardX + boardPixelWidth + 20,
       boardY,
       state,
-      cellSize
+      cellSize,
+      audioEnabled ?? true,
     );
   }
 
@@ -265,6 +267,7 @@ function drawMenu(
   canvasHeight: number,
   selectedMode: GameMode,
   selectedStartLevel: number,
+  audioEnabled: boolean,
 ): void {
   ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
@@ -296,13 +299,18 @@ function drawMenu(
   ctx.fillStyle = "#ddd";
   ctx.fillText("Press ENTER to start", canvasWidth / 2, canvasHeight / 2 + 100);
 
-  ctx.font = "14px monospace";
+  ctx.font = "13px monospace";
   ctx.fillStyle = "#555";
   ctx.fillText(
-    "←/→: Mode  |  Z/Space: Level  |  Arrows: Move  |  C: Hold  |  P: Pause",
+    "Move: ←/→  |  Soft drop: ↓  |  Hard drop: Space  |  Rotate: Z/X  |  Hold: C  |  Pause: P  |  Mute: M",
     canvasWidth / 2,
-    canvasHeight / 2 + 130
+    canvasHeight / 2 + 130,
   );
+
+  const muteLabel = audioEnabled ? "♪ ON" : "♪ OFF";
+  ctx.font = "13px monospace";
+  ctx.fillStyle = audioEnabled ? "#4a4" : "#a44";
+  ctx.fillText(muteLabel, canvasWidth / 2, canvasHeight / 2 + 155);
 }
 
 function drawPause(
@@ -437,7 +445,8 @@ function drawHUD(
   hudX: number,
   hudY: number,
   state: GameState,
-  cellSize: number
+  cellSize: number,
+  audioEnabled: boolean,
 ): void {
   ctx.textAlign = "left";
 
@@ -528,8 +537,13 @@ function drawHUD(
     );
   }
 
+  // Mute indicator
+  ctx.font = "12px monospace";
+  ctx.fillStyle = audioEnabled ? "#4a4" : "#a44";
+  ctx.fillText(audioEnabled ? "♪ ON" : "♪ OFF", hudX, holdY + 90);
+
   // Next queue
-  const nextY = holdY + 130;
+  const nextY = holdY + 110;
   ctx.font = "bold 16px monospace";
   ctx.fillStyle = "#888";
   ctx.fillText("NEXT", hudX, nextY);

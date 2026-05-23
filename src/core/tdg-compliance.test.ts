@@ -2,11 +2,11 @@
  * TDG Compliance Test Suite
  * 2009 Tetris Design Guideline — section-by-section verification.
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createInitialState, startGame, spawnNextPiece, holdPiece } from "./state.ts";
 import { processAction } from "./actions.ts";
 import { detectTSpin, evaluateClear, effectiveLinesFor, calculateLevelFromEffective, isB2BEligible } from "./scoring.ts";
-import { createBoard, lockPiece, clearLines, isLockOut } from "./board.ts";
+import { createBoard, isLockOut } from "./board.ts";
 import { spawnPiece, getGhostY, tryRotateCW, tryRotateCCW } from "./pieces.ts";
 import { checkModeVictory } from "./mode-rules.ts";
 import { applyGravity, getGravityDelay } from "./gravity.ts";

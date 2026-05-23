@@ -36,6 +36,8 @@ export function processAction(
       return handleRotateCCW(state);
     case "Hold":
       return handleHold(state);
+    case "Mute":
+      return state;
   }
 }
 

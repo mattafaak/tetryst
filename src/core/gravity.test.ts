@@ -43,6 +43,7 @@ function makeState(
     score: 0,
     level: opts.level ?? 0,
     lines: 0,
+    effectiveLines: 0,
     combo: 0,
     backToBack: false,
     phase: GamePhase.Playing,
