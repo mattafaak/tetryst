@@ -11,7 +11,7 @@ import { addHardDropScore, evaluateClear, detectTSpin, effectiveLinesFor, calcul
 import { updateCombo } from "./combo.ts";
 import { holdPiece } from "./state.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { BOARD_WIDTH, MARATHON_MAX_LEVEL } from "./constants.ts";
+import { BOARD_WIDTH, MARATHON_MAX_LEVEL, MAX_LOCK_RESETS } from "./constants.ts";
 
 export function processAction(
   state: GameState,
@@ -84,13 +84,18 @@ function handleMove(
     if (checkCollision(state.board, belowMoved)) {
       // Still on ground — reset lock timer
       newState.lockState = { ...state.lockState };
-      if (newState.lockState.resets < 15) {
+      if (newState.lockState.resets < MAX_LOCK_RESETS) {
         newState.lockState.timer = 0;
         newState.lockState.resets += 1;
       }
     } else {
-      // Moved into open air — piece can fall, clear onGround
-      newState.lockState = { ...state.lockState, onGround: false, timer: 0 };
+      // Slid into open air — counts as a reset (TDG §7)
+      const canReset = state.lockState.resets < MAX_LOCK_RESETS;
+      newState.lockState = {
+        ...state.lockState,
+        onGround: false,
+        ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
+      };
     }
   }
 
@@ -246,18 +251,24 @@ function handleRotateCW(state: GameState): GameState {
   const newState = { ...state, activePiece: result.piece };
   newState.ghostY = getGhostY(newState.board, result.piece);
 
-  // If on ground, rotating resets lock timer (up to 15); but a wall kick can move
-  // the piece into open air — recheck groundedness after the kick
+  // If on ground, rotating resets lock timer (up to MAX_LOCK_RESETS); but a wall kick can
+  // move the piece into open air — recheck groundedness and count it as a reset either way
   if (state.lockState.onGround) {
     const belowRotated = movePiece(result.piece, 0, 1);
     if (checkCollision(state.board, belowRotated)) {
       newState.lockState = { ...state.lockState };
-      if (newState.lockState.resets < 15) {
+      if (newState.lockState.resets < MAX_LOCK_RESETS) {
         newState.lockState.timer = 0;
         newState.lockState.resets += 1;
       }
     } else {
-      newState.lockState = { ...state.lockState, onGround: false, timer: 0 };
+      // Kicked into open air — still counts as a reset (TDG §7)
+      const canReset = state.lockState.resets < MAX_LOCK_RESETS;
+      newState.lockState = {
+        ...state.lockState,
+        onGround: false,
+        ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
+      };
     }
   }
 
@@ -282,12 +293,18 @@ function handleRotateCCW(state: GameState): GameState {
     const belowRotated = movePiece(result.piece, 0, 1);
     if (checkCollision(state.board, belowRotated)) {
       newState.lockState = { ...state.lockState };
-      if (newState.lockState.resets < 15) {
+      if (newState.lockState.resets < MAX_LOCK_RESETS) {
         newState.lockState.timer = 0;
         newState.lockState.resets += 1;
       }
     } else {
-      newState.lockState = { ...state.lockState, onGround: false, timer: 0 };
+      // Kicked into open air — still counts as a reset (TDG §7)
+      const canReset = state.lockState.resets < MAX_LOCK_RESETS;
+      newState.lockState = {
+        ...state.lockState,
+        onGround: false,
+        ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
+      };
     }
   }
 

@@ -251,6 +251,76 @@ describe("handleHardDrop", () => {
   });
 });
 
+describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", () => {
+  it("handleMove: slide to open air increments resets when below limit", () => {
+    const board = emptyBoard();
+    board[BOARD_HEIGHT - 1][5] = TetriminoType.Z; // ground under col 5 only
+    const state = baseState({
+      board,
+      activePiece: {
+        type: TetriminoType.I,
+        pos: { x: 3, y: BOARD_HEIGHT - 5 },
+        rotation: RotationState.R,
+      },
+      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+    });
+    const next = processAction(state, { type: "MoveRight" });
+    expect(next.lockState.onGround).toBe(false);
+    expect(next.lockState.timer).toBe(0);     // reset because canReset
+    expect(next.lockState.resets).toBe(1);    // consumed one reset
+  });
+
+  it("handleMove: slide to open air at reset limit does NOT reset timer", () => {
+    const board = emptyBoard();
+    board[BOARD_HEIGHT - 1][5] = TetriminoType.Z;
+    const state = baseState({
+      board,
+      activePiece: {
+        type: TetriminoType.I,
+        pos: { x: 3, y: BOARD_HEIGHT - 5 },
+        rotation: RotationState.R,
+      },
+      lockState: { timer: 300, resets: 15, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+    });
+    const next = processAction(state, { type: "MoveRight" });
+    expect(next.lockState.onGround).toBe(false);
+    expect(next.lockState.timer).toBe(300);   // NOT reset — resets exhausted
+    expect(next.lockState.resets).toBe(15);   // unchanged
+  });
+
+  it("handleRotateCCW: kick to open air increments resets when below limit", () => {
+    const board = emptyBoard();
+    board[11][3] = TetriminoType.Z;
+    board[11][6] = TetriminoType.Z;
+    board[12][5] = TetriminoType.Z;
+    const state = baseState({
+      board,
+      activePiece: { type: TetriminoType.T, pos: { x: 3, y: 10 }, rotation: RotationState.R },
+      lockState: { timer: 300, resets: 2, onGround: true, lowestY: 10 },
+    });
+    const next = processAction(state, { type: "RotateCCW" });
+    expect(next.lockState.onGround).toBe(false);
+    expect(next.lockState.timer).toBe(0);
+    expect(next.lockState.resets).toBe(3);    // incremented
+  });
+
+  it("handleRotateCCW: kick to open air at reset limit does NOT reset timer", () => {
+    const board = emptyBoard();
+    board[11][3] = TetriminoType.Z;
+    board[11][6] = TetriminoType.Z;
+    board[12][5] = TetriminoType.Z;
+    const state = baseState({
+      board,
+      activePiece: { type: TetriminoType.T, pos: { x: 3, y: 10 }, rotation: RotationState.R },
+      lockState: { timer: 300, resets: 15, onGround: true, lowestY: 10 },
+    });
+    const next = processAction(state, { type: "RotateCCW" });
+    expect(next.lockState.onGround).toBe(false);
+    expect(next.lockState.timer).toBe(300);   // NOT reset — resets exhausted
+    expect(next.lockState.resets).toBe(15);   // unchanged
+  });
+});
+
 describe("mode-specific level-up", () => {
   it("Sprint: level does not change after hard-drop clears lines crossing a level boundary", () => {
     const board = emptyBoard();
