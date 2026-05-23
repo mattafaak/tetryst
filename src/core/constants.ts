@@ -409,7 +409,8 @@ export const TSPIN_MINI_SCORES: Record<string, number> = {
   "2": 400, // T-spin Mini double (TDG §7: 400 × (level + 1))
 };
 
-export const PERFECT_CLEAR_BASE = 800;
+export const PERFECT_CLEAR_SCORES = [0, 800, 1200, 1800, 2000]; // TDG §7 by line count
+export const PERFECT_CLEAR_B2B_TETRIS = 3200; // TDG §7 B2B Tetris Perfect Clear
 
 // Back-to-back multiplier
 export const B2B_MULTIPLIER = 1.5;

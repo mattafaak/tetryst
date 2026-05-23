@@ -11,7 +11,8 @@ import {
   LINE_CLEAR_SCORES,
   TSPIN_SCORES,
   TSPIN_MINI_SCORES,
-  PERFECT_CLEAR_BASE,
+  PERFECT_CLEAR_SCORES,
+  PERFECT_CLEAR_B2B_TETRIS,
   B2B_MULTIPLIER,
   SOFT_DROP_SCORE,
   HARD_DROP_SCORE,
@@ -150,37 +151,47 @@ export function evaluateClear(
   isB2BActive: boolean,
   isPerfectClear: boolean,
 ): ScoreResult {
+  const multiplier = level + 1;
   let score = 0;
   let isB2B = false;
   let isB2BBroken = false;
 
-  // Base score
-  if (tSpinResult.isTSpin && !tSpinResult.isMini) {
-    score = (TSPIN_SCORES[String(Math.min(linesCleared, 3))] ?? 0) * (level + 1);
-  } else if (tSpinResult.isMini) {
-    score =
-      (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 2))] ?? 0) * (level + 1);
-  } else {
-    score = (LINE_CLEAR_SCORES[linesCleared] ?? 0) * (level + 1);
-  }
-
-  // Perfect clear bonus
-  if (isPerfectClear) {
-    score += PERFECT_CLEAR_BASE * (level + 1);
-  }
-
-  // Back-to-back logic
   const currentEligible = isB2BEligible(linesCleared, tSpinResult);
 
+  if (isPerfectClear) {
+    // B2B Tetris PC has its own fixed total (TDG §7 — not 2000×1.5)
+    if (currentEligible && isB2BActive && linesCleared === 4 && !tSpinResult.isTSpin) {
+      score = PERFECT_CLEAR_B2B_TETRIS * multiplier;
+      isB2B = true;
+    } else {
+      const pcBase = PERFECT_CLEAR_SCORES[linesCleared] ?? 0;
+      score = currentEligible && isB2BActive
+        ? Math.floor(pcBase * multiplier * B2B_MULTIPLIER)
+        : pcBase * multiplier;
+      if (currentEligible) {
+        isB2B = true;
+      } else if (isB2BActive) {
+        isB2BBroken = true;
+      }
+    }
+    return { score, isB2B, isB2BBroken };
+  }
+
+  // Normal (non-PC) scoring
+  if (tSpinResult.isTSpin && !tSpinResult.isMini) {
+    score = (TSPIN_SCORES[String(Math.min(linesCleared, 3))] ?? 0) * multiplier;
+  } else if (tSpinResult.isMini) {
+    score = (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 2))] ?? 0) * multiplier;
+  } else {
+    score = (LINE_CLEAR_SCORES[linesCleared] ?? 0) * multiplier;
+  }
+
   if (currentEligible && isB2BActive) {
-    // Streak continues - apply multiplier
     score = Math.floor(score * B2B_MULTIPLIER);
     isB2B = true;
   } else if (currentEligible) {
-    // Start new streak, no multiplier yet
     isB2B = true;
   } else if (isB2BActive) {
-    // Streak broken
     isB2BBroken = true;
   }
 

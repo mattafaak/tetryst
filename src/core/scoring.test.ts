@@ -131,11 +131,6 @@ describe("evaluateClear", () => {
     expect(broke.isB2BBroken).toBe(true);
   });
 
-  it("should add perfect clear bonus", () => {
-    const result = evaluateClear(4, r, 0, false, true);
-    expect(result.score).toBe(800 + 800);
-  });
-
   it("scores 100 at game start (level 0 = TDG Level 1)", () => {
     expect(evaluateClear(1, { isTSpin: false, isMini: false }, 0, false, false).score).toBe(100);
   });
@@ -452,19 +447,36 @@ describe("evaluateClear - back-to-back", () => {
   });
 });
 
-describe("evaluateClear - perfect clear", () => {
-  it("perfect clear with 0 lines (T-spin no lines) adds 800 x level bonus", () => {
-    const ts = { isTSpin: true, isMini: false };
-    // T-spin 0 lines at level 0 (TDG Level 1): 400*(0+1) + 800*(0+1) = 1200
-    const result = evaluateClear(0, ts, 0, false, true);
-    expect(result.score).toBe(400 + 800);
+describe("Perfect Clear scoring", () => {
+  const r = { isTSpin: false, isMini: false };
+
+  it("PC Single: 800 × (level+1)", () => {
+    expect(evaluateClear(1, r, 0, false, true).score).toBe(800);   // 800*(0+1)
+    expect(evaluateClear(1, r, 1, false, true).score).toBe(1600);  // 800*(1+1)
   });
 
-  it("perfect clear bonus stacks on top of normal line clear score", () => {
-    const r = { isTSpin: false, isMini: false };
-    // Tetris at level 1 (0-based) with perfect clear: (800 * 2) + (800 * 2) = 3200
-    const result = evaluateClear(4, r, 1, false, true);
-    expect(result.score).toBe(800 * 2 + 800 * 2);
+  it("PC Double: 1200 × (level+1)", () => {
+    expect(evaluateClear(2, r, 0, false, true).score).toBe(1200);
+  });
+
+  it("PC Triple: 1800 × (level+1)", () => {
+    expect(evaluateClear(3, r, 0, false, true).score).toBe(1800);
+  });
+
+  it("PC Tetris: 2000 × (level+1)", () => {
+    expect(evaluateClear(4, r, 0, false, true).score).toBe(2000);
+  });
+
+  it("B2B PC Tetris: 3200 × (level+1)", () => {
+    expect(evaluateClear(4, r, 0, true, true).score).toBe(3200);   // (0+1)*3200
+    expect(evaluateClear(4, r, 1, true, true).score).toBe(6400);   // (1+1)*3200
+    expect(evaluateClear(4, r, 0, true, true).isB2B).toBe(true);
+  });
+
+  it("PC Single breaks B2B streak (not B2B-eligible)", () => {
+    const result = evaluateClear(1, r, 0, true, true);
+    expect(result.isB2B).toBe(false);
+    expect(result.isB2BBroken).toBe(true);
   });
 });
 
