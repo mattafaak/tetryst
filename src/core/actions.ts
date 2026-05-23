@@ -179,7 +179,7 @@ function handleHardDrop(state: GameState): GameState {
       nextState.effectiveLines += eff;
       const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
       if (newLevel > nextState.level) {
-        nextState.level = Math.min(newLevel, 15);
+        nextState.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
       }
     }
 
