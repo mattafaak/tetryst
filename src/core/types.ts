@@ -91,6 +91,7 @@ export interface GameState {
   score: number;
   level: number;
   lines: number;
+  effectiveLines: number;
   combo: number;
   backToBack: boolean;
   phase: GamePhase;

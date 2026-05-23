@@ -29,6 +29,7 @@ function baseState(overrides?: Partial<GameState>): GameState {
     score: 0,
     level: 0,
     lines: 0,
+    effectiveLines: 0,
     combo: -1,
     backToBack: false,
     phase: GamePhase.Playing,
@@ -131,9 +132,9 @@ describe("mode-specific level-up", () => {
     expect(next.level).toBe(2); // unchanged
   });
 
-  it("Marathon: level increments after clearing lines", () => {
+  it("Marathon: level increments via Variable Goal after enough effective lines", () => {
     const board = emptyBoard();
-    // Fill 10 rows — clearing 10 lines at once moves level from 0 to 1
+    // Fill 10 rows at bottom (10 single lines clear = 10 effective lines > threshold of 5 for level 1)
     for (let i = 0; i < 10; i++) {
       board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
     }
@@ -141,12 +142,13 @@ describe("mode-specific level-up", () => {
       mode: GameMode.Marathon,
       level: 0,
       lines: 0,
+      effectiveLines: 0,
       board,
       activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
       ghostY: BOARD_HEIGHT - 12,
     });
     const next = processAction(s, { type: "HardDrop" });
-    // Marathon DOES level up
     expect(next.level).toBeGreaterThan(0);
+    expect(next.effectiveLines).toBeGreaterThan(0);
   });
 });

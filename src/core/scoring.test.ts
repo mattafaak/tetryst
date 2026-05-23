@@ -6,6 +6,8 @@ import {
   addSoftDropScore,
   addHardDropScore,
   calculateLevel,
+  effectiveLinesFor,
+  calculateLevelFromEffective,
 } from "./scoring.ts";
 import { TetriminoType, RotationState, type GameState, type Board } from "./types.ts";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "./constants.ts";
@@ -511,5 +513,74 @@ describe("calculateLevel - edge cases", () => {
     expect(calculateLevel(101)).toBe(10);
     expect(calculateLevel(109)).toBe(10);
     expect(calculateLevel(110)).toBe(11);
+  });
+});
+
+describe("effectiveLinesFor (Variable Goal TDG §11)", () => {
+  it("Single = 1 effective line", () => {
+    expect(effectiveLinesFor(1, { isTSpin: false, isMini: false }, false)).toBe(1);
+  });
+  it("Double = 3 effective lines", () => {
+    expect(effectiveLinesFor(2, { isTSpin: false, isMini: false }, false)).toBe(3);
+  });
+  it("Triple = 5 effective lines", () => {
+    expect(effectiveLinesFor(3, { isTSpin: false, isMini: false }, false)).toBe(5);
+  });
+  it("Tetris = 8 effective lines", () => {
+    expect(effectiveLinesFor(4, { isTSpin: false, isMini: false }, false)).toBe(8);
+  });
+  it("T-Spin zero lines = 4 effective lines", () => {
+    expect(effectiveLinesFor(0, { isTSpin: true, isMini: false }, false)).toBe(4);
+  });
+  it("T-Spin Single = 8 effective lines", () => {
+    expect(effectiveLinesFor(1, { isTSpin: true, isMini: false }, false)).toBe(8);
+  });
+  it("T-Spin Double = 12 effective lines", () => {
+    expect(effectiveLinesFor(2, { isTSpin: true, isMini: false }, false)).toBe(12);
+  });
+  it("T-Spin Triple = 16 effective lines", () => {
+    expect(effectiveLinesFor(3, { isTSpin: true, isMini: false }, false)).toBe(16);
+  });
+  it("Mini T-Spin zero = 1 effective line", () => {
+    expect(effectiveLinesFor(0, { isTSpin: true, isMini: true }, false)).toBe(1);
+  });
+  it("Mini T-Spin Single = 2 effective lines", () => {
+    expect(effectiveLinesFor(1, { isTSpin: true, isMini: true }, false)).toBe(2);
+  });
+  it("B2B Tetris = floor(8 * 1.5) = 12", () => {
+    expect(effectiveLinesFor(4, { isTSpin: false, isMini: false }, true)).toBe(12);
+  });
+  it("B2B T-Spin Double = floor(12 * 1.5) = 18", () => {
+    expect(effectiveLinesFor(2, { isTSpin: true, isMini: false }, true)).toBe(18);
+  });
+  it("no clear, no T-spin = 0 effective lines", () => {
+    expect(effectiveLinesFor(0, { isTSpin: false, isMini: false }, false)).toBe(0);
+  });
+});
+
+describe("calculateLevelFromEffective (Variable Goal TDG §11)", () => {
+  it("0 effective lines = level 0", () => {
+    expect(calculateLevelFromEffective(0)).toBe(0);
+  });
+  it("4 effective lines = level 0", () => {
+    expect(calculateLevelFromEffective(4)).toBe(0);
+  });
+  it("5 effective lines = level 1", () => {
+    expect(calculateLevelFromEffective(5)).toBe(1);
+  });
+  it("14 effective lines = level 1", () => {
+    expect(calculateLevelFromEffective(14)).toBe(1);
+  });
+  it("15 effective lines = level 2", () => {
+    expect(calculateLevelFromEffective(15)).toBe(2);
+  });
+  it("599 effective lines = level 14", () => {
+    expect(calculateLevelFromEffective(599)).toBe(14);
+  });
+  it("600 effective lines = level 15", () => {
+    expect(calculateLevelFromEffective(600)).toBe(15);
+  });
+  it("beyond 600 stays at level 15", () => {
+    expect(calculateLevelFromEffective(999)).toBe(15);
   });
 });

@@ -5,7 +5,7 @@ import { shouldLock as checkLock, resetLockState } from "../core/lock-delay.ts";
 import { lockPiece, clearLines, isLockOut } from "../core/board.ts";
 import { updateEntryDelay } from "../core/entry-delay.ts";
 import { updateCombo } from "../core/combo.ts";
-import { evaluateClear, detectTSpin } from "../core/scoring.ts";
+import { evaluateClear, detectTSpin, effectiveLinesFor, calculateLevelFromEffective } from "../core/scoring.ts";
 import { createInitialState, startGame, spawnNextPiece } from "../core/state.ts";
 import { renderFrame } from "../render/canvas.ts";
 import { KeyboardHandler } from "../input/keyboard.ts";
@@ -14,7 +14,6 @@ import { playMusic, stopMusic } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
 import {
   LINE_CLEAR_ANIM_DURATION,
-  LINES_PER_LEVEL,
   MARATHON_MAX_LEVEL,
 } from "../core/constants.ts";
 import { checkModeVictory } from "../core/mode-rules.ts";
@@ -314,9 +313,15 @@ export class Game {
       this.state.lines += clearResult.linesCleared;
 
       if (this.state.mode === GameMode.Marathon) {
-        const newLevel = Math.floor(this.state.lines / LINES_PER_LEVEL);
+        const eff = effectiveLinesFor(
+          clearResult.linesCleared,
+          tSpinResult,
+          scoreResult.isB2B,
+        );
+        this.state.effectiveLines += eff;
+        const newLevel = calculateLevelFromEffective(this.state.effectiveLines);
         if (newLevel > this.state.level) {
-          this.state.level = newLevel;
+          this.state.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
           if (this.audioEnabled) playSFX("levelup");
         }
       }
@@ -354,6 +359,15 @@ export class Game {
         );
         this.state.score += scoreResult.score;
         this.state.backToBack = scoreResult.isB2B;
+        if (this.state.mode === GameMode.Marathon) {
+          const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B);
+          this.state.effectiveLines += eff;
+          const newLevel = calculateLevelFromEffective(this.state.effectiveLines);
+          if (newLevel > this.state.level) {
+            this.state.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
+            if (this.audioEnabled) playSFX("levelup");
+          }
+        }
         if (this.audioEnabled) playSFX("tspin");
       }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createInitialState, startGame } from "./state.ts";
 import { clearLines } from "./board.ts";
-import { evaluateClear } from "./scoring.ts";
+import { evaluateClear, effectiveLinesFor, calculateLevelFromEffective } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { checkModeVictory } from "./mode-rules.ts";
 import { pushPopup, tickPopups } from "../render/popups.ts";
@@ -14,7 +14,6 @@ import type { GameState } from "./types.ts";
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
-  LINES_PER_LEVEL,
 } from "./constants.ts";
 
 function mockStorage() {
@@ -47,19 +46,28 @@ function simulateLineClear(state: GameState, n: number): GameState {
     s = { ...s, board: clearResult.board };
     const comboResult = updateCombo(s, clearResult.linesCleared);
     s = comboResult.state;
+    const tSpinResult = { isTSpin: false, isMini: false };
     const scoreResult = evaluateClear(
       clearResult.linesCleared,
-      { isTSpin: false, isMini: false },
+      tSpinResult,
       s.level,
       s.backToBack,
       false,
     );
+    const eff = s.mode === GameMode.Marathon
+      ? effectiveLinesFor(clearResult.linesCleared, tSpinResult, scoreResult.isB2B)
+      : 0;
+    const newEffective = s.effectiveLines + eff;
+    const newLevel = s.mode === GameMode.Marathon
+      ? calculateLevelFromEffective(newEffective)
+      : s.level;
     s = {
       ...s,
       score: s.score + scoreResult.score + comboResult.bonusScore,
       backToBack: scoreResult.isB2B,
       lines: s.lines + clearResult.linesCleared,
-      level: Math.floor((s.lines + clearResult.linesCleared) / LINES_PER_LEVEL),
+      effectiveLines: newEffective,
+      level: newLevel,
     };
   }
   return s;
@@ -87,9 +95,9 @@ describe("integration", () => {
   });
 
   describe("Marathon completes at level 15", () => {
-    it("checkModeVictory triggers after 150 single-line clears", () => {
+    it("checkModeVictory triggers after 600 single-line clears (Variable Goal)", () => {
       let state = startGame(createInitialState(GameMode.Marathon));
-      state = simulateLineClear(state, 150);
+      state = simulateLineClear(state, 600);
       expect(state.level).toBe(15);
       expect(checkModeVictory(state)).toBe(true);
     });
@@ -150,7 +158,7 @@ describe("integration", () => {
   describe("High scores", () => {
     it("saves score on Marathon victory", () => {
       let state = startGame(createInitialState(GameMode.Marathon));
-      state = simulateLineClear(state, 150);
+      state = simulateLineClear(state, 600);
       saveHighScore({ score: state.score, level: state.level, lines: state.lines, mode: state.mode });
       const scores = loadHighScores(GameMode.Marathon);
       expect(scores.length).toBeGreaterThan(0);

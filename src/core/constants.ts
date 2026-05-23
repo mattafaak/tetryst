@@ -451,3 +451,22 @@ export const LINES_PER_LEVEL = 10;
 export const MARATHON_MAX_LEVEL = 15;
 export const ULTRA_DURATION_MS = 3 * 60 * 1000;
 export const SPRINT_LINE_TARGET = 40;
+
+// TDG §11 Variable Goal System
+export const EFFECTIVE_LINE_COUNTS: Record<string, number> = {
+  single: 1,
+  double: 3,
+  triple: 5,
+  tetris: 8,
+  tspin_zero: 4,
+  tspin_single: 8,
+  tspin_double: 12,
+  tspin_triple: 16,
+  mini_zero: 1,
+  mini_single: 2,
+};
+
+// Cumulative effective lines required to reach level N (index = target level)
+export const LEVEL_GOAL_CUMULATIVE: number[] = [
+  0, 5, 15, 30, 50, 75, 105, 140, 180, 225, 275, 330, 390, 455, 525, 600,
+];

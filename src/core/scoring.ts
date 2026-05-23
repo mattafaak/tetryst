@@ -18,6 +18,8 @@ import {
   HARD_DROP_SCORE,
   LINES_PER_LEVEL,
   BOARD_WIDTH,
+  EFFECTIVE_LINE_COUNTS,
+  LEVEL_GOAL_CUMULATIVE,
 } from "./constants.ts";
 
 /**
@@ -235,4 +237,40 @@ export function addHardDropScore(
  */
 export function calculateLevel(totalLines: number): number {
   return Math.floor(totalLines / LINES_PER_LEVEL);
+}
+
+/**
+ * Effective line credits for Variable Goal level system (TDG §11).
+ * Returns how many effective lines the given action awards.
+ * B2B bonus adds 50% (floor). Non-clearing, non-T-spin locks award 0.
+ */
+export function effectiveLinesFor(
+  linesCleared: number,
+  tSpinResult: TSpinResult,
+  isB2B: boolean,
+): number {
+  let key: string;
+  if (tSpinResult.isTSpin && !tSpinResult.isMini) {
+    const suffix = ["zero", "single", "double", "triple"][Math.min(linesCleared, 3)];
+    key = `tspin_${suffix}`;
+  } else if (tSpinResult.isTSpin && tSpinResult.isMini) {
+    const suffix = ["zero", "single"][Math.min(linesCleared, 1)];
+    key = `mini_${suffix}`;
+  } else {
+    if (linesCleared === 0) return 0;
+    const labels = ["", "single", "double", "triple", "tetris"];
+    key = labels[linesCleared] ?? "tetris";
+  }
+  const base = EFFECTIVE_LINE_COUNTS[key] ?? 0;
+  return isB2B ? Math.floor(base * 1.5) : base;
+}
+
+/**
+ * Calculate Marathon level from cumulative effective lines (Variable Goal, TDG §11).
+ */
+export function calculateLevelFromEffective(effectiveLines: number): number {
+  for (let level = LEVEL_GOAL_CUMULATIVE.length - 1; level >= 0; level--) {
+    if (effectiveLines >= LEVEL_GOAL_CUMULATIVE[level]) return level;
+  }
+  return 0;
 }
