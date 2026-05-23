@@ -109,6 +109,23 @@ describe("lock-delay", () => {
       expect(r3.state.lockState.timer).toBe(600);
     });
 
+    it("locks immediately when resets >= MAX_LOCK_RESETS, ignoring timer (TDG §7)", () => {
+      const state = createTestState({
+        lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: -1 },
+      });
+      const result = shouldLock(state, 1); // tiny dt — well below LOCK_DELAY
+      expect(result.shouldLock).toBe(true);
+      expect(result.state).toBe(state); // state unchanged, no timer mutation
+    });
+
+    it("does not lock immediately when resets is one below the limit", () => {
+      const state = createTestState({
+        lockState: { timer: 0, resets: MAX_LOCK_RESETS - 1, onGround: true, lowestY: -1 },
+      });
+      const result = shouldLock(state, 1);
+      expect(result.shouldLock).toBe(false); // timer only 1ms — well below 500ms
+    });
+
     it("returns true when timer >= LOCK_DELAY", () => {
       const state = createTestState({
         lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1 },

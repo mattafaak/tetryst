@@ -12,6 +12,11 @@ export function shouldLock(
     return { state, shouldLock: false };
   }
 
+  // Reset budget exhausted — lock immediately, ignoring timer (TDG §7)
+  if (state.lockState.resets >= MAX_LOCK_RESETS) {
+    return { state, shouldLock: true };
+  }
+
   const newState: GameState = {
     ...state,
     lockState: {
