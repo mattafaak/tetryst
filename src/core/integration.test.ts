@@ -153,6 +153,12 @@ describe("integration", () => {
       state = tickPopups(state, 1200);
       expect(state.popups).toHaveLength(0);
     });
+
+    it("level-up popup has correct text and color", () => {
+      let state = startGame(createInitialState(GameMode.Marathon));
+      const leveled = pushPopup(state, "LEVEL 1!", "#ffff00");
+      expect(leveled.popups.some((p) => p.text === "LEVEL 1!" && p.color === "#ffff00")).toBe(true);
+    });
   });
 
   describe("High scores", () => {

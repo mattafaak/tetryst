@@ -324,6 +324,7 @@ export class Game {
         if (newLevel > this.state.level) {
           this.state.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
           if (this.audioEnabled) playSFX("levelup");
+          this.state = pushPopup(this.state, `LEVEL ${this.state.level}!`, "#ffff00");
         }
       }
 
@@ -368,6 +369,7 @@ export class Game {
           if (newLevel > this.state.level) {
             this.state.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
             if (this.audioEnabled) playSFX("levelup");
+            this.state = pushPopup(this.state, `LEVEL ${this.state.level}!`, "#ffff00");
           }
         }
         if (this.audioEnabled) playSFX("tspin");
