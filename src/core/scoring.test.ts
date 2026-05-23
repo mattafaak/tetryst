@@ -464,7 +464,9 @@ describe("Perfect Clear scoring", () => {
   });
 
   it("PC Tetris: 2000 × (level+1)", () => {
-    expect(evaluateClear(4, r, 0, false, true).score).toBe(2000);
+    const result = evaluateClear(4, r, 0, false, true);
+    expect(result.score).toBe(2000);
+    expect(result.isB2B).toBe(true); // Tetris PC starts a B2B streak
   });
 
   it("B2B PC Tetris: 3200 × (level+1)", () => {
