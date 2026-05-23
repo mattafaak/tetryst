@@ -74,15 +74,17 @@ export class Game {
   }
 
   private handleInput(action: InputAction): void {
-    // Any key during attract mode starts a real game
+    // During attract mode: Enter starts a game immediately; any other key
+    // returns to the menu so the player can choose mode and level first.
     if (this.isAttractMode) {
       this.exitAttractMode();
+      this.state = createInitialState(this.selectedMode);
       this.prevPhase = GamePhase.Menu;
-      this.state = startGame(
-        createInitialState(this.selectedMode),
-        this.selectedStartLevel,
-      );
-      return;
+      if (action.type === "Start") {
+        this.state = startGame(this.state, this.selectedStartLevel);
+        return;
+      }
+      // Navigation and other keys fall through to the Menu handler below.
     }
 
     if (this.state.phase === GamePhase.Menu) {
