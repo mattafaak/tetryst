@@ -313,10 +313,12 @@ export class Game {
       this.state.backToBack = scoreResult.isB2B;
       this.state.lines += clearResult.linesCleared;
 
-      const newLevel = Math.floor(this.state.lines / LINES_PER_LEVEL);
-      if (newLevel > this.state.level) {
-        this.state.level = newLevel;
-        if (this.audioEnabled) playSFX("levelup");
+      if (this.state.mode === GameMode.Marathon) {
+        const newLevel = Math.floor(this.state.lines / LINES_PER_LEVEL);
+        if (newLevel > this.state.level) {
+          this.state.level = newLevel;
+          if (this.audioEnabled) playSFX("levelup");
+        }
       }
 
       // Push action popups

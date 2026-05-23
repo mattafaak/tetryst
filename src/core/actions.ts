@@ -3,6 +3,7 @@ import {
   type InputAction,
   type Board,
   GamePhase,
+  GameMode,
 } from "./types.ts";
 import { tryRotateCW, tryRotateCCW, movePiece, getGhostY } from "./pieces.ts";
 import { checkCollision, lockPiece, clearLines, isLockOut } from "./board.ts";
@@ -168,9 +169,11 @@ function handleHardDrop(state: GameState): GameState {
     nextState.backToBack = scoreResult.isB2B;
     nextState.lines += clearResult.linesCleared;
 
-    const newLevel = Math.floor(nextState.lines / LINES_PER_LEVEL);
-    if (newLevel > nextState.level) {
-      nextState.level = newLevel;
+    if (nextState.mode === GameMode.Marathon) {
+      const newLevel = Math.floor(nextState.lines / LINES_PER_LEVEL);
+      if (newLevel > nextState.level) {
+        nextState.level = newLevel;
+      }
     }
 
     nextState.phase = GamePhase.LineClear;

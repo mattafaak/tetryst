@@ -91,3 +91,62 @@ describe("handleHardDrop", () => {
     expect(next.activePiece).toBeNull();
   });
 });
+
+describe("mode-specific level-up", () => {
+  it("Sprint: level does not change after hard-drop clears lines crossing a level boundary", () => {
+    const board = emptyBoard();
+    // Fill 4 rows at bottom so I-piece clears 4 lines; with lines starting at 8
+    // total would be 12, which crosses the 10-line level boundary (0→1)
+    for (let i = 0; i < 4; i++) {
+      board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    }
+    const s = baseState({
+      mode: GameMode.Sprint,
+      level: 0,
+      lines: 8, // 8 + 4 = 12 → would level up in Marathon (floor(12/10)=1 > 0)
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      ghostY: BOARD_HEIGHT - 6,
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    // Level must NOT change — Sprint has no level-up
+    expect(next.level).toBe(0);
+  });
+
+  it("Ultra: level stays fixed after clearing lines crossing a level boundary", () => {
+    const board = emptyBoard();
+    // Fill 4 rows; with lines starting at 8 total becomes 12 → crosses boundary
+    for (let i = 0; i < 4; i++) {
+      board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    }
+    const s = baseState({
+      mode: GameMode.Ultra,
+      level: 2,
+      lines: 28, // 28 + 4 = 32 → floor(32/10)=3 > 2, would level up in Marathon
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      ghostY: BOARD_HEIGHT - 6,
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    expect(next.level).toBe(2); // unchanged
+  });
+
+  it("Marathon: level increments after clearing lines", () => {
+    const board = emptyBoard();
+    // Fill 10 rows — clearing 10 lines at once moves level from 0 to 1
+    for (let i = 0; i < 10; i++) {
+      board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    }
+    const s = baseState({
+      mode: GameMode.Marathon,
+      level: 0,
+      lines: 0,
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      ghostY: BOARD_HEIGHT - 12,
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    // Marathon DOES level up
+    expect(next.level).toBeGreaterThan(0);
+  });
+});
