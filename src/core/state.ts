@@ -4,13 +4,15 @@ import {
   type Piece,
   type NextQueueItem,
   GamePhase,
+  GameMode,
 } from "./types.ts";
 import { createBoard, checkCollision } from "./board.ts";
 import { spawnPiece, getGhostY } from "./pieces.ts";
 import { resetLockState } from "./lock-delay.ts";
 import { createFirstBag, drawFromBag, createBag } from "./randomizer.ts";
+import { ULTRA_DURATION_MS, NEXT_QUEUE_SIZE } from "./constants.ts";
 
-export function createInitialState(): GameState {
+export function createInitialState(mode: GameMode = GameMode.Marathon): GameState {
   return {
     board: createBoard(),
     activePiece: null,
@@ -21,6 +23,7 @@ export function createInitialState(): GameState {
     score: 0,
     level: 0,
     lines: 0,
+    effectiveLines: 0,
     combo: -1,
     backToBack: false,
     phase: GamePhase.Menu,
@@ -31,6 +34,9 @@ export function createInitialState(): GameState {
     lineClearTimer: 0,
     clearedRowIndices: [],
     lastClearWasB2B: false,
+    mode,
+    modeTimer: mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
+    popups: [],
   };
 }
 
@@ -41,15 +47,15 @@ export function transitionPhase(
   return { ...state, phase: newPhase };
 }
 
-export function startGame(state: GameState): GameState {
+export function startGame(state: GameState, startLevel: number = 0): GameState {
   const bag = createFirstBag();
   const drawResult = drawFromBag(bag);
   const piece = spawnPiece(drawResult.piece);
   let currentBag = drawResult.bag;
 
-  // Draw 3 pieces for the next queue
+  // Draw NEXT_QUEUE_SIZE pieces for the next queue
   let queue: NextQueueItem[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < NEXT_QUEUE_SIZE; i++) {
     const d = drawFromBag(currentBag);
     queue = [...queue, { type: d.piece }];
     currentBag = d.bag;
@@ -69,8 +75,9 @@ export function startGame(state: GameState): GameState {
     bag: currentBag,
     nextQueue: queue,
     score: 0,
-    level: 0,
+    level: startLevel,
     lines: 0,
+    effectiveLines: 0,
     combo: -1,
     backToBack: false,
     hasSwappedThisTurn: false,
@@ -81,6 +88,8 @@ export function startGame(state: GameState): GameState {
     lineClearTimer: 0,
     clearedRowIndices: [],
     lastClearWasB2B: false,
+    modeTimer: state.mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
+    popups: [],
   };
 }
 
@@ -142,7 +151,7 @@ function spawnFromQueue(state: GameState): GameState {
 
   // Refill queue from bag
   let currentBag = state.bag;
-  while (newQueue.length < 3) {
+  while (newQueue.length < NEXT_QUEUE_SIZE) {
     const drawResult = drawFromBag(currentBag);
     newQueue = [...newQueue, { type: drawResult.piece }];
     currentBag = drawResult.bag;

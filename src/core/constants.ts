@@ -18,6 +18,7 @@ export const ARR_RATE = 50;     // was 33  (TDG: ~50ms between autorepeat steps)
 export const LOCK_DELAY = 500;  // unchanged (TDG: 500ms lock delay)
 export const MAX_LOCK_RESETS = 15; // unchanged
 export const ENTRY_DELAY = 200; // was 267 (TDG: 200ms between piece lock and spawn)
+export const NEXT_QUEUE_SIZE = 5; // TDG §8: show 4–6 next pieces (expanded from 3)
 export const LINE_CLEAR_ANIM_DURATION = 300; // ms — line clear flash animation duration
 
 // Piece colors (strings for Canvas fillStyle)
@@ -444,5 +445,25 @@ export const GRAVITY_SPEED_CURVE: number[] = [
   5, // Level 15+
 ];
 
-// Lines per level (standard: level up every 10 lines)
-export const LINES_PER_LEVEL = 10;
+export const MARATHON_MAX_LEVEL = 15;
+export const ULTRA_DURATION_MS = 3 * 60 * 1000;
+export const SPRINT_LINE_TARGET = 40;
+
+// TDG §11 Variable Goal System
+export const EFFECTIVE_LINE_COUNTS: Record<string, number> = {
+  single: 1,
+  double: 3,
+  triple: 5,
+  tetris: 8,
+  tspin_zero: 4,
+  tspin_single: 8,
+  tspin_double: 12,
+  tspin_triple: 16,
+  mini_zero: 1,
+  mini_single: 2,
+};
+
+// Cumulative effective lines required to reach level N (index = target level)
+export const LEVEL_GOAL_CUMULATIVE: number[] = [
+  0, 5, 15, 30, 50, 75, 105, 140, 180, 225, 275, 330, 390, 455, 525, 600,
+];

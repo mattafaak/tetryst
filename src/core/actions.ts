@@ -3,14 +3,15 @@ import {
   type InputAction,
   type Board,
   GamePhase,
+  GameMode,
 } from "./types.ts";
 import { tryRotateCW, tryRotateCCW, movePiece, getGhostY } from "./pieces.ts";
 import { checkCollision, lockPiece, clearLines, isLockOut } from "./board.ts";
-import { addHardDropScore, evaluateClear, detectTSpin } from "./scoring.ts";
+import { addHardDropScore, evaluateClear, detectTSpin, effectiveLinesFor, calculateLevelFromEffective } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { holdPiece } from "./state.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { LINES_PER_LEVEL, BOARD_WIDTH } from "./constants.ts";
+import { BOARD_WIDTH, MARATHON_MAX_LEVEL } from "./constants.ts";
 
 export function processAction(
   state: GameState,
@@ -35,6 +36,8 @@ export function processAction(
       return handleRotateCCW(state);
     case "Hold":
       return handleHold(state);
+    case "Mute":
+      return state;
   }
 }
 
@@ -156,6 +159,7 @@ function handleHardDrop(state: GameState): GameState {
     nextState.score += comboResult.bonusScore;
 
     const perfectClear = checkPerfectClear(nextState.board);
+    const wasB2BActive = nextState.backToBack;
     const scoreResult = evaluateClear(
       clearResult.linesCleared,
       tSpinResult,
@@ -168,9 +172,17 @@ function handleHardDrop(state: GameState): GameState {
     nextState.backToBack = scoreResult.isB2B;
     nextState.lines += clearResult.linesCleared;
 
-    const newLevel = Math.floor(nextState.lines / LINES_PER_LEVEL);
-    if (newLevel > nextState.level) {
-      nextState.level = newLevel;
+    if (nextState.mode === GameMode.Marathon) {
+      const eff = effectiveLinesFor(
+        clearResult.linesCleared,
+        tSpinResult,
+        scoreResult.isB2B && wasB2BActive,
+      );
+      nextState.effectiveLines += eff;
+      const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
+      if (newLevel > nextState.level) {
+        nextState.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
+      }
     }
 
     nextState.phase = GamePhase.LineClear;
@@ -181,6 +193,7 @@ function handleHardDrop(state: GameState): GameState {
     nextState = comboResult.state;
 
     if (tSpinResult.isTSpin) {
+      const wasB2BActive = nextState.backToBack;
       const scoreResult = evaluateClear(
         0,
         tSpinResult,
@@ -190,6 +203,14 @@ function handleHardDrop(state: GameState): GameState {
       );
       nextState.score += scoreResult.score;
       nextState.backToBack = scoreResult.isB2B;
+      if (nextState.mode === GameMode.Marathon) {
+        const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B && wasB2BActive);
+        nextState.effectiveLines += eff;
+        const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
+        if (newLevel > nextState.level) {
+          nextState.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
+        }
+      }
     }
 
     nextState.phase = GamePhase.EntryDelay;

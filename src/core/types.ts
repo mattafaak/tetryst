@@ -35,8 +35,22 @@ export enum GamePhase {
   Playing = "Playing",
   Paused = "Paused",
   GameOver = "GameOver",
+  Victory = "Victory",
   LineClear = "LineClear",
   EntryDelay = "EntryDelay",
+}
+
+export enum GameMode {
+  Marathon = "Marathon",
+  Sprint = "Sprint",
+  Ultra = "Ultra",
+}
+
+export interface PopupItem {
+  text: string;
+  timer: number;
+  duration: number;
+  color: string;
 }
 
 export interface TSpinResult {
@@ -77,6 +91,7 @@ export interface GameState {
   score: number;
   level: number;
   lines: number;
+  effectiveLines: number;
   combo: number;
   backToBack: boolean;
   phase: GamePhase;
@@ -87,6 +102,9 @@ export interface GameState {
   lineClearTimer: number;
   clearedRowIndices: number[];
   lastClearWasB2B: boolean;
+  mode: GameMode;
+  modeTimer: number;
+  popups: PopupItem[];
 }
 
 export type InputAction =
@@ -98,4 +116,5 @@ export type InputAction =
   | { type: "RotateCCW" }
   | { type: "Hold" }
   | { type: "Pause" }
-  | { type: "Start" };
+  | { type: "Start" }
+  | { type: "Mute" };
