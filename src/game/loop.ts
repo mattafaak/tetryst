@@ -155,6 +155,12 @@ export class Game {
       }
       this.state = newState;
     }
+
+    // Hard-drop locks the piece immediately and bypasses lockActivePiece, so
+    // checkModeVictory is never reached via the normal gravity-lock path.
+    if (action.type === "HardDrop" && checkModeVictory(this.state)) {
+      this.triggerVictory();
+    }
   }
 
   private playLockSFX(linesCleared: number, tSpinResult: import("../core/types.ts").TSpinResult): void {

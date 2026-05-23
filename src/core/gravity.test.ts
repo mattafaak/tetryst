@@ -191,6 +191,22 @@ describe("applyGravity", () => {
     expect(result.state.gravityTimer).toBe(2000);
   });
 
+  it("clears onGround when gravity drops a piece that was stale-marked as onGround", () => {
+    // Piece starts with onGround=true (stale — e.g., slid into a gap) but CAN fall.
+    // After gravity fires and drops the piece, onGround must become false.
+    const state = makeState({ piece: { type: TetriminoType.T, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO }, gravityTimer: 0 });
+    const staleOnGround: GameState = {
+      ...state,
+      lockState: { timer: 400, resets: 3, onGround: true, lowestY: 0 },
+    };
+
+    const result = applyGravity(staleOnGround, 1100);
+
+    expect(result.dropped).toBe(true);
+    expect(result.state.activePiece!.pos.y).toBe(1);
+    expect(result.state.lockState.onGround).toBe(false);
+  });
+
   it("processes very large dt dropping piece all the way to the floor", () => {
     // T-piece starts at y = 0.  A huge dt should cause it to fall until
     // it reaches the lowest valid row (BOARD_HEIGHT - 2).

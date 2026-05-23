@@ -86,6 +86,7 @@ export function applyGravity(
 
     currentPiece = moved;
     dropped = true;
+    onGround = false;
   }
 
   let finalState: GameState = {

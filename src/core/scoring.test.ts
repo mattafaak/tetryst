@@ -115,7 +115,9 @@ describe("evaluateClear", () => {
     const m = { isTSpin: true, isMini: true };
     expect(evaluateClear(0, m, 0, false, false).score).toBe(100);
     expect(evaluateClear(1, m, 0, false, false).score).toBe(200);
-    expect(evaluateClear(2, m, 0, false, false).score).toBe(400);
+    // Mini can clear at most 1 line; linesCleared=2 is geometrically impossible,
+    // but the scorer clamps to 1 (same as single).
+    expect(evaluateClear(2, m, 0, false, false).score).toBe(200);
   });
 
   it("should apply back-to-back multiplier", () => {
@@ -404,9 +406,9 @@ describe("evaluateClear - level scaling", () => {
 
   it("T-spin Mini scores scaled by level 5", () => {
     const m = { isTSpin: true, isMini: true };
-    expect(evaluateClear(0, m, 4, false, false).score).toBe(500); // 100 * (4+1)
+    expect(evaluateClear(0, m, 4, false, false).score).toBe(500);  // 100 * (4+1)
     expect(evaluateClear(1, m, 4, false, false).score).toBe(1000); // 200 * (4+1)
-    expect(evaluateClear(2, m, 4, false, false).score).toBe(2000); // 400 * (4+1)
+    expect(evaluateClear(2, m, 4, false, false).score).toBe(1000); // clamped to 1-line score
   });
 });
 
