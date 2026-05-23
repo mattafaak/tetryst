@@ -3,7 +3,7 @@ import { createInitialState, transitionPhase, startGame, holdPiece, spawnNextPie
 import { createBoard } from "./board.ts";
 import { resetLockState } from "./lock-delay.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "./types.ts";
-import { ULTRA_DURATION_MS } from "./constants.ts";
+import { ULTRA_DURATION_MS, NEXT_QUEUE_SIZE } from "./constants.ts";
 import type { GameState } from "./types.ts";
 
 describe("state", () => {
@@ -72,7 +72,7 @@ describe("state", () => {
       expect(newState.phase).toBe(GamePhase.Playing);
       expect(newState.activePiece).not.toBeNull();
       expect(newState.activePiece!.rotation).toBe(RotationState.ZERO);
-      expect(newState.nextQueue.length).toBe(3);
+      expect(newState.nextQueue.length).toBe(NEXT_QUEUE_SIZE);
       expect(newState.score).toBe(0);
       expect(newState.level).toBe(0);
       expect(newState.lines).toBe(0);
@@ -90,8 +90,9 @@ describe("state", () => {
       const state = createInitialState();
       const newState = startGame(state);
 
-      // Active piece drawn from bag, 3 drawn for queue, remaining in bag
-      expect(newState.bag.length).toBeGreaterThanOrEqual(3);
+      // Active piece drawn from bag, NEXT_QUEUE_SIZE drawn for queue, remaining in bag
+      // With queue size 5: 1 active + 5 queue = 6 from first bag, leaving 1 (7-6=1)
+      expect(newState.bag.length).toBeGreaterThanOrEqual(1);
       // Total pieces in circulation must be at least 7 (one full bag)
       const total =
         newState.bag.length + newState.nextQueue.length + 1;
@@ -140,19 +141,21 @@ describe("state", () => {
           { type: TetriminoType.I },
           { type: TetriminoType.O },
           { type: TetriminoType.S },
+          { type: TetriminoType.Z },
+          { type: TetriminoType.J },
         ],
-        bag: [TetriminoType.Z, TetriminoType.J, TetriminoType.L],
+        bag: [TetriminoType.L, TetriminoType.T, TetriminoType.I],
         phase: GamePhase.Playing,
       };
 
       const afterHold = holdPiece(state);
       expect(afterHold.heldPiece).toBe(TetriminoType.T);
       expect(afterHold.activePiece!.type).toBe(TetriminoType.I);
-      expect(afterHold.nextQueue.length).toBe(3);
+      expect(afterHold.nextQueue.length).toBe(NEXT_QUEUE_SIZE);
       expect(afterHold.nextQueue[0].type).toBe(TetriminoType.O);
       expect(afterHold.nextQueue[1].type).toBe(TetriminoType.S);
       expect(afterHold.nextQueue[2].type).toBe(TetriminoType.Z);
-      expect(afterHold.bag).toEqual([TetriminoType.J, TetriminoType.L]);
+      expect(afterHold.bag.length).toBe(2); // After drawing L from bag for refill
       expect(afterHold.hasSwappedThisTurn).toBe(true);
 
       // Second hold should be blocked
@@ -201,8 +204,10 @@ describe("state", () => {
           { type: TetriminoType.I },
           { type: TetriminoType.O },
           { type: TetriminoType.S },
+          { type: TetriminoType.Z },
+          { type: TetriminoType.J },
         ],
-        bag: [TetriminoType.Z, TetriminoType.J, TetriminoType.L],
+        bag: [TetriminoType.L],
         phase: GamePhase.Playing,
       };
 
@@ -256,18 +261,20 @@ describe("state", () => {
           { type: TetriminoType.T },
           { type: TetriminoType.I },
           { type: TetriminoType.O },
+          { type: TetriminoType.S },
+          { type: TetriminoType.Z },
         ],
-        bag: [TetriminoType.Z, TetriminoType.J, TetriminoType.L],
+        bag: [TetriminoType.J, TetriminoType.L],
         phase: GamePhase.Playing,
       };
 
       const newState = spawnNextPiece(state);
       expect(newState.activePiece!.type).toBe(TetriminoType.T);
-      expect(newState.nextQueue.length).toBe(3);
+      expect(newState.nextQueue.length).toBe(NEXT_QUEUE_SIZE);
       expect(newState.nextQueue[0].type).toBe(TetriminoType.I);
       expect(newState.nextQueue[1].type).toBe(TetriminoType.O);
-      expect(newState.nextQueue[2].type).toBe(TetriminoType.Z);
-      expect(newState.bag).toEqual([TetriminoType.J, TetriminoType.L]);
+      expect(newState.nextQueue[2].type).toBe(TetriminoType.S);
+      expect(newState.bag).toEqual([TetriminoType.L]);
       expect(newState.hasSwappedThisTurn).toBe(false);
     });
 
@@ -378,9 +385,16 @@ describe("state", () => {
       expect(newState.activePiece!.type).toBe(TetriminoType.O);
     });
 
-    it("queue stays at length 3 over multiple spawns as it refills from bag", () => {
+    it("queue stays at NEXT_QUEUE_SIZE over multiple spawns as it refills from bag", () => {
       const board = createBoard();
       const bag = [
+        TetriminoType.Z,
+        TetriminoType.J,
+        TetriminoType.L,
+        TetriminoType.O,
+        TetriminoType.S,
+        TetriminoType.T,
+        TetriminoType.I,
         TetriminoType.Z,
         TetriminoType.J,
         TetriminoType.L,
@@ -397,6 +411,8 @@ describe("state", () => {
           { type: TetriminoType.I },
           { type: TetriminoType.J },
           { type: TetriminoType.L },
+          { type: TetriminoType.O },
+          { type: TetriminoType.S },
         ],
         bag: [...bag],
         phase: GamePhase.Playing,
@@ -404,9 +420,23 @@ describe("state", () => {
 
       for (let i = 0; i < 5; i++) {
         state = spawnNextPiece(state);
-        expect(state.nextQueue.length).toBe(3);
+        expect(state.nextQueue.length).toBe(NEXT_QUEUE_SIZE);
         expect(state.phase).toBe(GamePhase.Playing);
       }
+    });
+  });
+
+  describe("next queue size", () => {
+    it("startGame produces a next queue of NEXT_QUEUE_SIZE pieces", () => {
+      const state = startGame(createInitialState(GameMode.Marathon));
+      expect(state.nextQueue.length).toBe(NEXT_QUEUE_SIZE);
+    });
+
+    it("spawnNextPiece maintains a queue of NEXT_QUEUE_SIZE pieces", () => {
+      let state = startGame(createInitialState(GameMode.Marathon));
+      // move to EntryDelay so spawnNextPiece is valid
+      state = spawnNextPiece({ ...state, phase: GamePhase.EntryDelay });
+      expect(state.nextQueue.length).toBe(NEXT_QUEUE_SIZE);
     });
   });
 

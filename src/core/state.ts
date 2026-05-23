@@ -10,7 +10,7 @@ import { createBoard, checkCollision } from "./board.ts";
 import { spawnPiece, getGhostY } from "./pieces.ts";
 import { resetLockState } from "./lock-delay.ts";
 import { createFirstBag, drawFromBag, createBag } from "./randomizer.ts";
-import { ULTRA_DURATION_MS } from "./constants.ts";
+import { ULTRA_DURATION_MS, NEXT_QUEUE_SIZE } from "./constants.ts";
 
 export function createInitialState(mode: GameMode = GameMode.Marathon): GameState {
   return {
@@ -52,9 +52,9 @@ export function startGame(state: GameState, startLevel: number = 0): GameState {
   const piece = spawnPiece(drawResult.piece);
   let currentBag = drawResult.bag;
 
-  // Draw 3 pieces for the next queue
+  // Draw NEXT_QUEUE_SIZE pieces for the next queue
   let queue: NextQueueItem[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < NEXT_QUEUE_SIZE; i++) {
     const d = drawFromBag(currentBag);
     queue = [...queue, { type: d.piece }];
     currentBag = d.bag;
@@ -149,7 +149,7 @@ function spawnFromQueue(state: GameState): GameState {
 
   // Refill queue from bag
   let currentBag = state.bag;
-  while (newQueue.length < 3) {
+  while (newQueue.length < NEXT_QUEUE_SIZE) {
     const drawResult = drawFromBag(currentBag);
     newQueue = [...newQueue, { type: drawResult.piece }];
     currentBag = drawResult.bag;
