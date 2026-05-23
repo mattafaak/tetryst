@@ -262,8 +262,11 @@ export class Game {
   }
 
   private triggerVictory(): void {
+    const scoreToSave = this.state.mode === GameMode.Sprint
+      ? this.state.modeTimer
+      : this.state.score;
     saveHighScore({
-      score: this.state.score,
+      score: scoreToSave,
       level: this.state.level,
       lines: this.state.lines,
       mode: this.state.mode,

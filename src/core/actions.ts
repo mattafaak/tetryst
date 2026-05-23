@@ -11,7 +11,7 @@ import { addHardDropScore, evaluateClear, detectTSpin, effectiveLinesFor, calcul
 import { updateCombo } from "./combo.ts";
 import { holdPiece } from "./state.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { BOARD_WIDTH } from "./constants.ts";
+import { BOARD_WIDTH, MARATHON_MAX_LEVEL } from "./constants.ts";
 
 export function processAction(
   state: GameState,
@@ -206,7 +206,7 @@ function handleHardDrop(state: GameState): GameState {
         nextState.effectiveLines += eff;
         const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
         if (newLevel > nextState.level) {
-          nextState.level = Math.min(newLevel, 15);
+          nextState.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
         }
       }
     }
