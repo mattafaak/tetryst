@@ -59,7 +59,8 @@ describe("handleSoftDrop", () => {
 
   it("does not change state when piece is blocked from moving down", () => {
     const board = emptyBoard();
-    // Fill row 22 so I-piece at y=20 (fills row 21 in rotation 0) cannot descend
+    // I-piece at y=20 in rotation ZERO has minos at shape row 1 → board row 21.
+    // Moving to y=21 would put minos at board row 22. Fill row 22 to block descent.
     board[22] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
     const state = baseState({
       board,
@@ -67,5 +68,23 @@ describe("handleSoftDrop", () => {
     });
     const next = processAction(state, { type: "SoftDrop" });
     expect(next).toBe(state);
+  });
+});
+
+describe("handleHardDrop", () => {
+  it("transitions to GameOver when piece locks entirely in buffer zone (Lock-Out)", () => {
+    // I-piece rotation ZERO: minos at shape row 1. At pos.y=18, row 1 lands at board row 19.
+    // Board row 19 is in the buffer zone (row < BUFFER_HEIGHT=20).
+    // If board row 20 is full, the piece can't drop further and locks at y=18 (all in buffer).
+    const board = emptyBoard();
+    board[20] = Array(BOARD_WIDTH).fill(TetriminoType.Z); // skyline blocked
+    const state = baseState({
+      board,
+      activePiece: makePiece(18), // I-piece at y=18, can't drop (row 20 is full)
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 18 },
+    });
+    const next = processAction(state, { type: "HardDrop" });
+    expect(next.phase).toBe(GamePhase.GameOver);
+    expect(next.activePiece).toBeNull();
   });
 });

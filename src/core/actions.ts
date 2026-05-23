@@ -5,7 +5,7 @@ import {
   GamePhase,
 } from "./types.ts";
 import { tryRotateCW, tryRotateCCW, movePiece, getGhostY } from "./pieces.ts";
-import { checkCollision, lockPiece, clearLines } from "./board.ts";
+import { checkCollision, lockPiece, clearLines, isLockOut } from "./board.ts";
 import { addHardDropScore, evaluateClear, detectTSpin } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { holdPiece } from "./state.ts";
@@ -125,6 +125,16 @@ function handleHardDrop(state: GameState): GameState {
   }
 
   const droppedY = dropped.pos.y;
+
+  // Lock-Out: piece locked entirely in buffer zone (TDG §8)
+  if (isLockOut(dropped)) {
+    return {
+      ...state,
+      activePiece: null,
+      phase: GamePhase.GameOver,
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+    };
+  }
 
   // Hard drop: piece locks immediately, bypass lock delay
   const lockedBoard = lockPiece(state.board, dropped);
