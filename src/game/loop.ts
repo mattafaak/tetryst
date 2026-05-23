@@ -110,11 +110,11 @@ export class Game {
         return;
       }
       if (action.type === "RotateCW") {
-        this.selectedStartLevel = Math.min(MARATHON_MAX_LEVEL - 1, this.selectedStartLevel + 1);
+        this.selectedStartLevel = (this.selectedStartLevel + 1) % MARATHON_MAX_LEVEL;
         return;
       }
       if (action.type === "RotateCCW" || action.type === "SoftDrop") {
-        this.selectedStartLevel = Math.max(0, this.selectedStartLevel - 1);
+        this.selectedStartLevel = (this.selectedStartLevel - 1 + MARATHON_MAX_LEVEL) % MARATHON_MAX_LEVEL;
         return;
       }
     }

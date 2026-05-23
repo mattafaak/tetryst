@@ -298,7 +298,7 @@ function drawMenu(
 
     ctx.font = "bold 26px monospace";
     ctx.fillStyle = AMBER;
-    ctx.fillText((selectedStartLevel + 1).toString(), cx, cy + 50);
+    ctx.fillText(`↑  ${selectedStartLevel + 1}  ↓`, cx, cy + 50);
   }
 
   const promptY = selectedMode === GameMode.Marathon ? cy + 96 : cy + 30;
