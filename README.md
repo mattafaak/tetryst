@@ -1,15 +1,29 @@
 # Tetryst
 
+**[▶ Play Now — mattafaak.github.io/tetryst](https://mattafaak.github.io/tetryst/)**
+
 A Tetris clone built in TypeScript, compliant with the 2009 Tetris Design Guideline (TDG).
 
-## Play
+## Quickstart
+
+**In the browser:** [mattafaak.github.io/tetryst](https://mattafaak.github.io/tetryst/)
+
+**Download and play offline** (macOS / Linux):
+```bash
+curl -fsSL https://mattafaak.github.io/tetryst/ -o tetryst.html && \
+  (open tetryst.html 2>/dev/null || xdg-open tetryst.html 2>/dev/null || \
+   echo "Open tetryst.html in your browser")
+```
+The downloaded file is fully self-contained — no internet connection required after download.
+
+---
+
+## Development
 
 ```bash
 npm install
-npm run dev
+npm run dev   # dev server at localhost:5173
 ```
-
-Open `http://localhost:5173` in your browser.
 
 ## Game Modes
 
@@ -61,7 +75,7 @@ Open `http://localhost:5173` in your browser.
 
 ```bash
 npm test          # run tests (459 tests across 17 files)
-npm run build     # production build → dist/
+npm run build     # production build → single-file dist/index.html
 npm run preview   # preview production build
 ```
 
