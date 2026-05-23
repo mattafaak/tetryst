@@ -319,6 +319,37 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
     expect(next.lockState.timer).toBe(300);   // NOT reset — resets exhausted
     expect(next.lockState.resets).toBe(15);   // unchanged
   });
+
+  it("rotation while airborne detects ground contact and sets onGround=true", () => {
+    // I-piece ZERO (horizontal) floating 1 row above solid floor.
+    // Rotating CW makes it vertical (RotationState.R) — the bottom mino now sits on the floor.
+    // Piece starts with onGround=false (it was kicked into air earlier).
+    const board = emptyBoard();
+    // Solid floor at BOARD_HEIGHT-1. I-piece ZERO at y=BOARD_HEIGHT-3 has minos at
+    // shape row 1 → board row BOARD_HEIGHT-2, which is clear. After rotating to R
+    // the bottom mino lands at BOARD_HEIGHT-1 or hits the wall — either way,
+    // one more step down is OOB → collision → onGround.
+    // Use a simpler setup: put the floor just below where the rotated piece ends up.
+    // I-piece at pos.y=BOARD_HEIGHT-4, ZERO rotation: minos at board row BOARD_HEIGHT-3.
+    // After CW → R at (3, BOARD_HEIGHT-4): minos span rows BH-4 to BH-1 (4 rows tall).
+    // One step further would put a mino at BH → OOB = collision → onGround=true.
+    const BH = BOARD_HEIGHT;
+    const state = baseState({
+      board,
+      activePiece: {
+        type: TetriminoType.I,
+        pos: { x: 3, y: BH - 4 },
+        rotation: RotationState.ZERO,
+      },
+      lockState: { timer: 200, resets: 15, onGround: false, lowestY: BH - 4 },
+    });
+
+    const next = processAction(state, { type: "RotateCW" });
+
+    // After rotation, the I-piece (now vertical) should detect ground contact
+    expect(next.lockState.onGround).toBe(true);
+    expect(next.lockState.resets).toBe(15);  // no new reset consumed
+  });
 });
 
 describe("mode-specific level-up", () => {

@@ -97,6 +97,12 @@ function handleMove(
         ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
       };
     }
+  } else if (dy === 0) {
+    // Airborne horizontal move — recheck whether the new position is now grounded
+    const belowMoved = movePiece(moved, 0, 1);
+    if (checkCollision(state.board, belowMoved)) {
+      newState.lockState = { ...state.lockState, onGround: true };
+    }
   }
 
   return newState;
@@ -251,11 +257,10 @@ function handleRotateCW(state: GameState): GameState {
   const newState = { ...state, activePiece: result.piece };
   newState.ghostY = getGhostY(newState.board, result.piece);
 
-  // If on ground, rotating resets lock timer (up to MAX_LOCK_RESETS); but a wall kick can
-  // move the piece into open air — recheck groundedness and count it as a reset either way
+  // Recheck groundedness after rotation — kicks can move the piece on or off the ground
+  const belowRotatedCW = movePiece(result.piece, 0, 1);
   if (state.lockState.onGround) {
-    const belowRotated = movePiece(result.piece, 0, 1);
-    if (checkCollision(state.board, belowRotated)) {
+    if (checkCollision(state.board, belowRotatedCW)) {
       newState.lockState = { ...state.lockState };
       if (newState.lockState.resets < MAX_LOCK_RESETS) {
         newState.lockState.timer = 0;
@@ -270,6 +275,9 @@ function handleRotateCW(state: GameState): GameState {
         ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
       };
     }
+  } else if (checkCollision(state.board, belowRotatedCW)) {
+    // Was airborne; rotation landed piece on ground — detect so shouldLock can fire
+    newState.lockState = { ...state.lockState, onGround: true };
   }
 
   return newState;
@@ -289,9 +297,10 @@ function handleRotateCCW(state: GameState): GameState {
   const newState = { ...state, activePiece: result.piece };
   newState.ghostY = getGhostY(newState.board, result.piece);
 
+  // Recheck groundedness after rotation — kicks can move the piece on or off the ground
+  const belowRotatedCCW = movePiece(result.piece, 0, 1);
   if (state.lockState.onGround) {
-    const belowRotated = movePiece(result.piece, 0, 1);
-    if (checkCollision(state.board, belowRotated)) {
+    if (checkCollision(state.board, belowRotatedCCW)) {
       newState.lockState = { ...state.lockState };
       if (newState.lockState.resets < MAX_LOCK_RESETS) {
         newState.lockState.timer = 0;
@@ -306,6 +315,9 @@ function handleRotateCCW(state: GameState): GameState {
         ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
       };
     }
+  } else if (checkCollision(state.board, belowRotatedCCW)) {
+    // Was airborne; rotation landed piece on ground — detect so shouldLock can fire
+    newState.lockState = { ...state.lockState, onGround: true };
   }
 
   return newState;
