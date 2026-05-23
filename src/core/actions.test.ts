@@ -53,6 +53,8 @@ describe("handleSoftDrop", () => {
     expect(next.activePiece?.pos.y).toBe(21);
     expect(next.lockState.lowestY).toBe(21);
     expect(next.lockState.resets).toBe(0);
+    expect(next.lockState.timer).toBe(200); // timer preserved, only resets zeroed
+    expect(next.score).toBe(1); // 1 point per cell soft-dropped
   });
 
   it("does not change state when piece is blocked from moving down", () => {
