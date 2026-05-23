@@ -4,6 +4,7 @@ import {
   checkCollision,
   lockPiece,
   clearLines,
+  isLockOut,
 } from "./board.ts";
 import { TetriminoType, RotationState } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
@@ -851,5 +852,28 @@ describe("clearLines", () => {
     expect(secondResult.linesCleared).toBe(0);
     expect(secondResult.clearedRowIndices).toEqual([]);
     expect(secondResult.board).toEqual(firstResult.board);
+  });
+});
+
+describe("isLockOut", () => {
+  it("returns true when all piece minos are above the skyline", () => {
+    // I-piece rotation ZERO: bounding box rows [false,true,false,false]
+    // row 1 is filled. At pos.y=18: filled cells land at y=18+1=19 < BUFFER_HEIGHT(20)
+    const piece = { type: TetriminoType.I, pos: { x: 3, y: 18 }, rotation: RotationState.ZERO };
+    expect(isLockOut(piece)).toBe(true);
+  });
+
+  it("returns false when any mino reaches the skyline (y >= BUFFER_HEIGHT)", () => {
+    // I-piece at pos.y=19: filled row at y=19+1=20 = BUFFER_HEIGHT — visible area
+    const piece = { type: TetriminoType.I, pos: { x: 3, y: 19 }, rotation: RotationState.ZERO };
+    expect(isLockOut(piece)).toBe(false);
+  });
+
+  it("returns false for T-piece at normal spawn (y=19)", () => {
+    // T rotation ZERO fills rows 0 and 1.
+    // Row 0: y=19+0=19 < 20 (buffer)
+    // Row 1: y=19+1=20 = BUFFER_HEIGHT (visible) → not lock-out
+    const piece = { type: TetriminoType.T, pos: { x: 3, y: 19 }, rotation: RotationState.ZERO };
+    expect(isLockOut(piece)).toBe(false);
   });
 });

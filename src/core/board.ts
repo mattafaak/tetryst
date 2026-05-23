@@ -1,5 +1,5 @@
 import { type Board, type Piece, type Cell, type ClearResult } from "./types.ts";
-import { BOARD_WIDTH, BOARD_HEIGHT, PIECE_SHAPES } from "./constants.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT, PIECE_SHAPES } from "./constants.ts";
 
 export function createBoard(width: number = BOARD_WIDTH, height: number = BOARD_HEIGHT): Board {
   const board: Board = [];
@@ -89,4 +89,16 @@ export function clearLines(board: Board): ClearResult {
     linesCleared: clearedRowIndices.length,
     clearedRowIndices,
   };
+}
+
+export function isLockOut(piece: Piece): boolean {
+  const shape = PIECE_SHAPES[piece.type][piece.rotation];
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (shape[r][c] && (piece.pos.y + r) >= BUFFER_HEIGHT) {
+        return false; // at least one mino is in the visible area
+      }
+    }
+  }
+  return true; // all minos above skyline
 }

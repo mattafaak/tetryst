@@ -2,7 +2,7 @@ import { type GameState, type InputAction, GamePhase, TetriminoType } from "../c
 import { processAction } from "../core/actions.ts";
 import { applyGravity } from "../core/gravity.ts";
 import { shouldLock as checkLock } from "../core/lock-delay.ts";
-import { lockPiece, clearLines } from "../core/board.ts";
+import { lockPiece, clearLines, isLockOut } from "../core/board.ts";
 import { updateEntryDelay } from "../core/entry-delay.ts";
 import { updateCombo } from "../core/combo.ts";
 import { evaluateClear, detectTSpin } from "../core/scoring.ts";
@@ -203,6 +203,13 @@ export class Game {
     const lockedPiece = this.state.activePiece;
     this.state.board = lockPiece(this.state.board, lockedPiece);
     this.state.activePiece = null;
+
+    // Lock-Out: all minos in buffer zone ends the game (TDG §8)
+    if (isLockOut(lockedPiece)) {
+      this.state.phase = GamePhase.GameOver;
+      return;
+    }
+
     const tSpinResult = detectTSpin(this.state.board, lockedPiece);  // detect on locked-but-pre-clear board
 
     const clearResult = clearLines(this.state.board);
