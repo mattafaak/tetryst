@@ -266,6 +266,16 @@ describe("TDG §6: Ghost Piece", () => {
     const ghostY = getGhostY(board, piece);
     expect(ghostY).toBeLessThan(30);
   });
+  it("ghost Y equals piece Y when piece is directly on floor", () => {
+    const board = emptyBoard();
+    const piece = spawnPiece(TetriminoType.T);
+    // Place piece as low as it can go on empty board
+    const ghostY = getGhostY(board, piece);
+    // Put piece at the ghost position — ghost should equal piece Y
+    const piece2 = { ...piece, pos: { ...piece.pos, y: ghostY } };
+    const ghostY2 = getGhostY(board, piece2);
+    expect(ghostY2).toBe(piece2.pos.y);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -344,6 +354,11 @@ describe("TDG §7: Scoring — Back-to-Back", () => {
     const next = processAction(s, { type: "HardDrop" });
     expect(next.backToBack).toBe(true);
   });
+  it("T-Spin with 0 lines cleared sets backToBack=true (extends B2B chain)", () => {
+    const result = evaluateClear(0, { isTSpin: true, isMini: false }, 0, true, false);
+    expect(result.isB2B).toBe(true);
+    expect(result.isB2BBroken).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -351,6 +366,18 @@ describe("TDG §7: Scoring — Back-to-Back", () => {
 // ---------------------------------------------------------------------------
 
 describe("TDG §7: Scoring — Perfect Clear", () => {
+  it("Perfect Clear Single = 800 × (level+1)", () => {
+    const result = evaluateClear(1, { isTSpin: false, isMini: false }, 0, false, true);
+    expect(result.score).toBe(800);
+  });
+  it("Perfect Clear Double = 1200 × (level+1)", () => {
+    const result = evaluateClear(2, { isTSpin: false, isMini: false }, 0, false, true);
+    expect(result.score).toBe(1200);
+  });
+  it("Perfect Clear Triple = 1800 × (level+1)", () => {
+    const result = evaluateClear(3, { isTSpin: false, isMini: false }, 0, false, true);
+    expect(result.score).toBe(1800);
+  });
   it("Perfect Clear Tetris = 2000 × (level+1)", () => {
     expect(evaluateClear(4, { isTSpin: false, isMini: false }, 0, false, true).score).toBe(2000);
   });
@@ -405,6 +432,22 @@ describe("TDG §7: Hold Piece", () => {
     state = { ...state, hasSwappedThisTurn: false };
     const after = holdPiece(state);
     expect(after.activePiece?.rotation).toBe(RotationState.ZERO);
+  });
+  it("Block-Out via hold: game over when swapped piece collides at spawn", () => {
+    let state = startGame(createInitialState(GameMode.Marathon));
+    // Do a first hold to have a held piece
+    state = holdPiece(state);
+    // Allow another hold by resetting the swap flag
+    state = { ...state, hasSwappedThisTurn: false };
+    // Fill the spawn rows so any swap causes a collision
+    const board = state.board.map((r) => [...r]);
+    for (let c = 0; c < BOARD_WIDTH; c++) {
+      board[19][c] = TetriminoType.Z;
+      board[20][c] = TetriminoType.Z;
+    }
+    state = { ...state, board };
+    const next = holdPiece(state);
+    expect(next.phase).toBe(GamePhase.GameOver);
   });
 });
 
@@ -641,6 +684,21 @@ describe("TDG §15: Sprint Mode (no level-up)", () => {
       ghostY: BOARD_HEIGHT - 3,
     });
     expect(processAction(s, { type: "HardDrop" }).level).toBe(0);
+  });
+  it("Sprint: starting level preserved at non-zero after line clears", () => {
+    const board = emptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    const s = baseState({
+      mode: GameMode.Sprint,
+      level: 3,
+      lines: 0,
+      effectiveLines: 0,
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      ghostY: BOARD_HEIGHT - 3,
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    expect(next.level).toBe(3);
   });
 });
 
