@@ -9,6 +9,7 @@ import { checkCollision, lockPiece, clearLines } from "./board.ts";
 import { addHardDropScore, evaluateClear, detectTSpin } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { holdPiece } from "./state.ts";
+import { updateLowestY } from "./lock-delay.ts";
 import { LINES_PER_LEVEL, BOARD_WIDTH } from "./constants.ts";
 
 export function processAction(
@@ -103,7 +104,7 @@ function handleSoftDrop(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, moved);
   newState.score = state.score + 1; // 1 point per cell soft dropped
 
-  return newState;
+  return updateLowestY(newState, moved.pos.y);
 }
 
 function handleHardDrop(state: GameState): GameState {
