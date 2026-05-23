@@ -182,7 +182,7 @@ export function evaluateClear(
   if (tSpinResult.isTSpin && !tSpinResult.isMini) {
     score = (TSPIN_SCORES[String(Math.min(linesCleared, 3))] ?? 0) * multiplier;
   } else if (tSpinResult.isMini) {
-    score = (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 2))] ?? 0) * multiplier;
+    score = (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 1))] ?? 0) * multiplier;
   } else {
     score = (LINE_CLEAR_SCORES[linesCleared] ?? 0) * multiplier;
   }

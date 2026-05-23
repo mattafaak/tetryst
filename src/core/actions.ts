@@ -78,12 +78,19 @@ function handleMove(
   const newState = { ...state, activePiece: moved };
   newState.ghostY = getGhostY(newState.board, moved);
 
-  // If piece is on ground and moving horizontally, reset lock timer
+  // If piece is on ground and moving horizontally, update lock state
   if (dy === 0 && state.lockState.onGround) {
-    newState.lockState = { ...state.lockState };
-    if (newState.lockState.resets < 15) {
-      newState.lockState.timer = 0;
-      newState.lockState.resets += 1;
+    const belowMoved = movePiece(moved, 0, 1);
+    if (checkCollision(state.board, belowMoved)) {
+      // Still on ground — reset lock timer
+      newState.lockState = { ...state.lockState };
+      if (newState.lockState.resets < 15) {
+        newState.lockState.timer = 0;
+        newState.lockState.resets += 1;
+      }
+    } else {
+      // Moved into open air — piece can fall, clear onGround
+      newState.lockState = { ...state.lockState, onGround: false, timer: 0 };
     }
   }
 
@@ -106,6 +113,11 @@ function handleSoftDrop(state: GameState): GameState {
   const newState = { ...state, activePiece: moved };
   newState.ghostY = getGhostY(newState.board, moved);
   newState.score = state.score + 1; // 1 point per cell soft dropped
+
+  // Recompute onGround — stale-true (from a rotation kick) would cause premature locking
+  const belowMoved = movePiece(moved, 0, 1);
+  const nowOnGround = checkCollision(state.board, belowMoved);
+  newState.lockState = { ...state.lockState, onGround: nowOnGround, timer: 0 };
 
   return updateLowestY(newState, moved.pos.y);
 }
@@ -234,12 +246,18 @@ function handleRotateCW(state: GameState): GameState {
   const newState = { ...state, activePiece: result.piece };
   newState.ghostY = getGhostY(newState.board, result.piece);
 
-  // If on ground, rotating resets lock timer (up to 15)
+  // If on ground, rotating resets lock timer (up to 15); but a wall kick can move
+  // the piece into open air — recheck groundedness after the kick
   if (state.lockState.onGround) {
-    newState.lockState = { ...state.lockState };
-    if (newState.lockState.resets < 15) {
-      newState.lockState.timer = 0;
-      newState.lockState.resets += 1;
+    const belowRotated = movePiece(result.piece, 0, 1);
+    if (checkCollision(state.board, belowRotated)) {
+      newState.lockState = { ...state.lockState };
+      if (newState.lockState.resets < 15) {
+        newState.lockState.timer = 0;
+        newState.lockState.resets += 1;
+      }
+    } else {
+      newState.lockState = { ...state.lockState, onGround: false, timer: 0 };
     }
   }
 
@@ -261,10 +279,15 @@ function handleRotateCCW(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, result.piece);
 
   if (state.lockState.onGround) {
-    newState.lockState = { ...state.lockState };
-    if (newState.lockState.resets < 15) {
-      newState.lockState.timer = 0;
-      newState.lockState.resets += 1;
+    const belowRotated = movePiece(result.piece, 0, 1);
+    if (checkCollision(state.board, belowRotated)) {
+      newState.lockState = { ...state.lockState };
+      if (newState.lockState.resets < 15) {
+        newState.lockState.timer = 0;
+        newState.lockState.resets += 1;
+      }
+    } else {
+      newState.lockState = { ...state.lockState, onGround: false, timer: 0 };
     }
   }
 

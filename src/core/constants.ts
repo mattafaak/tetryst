@@ -407,7 +407,7 @@ export const TSPIN_SCORES: Record<string, number> = {
 export const TSPIN_MINI_SCORES: Record<string, number> = {
   "0": 100, // T-spin Mini with no lines (TDG §7: 100 × (level + 1))
   "1": 200, // T-spin Mini single (TDG §7: 200 × (level + 1))
-  "2": 400, // T-spin Mini double (TDG §7: 400 × (level + 1))
+  // Mini can clear at most 1 line geometrically; no "double" entry
 };
 
 export const PERFECT_CLEAR_SCORES = [0, 800, 1200, 1800, 2000]; // TDG §7 by line count

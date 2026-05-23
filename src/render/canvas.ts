@@ -301,11 +301,10 @@ function drawMenu(
 
   ctx.font = "13px monospace";
   ctx.fillStyle = "#555";
-  ctx.fillText(
-    "Move: ←/→  |  Soft drop: ↓  |  Hard drop: Space  |  Rotate: Z/X  |  Hold: C  |  Pause: P  |  Mute: M",
-    canvasWidth / 2,
-    canvasHeight / 2 + 130,
-  );
+  const controlsHint = selectedMode === GameMode.Marathon
+    ? "Mode: ←/→  |  Start level: ↑/↓  |  Start: Enter  |  Mute: M"
+    : "Mode: ←/→  |  Start: Enter  |  Mute: M";
+  ctx.fillText(controlsHint, canvasWidth / 2, canvasHeight / 2 + 130);
 
   const muteLabel = audioEnabled ? "♪ ON" : "♪ OFF";
   ctx.font = "13px monospace";
