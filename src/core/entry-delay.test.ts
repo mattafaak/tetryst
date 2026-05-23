@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { onPieceLocked, updateEntryDelay } from "./entry-delay.ts";
 import { ENTRY_DELAY } from "./constants.ts";
-import { GamePhase, TetriminoType, RotationState } from "./types.ts";
+import { GamePhase, TetriminoType, RotationState , GameMode } from "./types.ts";
 import type { GameState } from "./types.ts";
 
 function createTestState(overrides?: Partial<GameState>): GameState {
@@ -29,6 +29,9 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     lineClearTimer: 0,
     clearedRowIndices: [],
     lastClearWasB2B: false,
+    mode: GameMode.Marathon,
+    modeTimer: 0,
+    popups: [],
     ...overrides,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { processAction } from "./actions.ts";
-import { GamePhase, TetriminoType, RotationState } from "./types.ts";
+import { GamePhase, TetriminoType, RotationState , GameMode } from "./types.ts";
 import type { GameState } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
 
@@ -39,6 +39,9 @@ function baseState(overrides?: Partial<GameState>): GameState {
     lineClearTimer: 0,
     clearedRowIndices: [],
     lastClearWasB2B: false,
+    mode: GameMode.Marathon,
+    modeTimer: 0,
+    popups: [],
     ...overrides,
   };
 }

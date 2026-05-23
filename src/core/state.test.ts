@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { createInitialState, transitionPhase, startGame, holdPiece, spawnNextPiece } from "./state.ts";
 import { createBoard } from "./board.ts";
 import { resetLockState } from "./lock-delay.ts";
-import { GamePhase, TetriminoType, RotationState } from "./types.ts";
+import { GamePhase, GameMode, TetriminoType, RotationState } from "./types.ts";
+import { ULTRA_DURATION_MS } from "./constants.ts";
 import type { GameState } from "./types.ts";
 
 describe("state", () => {
@@ -406,6 +407,60 @@ describe("state", () => {
         expect(state.nextQueue.length).toBe(3);
         expect(state.phase).toBe(GamePhase.Playing);
       }
+    });
+  });
+
+  describe("mode and modeTimer", () => {
+    it("createInitialState defaults to Marathon", () => {
+      const state = createInitialState();
+      expect(state.mode).toBe(GameMode.Marathon);
+      expect(state.modeTimer).toBe(0);
+    });
+
+    it("createInitialState(GameMode.Marathon) sets mode and modeTimer=0", () => {
+      const state = createInitialState(GameMode.Marathon);
+      expect(state.mode).toBe(GameMode.Marathon);
+      expect(state.modeTimer).toBe(0);
+    });
+
+    it("createInitialState(GameMode.Ultra) sets modeTimer to 3 minutes", () => {
+      const state = createInitialState(GameMode.Ultra);
+      expect(state.mode).toBe(GameMode.Ultra);
+      expect(state.modeTimer).toBe(ULTRA_DURATION_MS);
+    });
+
+    it("createInitialState(GameMode.Sprint) sets modeTimer to 0", () => {
+      const state = createInitialState(GameMode.Sprint);
+      expect(state.mode).toBe(GameMode.Sprint);
+      expect(state.modeTimer).toBe(0);
+    });
+  });
+
+  describe("startGame with startLevel", () => {
+    it("startGame(state, 5) sets level to 5", () => {
+      const state = createInitialState(GameMode.Marathon);
+      const started = startGame(state, 5);
+      expect(started.level).toBe(5);
+    });
+
+    it("startGame(state) defaults level to 0", () => {
+      const state = createInitialState(GameMode.Marathon);
+      const started = startGame(state);
+      expect(started.level).toBe(0);
+    });
+
+    it("startGame resets modeTimer for Ultra", () => {
+      const state = createInitialState(GameMode.Ultra);
+      const modified = { ...state, modeTimer: 0 };
+      const started = startGame(modified);
+      expect(started.modeTimer).toBe(ULTRA_DURATION_MS);
+    });
+
+    it("startGame resets popups to empty", () => {
+      const state = createInitialState(GameMode.Marathon);
+      const withPopups = { ...state, popups: [{ text: "TETRIS!", timer: 0, duration: 1200, color: "#fff" }] };
+      const started = startGame(withPopups);
+      expect(started.popups).toEqual([]);
     });
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { updateCombo } from "./combo.ts";
 import { COMBO_BASE } from "./constants.ts";
-import { GamePhase } from "./types.ts";
+import { GamePhase , GameMode } from "./types.ts";
 import type { GameState } from "./types.ts";
 
 function createTestState(overrides?: Partial<GameState>): GameState {
@@ -25,6 +25,9 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     lineClearTimer: 0,
     clearedRowIndices: [],
     lastClearWasB2B: false,
+    mode: GameMode.Marathon,
+    modeTimer: 0,
+    popups: [],
     ...overrides,
   };
 }

@@ -35,8 +35,22 @@ export enum GamePhase {
   Playing = "Playing",
   Paused = "Paused",
   GameOver = "GameOver",
+  Victory = "Victory",
   LineClear = "LineClear",
   EntryDelay = "EntryDelay",
+}
+
+export enum GameMode {
+  Marathon = "Marathon",
+  Sprint = "Sprint",
+  Ultra = "Ultra",
+}
+
+export interface PopupItem {
+  text: string;
+  timer: number;
+  duration: number;
+  color: string;
 }
 
 export interface TSpinResult {
@@ -87,6 +101,9 @@ export interface GameState {
   lineClearTimer: number;
   clearedRowIndices: number[];
   lastClearWasB2B: boolean;
+  mode: GameMode;
+  modeTimer: number;
+  popups: PopupItem[];
 }
 
 export type InputAction =
