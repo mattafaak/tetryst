@@ -147,7 +147,7 @@ function spawnFromQueue(state: GameState): GameState {
     newQueue = [...newQueue, { type: drawResult.piece }];
     currentBag = drawResult.bag;
     if (drawResult.needsNewBag) {
-      currentBag = createBag();
+      currentBag = [...currentBag, ...createBag()];
     }
   }
 

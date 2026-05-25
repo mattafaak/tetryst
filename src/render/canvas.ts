@@ -1,4 +1,5 @@
 import {
+  type Board,
   type Piece,
   type GameState,
   type PopupItem,
@@ -29,6 +30,58 @@ function fmtScore(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+// Offscreen canvas cache — only redrawn when the board reference changes
+let boardCacheCanvas: HTMLCanvasElement | null = null;
+let cachedBoard: Board | null = null;
+let cachedCellSize = 0;
+
+function renderBoardStatic(board: Board, cellSize: number): HTMLCanvasElement {
+  if (!boardCacheCanvas || cellSize !== cachedCellSize) {
+    boardCacheCanvas = document.createElement("canvas");
+    boardCacheCanvas.width = BOARD_WIDTH * cellSize;
+    boardCacheCanvas.height = VISIBLE_HEIGHT * cellSize;
+    cachedCellSize = cellSize;
+  }
+  const off = boardCacheCanvas.getContext("2d")!;
+
+  // Board background
+  off.fillStyle = "#1a1a2e";
+  off.fillRect(0, 0, boardCacheCanvas.width, boardCacheCanvas.height);
+
+  // Border
+  off.strokeStyle = "#2a2a3e";
+  off.lineWidth = 2;
+  off.strokeRect(0, 0, boardCacheCanvas.width, boardCacheCanvas.height);
+
+  // Grid lines
+  off.beginPath();
+  off.strokeStyle = "#1e1e2e";
+  off.lineWidth = 0.5;
+  for (let row = 1; row < VISIBLE_HEIGHT; row++) {
+    off.moveTo(0, row * cellSize);
+    off.lineTo(boardCacheCanvas.width, row * cellSize);
+  }
+  for (let col = 1; col < BOARD_WIDTH; col++) {
+    off.moveTo(col * cellSize, 0);
+    off.lineTo(col * cellSize, boardCacheCanvas.height);
+  }
+  off.stroke();
+
+  // Locked cells (visible rows only)
+  for (let row = 0; row < VISIBLE_HEIGHT; row++) {
+    for (let col = 0; col < BOARD_WIDTH; col++) {
+      const boardRow = row + BUFFER_HEIGHT;
+      const cell = board[boardRow]?.[col];
+      if (cell) {
+        const color = PIECE_COLORS[cell as TetriminoType];
+        drawCell(off, col, row, color, cellSize);
+      }
+    }
+  }
+
+  return boardCacheCanvas;
+}
+
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
   state: GameState,
@@ -55,55 +108,33 @@ export function renderFrame(
   const boardX = Math.floor((canvasWidth - boardPixelWidth) / 2);
   const boardY = Math.floor((canvasHeight - boardPixelHeight) / 2);
 
-  // Draw board background
-  ctx.fillStyle = "#1a1a2e";
-  ctx.fillRect(boardX, boardY, boardPixelWidth, boardPixelHeight);
-
-  // Draw board border
-  ctx.strokeStyle = "#2a2a3e";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(boardX, boardY, boardPixelWidth, boardPixelHeight);
-
-  // Draw grid lines
-  ctx.beginPath();
-  ctx.strokeStyle = "#1e1e2e";
-  ctx.lineWidth = 0.5;
-  for (let row = 1; row < VISIBLE_HEIGHT; row++) {
-    ctx.moveTo(boardX, boardY + row * cellSize);
-    ctx.lineTo(boardX + boardPixelWidth, boardY + row * cellSize);
+  // Draw cached board static layer — only redrawn when board ref changes
+  if (state.board !== cachedBoard || cellSize !== cachedCellSize) {
+    renderBoardStatic(state.board, cellSize);
+    cachedBoard = state.board;
   }
-  for (let col = 1; col < BOARD_WIDTH; col++) {
-    ctx.moveTo(boardX + col * cellSize, boardY);
-    ctx.lineTo(boardX + col * cellSize, boardY + boardPixelHeight);
-  }
-  ctx.stroke();
+  ctx.drawImage(boardCacheCanvas!, boardX, boardY);
 
-  // Draw locked cells (only visible portion)
-  for (let row = 0; row < VISIBLE_HEIGHT; row++) {
-    for (let col = 0; col < BOARD_WIDTH; col++) {
-      const boardRow = row + BUFFER_HEIGHT;
-      const cell = state.board[boardRow]?.[col];
-      if (cell) {
-        const color = PIECE_COLORS[cell as TetriminoType];
-        drawCell(ctx, boardX, boardY, col, row, color, cellSize);
-      }
-    }
-  }
+  // Board-area drawings use a translated context so coordinates are grid-relative
+  ctx.save();
+  ctx.translate(boardX, boardY);
 
   // Draw ghost piece
   if (state.activePiece && state.phase === GamePhase.Playing) {
-    drawGhost(ctx, boardX, boardY, state.activePiece, state.ghostY, cellSize);
+    drawGhost(ctx, state.activePiece, state.ghostY, cellSize);
   }
 
   // Draw active piece
   if (state.activePiece && state.phase === GamePhase.Playing) {
-    drawPiece(ctx, boardX, boardY, state.activePiece, cellSize);
+    drawPiece(ctx, state.activePiece, cellSize);
   }
 
   // Draw line clear animation
   if (state.phase === GamePhase.LineClear) {
-    drawLineClearAnimation(ctx, boardX, boardY, state, cellSize);
+    drawLineClearAnimation(ctx, state, cellSize);
   }
+
+  ctx.restore();
 
   // Draw popups (floating action text)
   if (state.popups.length > 0) {
@@ -133,26 +164,22 @@ export function renderFrame(
 
 function drawCell(
   ctx: CanvasRenderingContext2D,
-  boardX: number,
-  boardY: number,
   col: number,
   row: number,
   color: string,
   cellSize: number
 ): void {
-  const x = boardX + col * cellSize;
-  const y = boardY + row * cellSize;
+  const x = col * cellSize;
+  const y = row * cellSize;
   const inset = 1;
 
   ctx.fillStyle = color;
   ctx.fillRect(x + inset, y + inset, cellSize - inset * 2, cellSize - inset * 2);
 
-  // Highlight (top-left shine)
   ctx.fillStyle = "rgba(255,255,255,0.15)";
   ctx.fillRect(x + inset, y + inset, cellSize - inset * 2, 2);
   ctx.fillRect(x + inset, y + inset, 2, cellSize - inset * 2);
 
-  // Shadow (bottom-right)
   ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.fillRect(x + inset, y + cellSize - inset - 2, cellSize - inset * 2, 2);
   ctx.fillRect(x + cellSize - inset - 2, y + inset, 2, cellSize - inset * 2);
@@ -160,8 +187,6 @@ function drawCell(
 
 function drawPiece(
   ctx: CanvasRenderingContext2D,
-  boardX: number,
-  boardY: number,
   piece: Piece,
   cellSize: number
 ): void {
@@ -174,7 +199,7 @@ function drawPiece(
         const visibleRow = piece.pos.y + r - BUFFER_HEIGHT;
         const boardCol = piece.pos.x + c;
         if (visibleRow >= 0 && visibleRow < VISIBLE_HEIGHT) {
-          drawCell(ctx, boardX, boardY, boardCol, visibleRow, color, cellSize);
+          drawCell(ctx, boardCol, visibleRow, color, cellSize);
         }
       }
     }
@@ -183,8 +208,6 @@ function drawPiece(
 
 function drawGhost(
   ctx: CanvasRenderingContext2D,
-  boardX: number,
-  boardY: number,
   piece: Piece,
   ghostY: number,
   cellSize: number
@@ -198,8 +221,8 @@ function drawGhost(
         const visibleRow = ghostY + r - BUFFER_HEIGHT;
         const boardCol = piece.pos.x + c;
         if (visibleRow >= 0 && visibleRow < VISIBLE_HEIGHT) {
-          const x = boardX + boardCol * cellSize;
-          const y = boardY + visibleRow * cellSize;
+          const x = boardCol * cellSize;
+          const y = visibleRow * cellSize;
           const inset = 1;
 
           ctx.strokeStyle = color;
@@ -215,8 +238,6 @@ function drawGhost(
 
 function drawLineClearAnimation(
   ctx: CanvasRenderingContext2D,
-  boardX: number,
-  boardY: number,
   state: GameState,
   cellSize: number
 ): void {
@@ -227,7 +248,7 @@ function drawLineClearAnimation(
   for (const boardRow of state.clearedRowIndices) {
     const visibleRow = boardRow - BUFFER_HEIGHT;
     if (visibleRow >= 0 && visibleRow < VISIBLE_HEIGHT) {
-      ctx.fillRect(boardX, boardY + visibleRow * cellSize, BOARD_WIDTH * cellSize, cellSize);
+      ctx.fillRect(0, visibleRow * cellSize, BOARD_WIDTH * cellSize, cellSize);
     }
   }
 }

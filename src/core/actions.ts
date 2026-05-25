@@ -2,15 +2,15 @@ import {
   type GameState,
   type InputAction,
   GamePhase,
-  GameMode,
 } from "./types.ts";
 import { tryRotateCW, tryRotateCCW, movePiece, getGhostY } from "./pieces.ts";
-import { checkCollision, lockPiece, clearLines, isLockOut, isPerfectClear } from "./board.ts";
-import { addHardDropScore, evaluateClear, detectTSpin, effectiveLinesFor, calculateLevelFromEffective } from "./scoring.ts";
-import { updateCombo } from "./combo.ts";
+import { checkCollision, lockPiece, isLockOut } from "./board.ts";
+import { addHardDropScore } from "./scoring.ts";
+import { executeLock } from "./lock.ts";
 import { holdPiece } from "./state.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { MARATHON_MAX_LEVEL, MAX_LOCK_RESETS } from "./constants.ts";
+import { MAX_LOCK_RESETS } from "./constants.ts";
+import { pushPopup } from "../render/popups.ts";
 
 export function processAction(
   state: GameState,
@@ -133,10 +133,7 @@ function handleSoftDrop(state: GameState): GameState {
 }
 
 function handleHardDrop(state: GameState): GameState {
-  if (
-    state.phase !== GamePhase.Playing ||
-    state.activePiece === null
-  ) {
+  if (state.phase !== GamePhase.Playing || state.activePiece === null) {
     return state;
   }
 
@@ -149,8 +146,6 @@ function handleHardDrop(state: GameState): GameState {
     rows++;
   }
 
-  const droppedY = dropped.pos.y;
-
   // Lock-Out: piece locked entirely in buffer zone (TDG §8)
   if (isLockOut(dropped)) {
     return {
@@ -161,82 +156,23 @@ function handleHardDrop(state: GameState): GameState {
     };
   }
 
-  // Hard drop: piece locks immediately, bypass lock delay
-  const lockedBoard = lockPiece(state.board, dropped);
-  const tSpinResult = detectTSpin(lockedBoard, dropped);  // before clearLines
-  const clearResult = clearLines(lockedBoard);
-
+  // Lock piece onto board and apply hard-drop score
   let nextState: GameState = {
     ...state,
-    board: clearResult.board,
+    board: lockPiece(state.board, dropped),
     activePiece: null,
     score: state.score + addHardDropScore(state, rows),
-    ghostY: droppedY,
+    ghostY: dropped.pos.y,
     lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
   };
 
-  if (clearResult.linesCleared > 0) {
-    const comboResult = updateCombo(nextState, clearResult.linesCleared);
-    nextState = comboResult.state;
-    nextState.score += comboResult.bonusScore;
+  // Shared scoring/lock logic — handles T-spin, line clear, combo, B2B, phase
+  const result = executeLock(nextState, dropped);
+  nextState = result.state;
 
-    const perfectClear = isPerfectClear(nextState.board);
-    const wasB2BActive = nextState.backToBack;
-    const scoreResult = evaluateClear(
-      clearResult.linesCleared,
-      tSpinResult,
-      nextState.level,
-      nextState.backToBack,
-      perfectClear
-    );
-
-    nextState.score += scoreResult.score;
-    nextState.backToBack = scoreResult.isB2B;
-    nextState.lines += clearResult.linesCleared;
-
-    if (nextState.mode === GameMode.Marathon) {
-      const eff = effectiveLinesFor(
-        clearResult.linesCleared,
-        tSpinResult,
-        scoreResult.isB2B && wasB2BActive,
-      );
-      nextState.effectiveLines += eff;
-      const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
-      if (newLevel > nextState.level) {
-        nextState.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
-      }
-    }
-
-    nextState.phase = GamePhase.LineClear;
-    nextState.lineClearTimer = 0;
-    nextState.clearedRowIndices = clearResult.clearedRowIndices;
-  } else {
-    const comboResult = updateCombo(nextState, 0);
-    nextState = comboResult.state;
-
-    if (tSpinResult.isTSpin) {
-      const wasB2BActive = nextState.backToBack;
-      const scoreResult = evaluateClear(
-        0,
-        tSpinResult,
-        nextState.level,
-        nextState.backToBack,
-        false,
-      );
-      nextState.score += scoreResult.score;
-      nextState.backToBack = scoreResult.isB2B;
-      if (nextState.mode === GameMode.Marathon) {
-        const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B && wasB2BActive);
-        nextState.effectiveLines += eff;
-        const newLevel = calculateLevelFromEffective(nextState.effectiveLines);
-        if (newLevel > nextState.level) {
-          nextState.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
-        }
-      }
-    }
-
-    nextState.phase = GamePhase.EntryDelay;
-    nextState.entryDelayTimer = 0;
+  // Apply action popups (hard drops now show TETRIS!, COMBO, etc.)
+  for (const popup of result.popupInfo) {
+    nextState = pushPopup(nextState, popup.text, popup.color);
   }
 
   return nextState;

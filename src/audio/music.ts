@@ -10,6 +10,7 @@ let activeGains: GainNode[] = [];
 let activeSources: AudioBufferSourceNode[] = [];
 let songTimeout: number | null = null;
 let currentSongIndex = 0;
+let cachedSchedule: NoteEvent[] | null = null;
 
 // Note frequencies (3rd–6th octave, equal temperament)
 const NOTES: Record<string, number> = {
@@ -374,7 +375,8 @@ function playSongCycle(): void {
   const now = ctx.currentTime;
   const lookAhead = 0.08; // small buffer for reliable scheduling
   const song = SONGS[currentSongIndex];
-  const events = buildSchedule(song);
+  if (!cachedSchedule) cachedSchedule = buildSchedule(song);
+  const events = cachedSchedule;
 
   scheduleSong(events, now + lookAhead);
 

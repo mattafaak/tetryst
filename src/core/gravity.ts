@@ -1,7 +1,6 @@
-import { type GameState, type Piece } from "./types.ts";
+import { type GameState } from "./types.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { checkCollision } from "./board.ts";
-import { GRAVITY_SPEED_CURVE } from "./constants.ts";
+import { PIECE_SHAPES, GRAVITY_SPEED_CURVE } from "./constants.ts";
 
 /**
  * Return the gravity delay in milliseconds for the given level.
@@ -33,30 +32,36 @@ export function applyGravity(
 
   const delay = getGravityDelay(state.level);
   let timer = state.gravityTimer + dt;
-  let currentPiece: Piece = {
-    ...state.activePiece,
-    pos: { ...state.activePiece.pos },
-  };
+  let pieceY = state.activePiece.pos.y;
   let dropped = false;
   let onGround = state.lockState.onGround;
+
+  // Inline collision check against the piece's shape at a target Y to avoid
+  // allocating Piece objects per drop tick on the hot path.
+  function wouldCollide(y: number): boolean {
+    const p = state.activePiece!;
+    const shape = PIECE_SHAPES[p.type][p.rotation];
+    for (let r = 0; r < shape.length; r++) {
+      for (let c = 0; c < shape[r].length; c++) {
+        if (!shape[r][c]) continue;
+        const bx = p.pos.x + c;
+        const by = y + r;
+        if (bx < 0 || bx >= 10 || by >= 40) return true;
+        if (by >= 0 && state.board[by][bx] !== null) return true;
+      }
+    }
+    return false;
+  }
 
   while (timer >= delay) {
     timer -= delay;
 
-    const moved: Piece = {
-      ...currentPiece,
-      pos: {
-        x: currentPiece.pos.x,
-        y: currentPiece.pos.y + 1,
-      },
-    };
-
-    if (checkCollision(state.board, moved)) {
+    if (wouldCollide(pieceY + 1)) {
       onGround = true;
       break;
     }
 
-    currentPiece = moved;
+    pieceY++;
     dropped = true;
     onGround = false;
   }
@@ -64,7 +69,7 @@ export function applyGravity(
   let finalState: GameState = {
     ...state,
     gravityTimer: timer,
-    activePiece: currentPiece,
+    activePiece: { ...state.activePiece, pos: { x: state.activePiece.pos.x, y: pieceY } },
     lockState: {
       ...state.lockState,
       onGround,
@@ -72,7 +77,7 @@ export function applyGravity(
   };
 
   if (dropped) {
-    finalState = updateLowestY(finalState, currentPiece.pos.y);
+    finalState = updateLowestY(finalState, pieceY);
   }
 
   return { state: finalState, dropped };

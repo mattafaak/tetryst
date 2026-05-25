@@ -8,7 +8,9 @@ export function getAudioContext(): AudioContext {
     audioCtx = new AudioContext();
   }
   if (audioCtx.state === "suspended") {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {
+      /* Autoplay policy — user gesture required; playback degrades gracefully */
+    });
   }
   return audioCtx;
 }

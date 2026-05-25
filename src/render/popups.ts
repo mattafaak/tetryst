@@ -12,8 +12,10 @@ export function pushPopup(
 }
 
 export function tickPopups(state: GameState, dt: number): GameState {
-  const updated = state.popups
-    .map((p) => ({ ...p, timer: p.timer + dt }))
-    .filter((p) => p.timer < p.duration);
-  return { ...state, popups: updated };
+  const next: PopupItem[] = [];
+  for (const p of state.popups) {
+    const t = p.timer + dt;
+    if (t < p.duration) next.push({ ...p, timer: t });
+  }
+  return { ...state, popups: next };
 }

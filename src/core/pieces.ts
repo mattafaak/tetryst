@@ -5,6 +5,9 @@ import {
   RotationState,
 } from "./types.ts";
 import {
+  PIECE_SHAPES,
+  BOARD_WIDTH,
+  BOARD_HEIGHT,
   SPAWN_POSITION,
   I_SPAWN_POSITION,
   getWallKicks,
@@ -100,14 +103,20 @@ export function tryRotateCCW(
 export function getGhostY(board: Board, piece: Piece): number {
   let ghostY = piece.pos.y;
 
+  const shape = PIECE_SHAPES[piece.type][piece.rotation];
   while (true) {
-    const testPiece: Piece = {
-      ...piece,
-      pos: { x: piece.pos.x, y: ghostY + 1 },
-    };
-    if (checkCollision(board, testPiece)) {
-      break;
+    const testY = ghostY + 1;
+    let hit = false;
+    for (let r = 0; r < shape.length && !hit; r++) {
+      for (let c = 0; c < shape[r].length && !hit; c++) {
+        if (!shape[r][c]) continue;
+        const bx = piece.pos.x + c;
+        const by = testY + r;
+        if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT) hit = true;
+        else if (by >= 0 && board[by][bx] !== null) hit = true;
+      }
     }
+    if (hit) break;
     ghostY++;
   }
 

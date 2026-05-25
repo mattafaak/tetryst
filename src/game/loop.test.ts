@@ -322,4 +322,80 @@ describe("Game integration", () => {
       ]).toContain(g.state.phase as GamePhase);
     });
   });
+
+  describe("pause/resume", () => {
+    it("pressing P during gameplay pauses", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      // Start a game
+      pressKey("Enter");
+      advanceFrames(10);
+
+      // Press P to pause
+      pressKey("KeyP");
+      advanceFrames(5);
+
+      const g = game as unknown as { state: { phase: GamePhase } };
+      expect(g.state.phase).toBe(GamePhase.Paused);
+    });
+
+    it("pressing P while paused resumes gameplay", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      pressKey("Enter");
+      advanceFrames(10);
+
+      pressKey("KeyP"); releaseKey("KeyP"); // pause
+      advanceFrames(5);
+      pressKey("KeyP"); releaseKey("KeyP"); // resume
+      advanceFrames(5);
+
+      const g = game as unknown as { state: { phase: GamePhase } };
+      expect(g.state.phase).toBe(GamePhase.Playing);
+    });
+
+    it("movement keys are ignored while paused", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      pressKey("Enter");
+      advanceFrames(10);
+
+      pressKey("KeyP"); // pause
+      advanceFrames(5);
+
+      // Try to move while paused
+      pressKey("ArrowLeft");
+      advanceFrames(5);
+
+      // Should still be paused
+      const g = game as unknown as { state: { phase: GamePhase } };
+      expect(g.state.phase).toBe(GamePhase.Paused);
+    });
+
+    it("mute works while paused", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      pressKey("Enter");
+      advanceFrames(10);
+
+      pressKey("KeyP"); // pause
+      advanceFrames(5);
+
+      const g = game as unknown as { audioEnabled: boolean };
+      const wasEnabled = g.audioEnabled;
+
+      pressKey("KeyM"); // mute
+      advanceFrames(5);
+
+      expect(g.audioEnabled).toBe(!wasEnabled);
+    });
+  });
 });

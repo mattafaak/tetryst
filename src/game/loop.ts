@@ -2,21 +2,17 @@ import { type GameState, type InputAction, GamePhase, GameMode } from "../core/t
 import { processAction } from "../core/actions.ts";
 import { applyGravity } from "../core/gravity.ts";
 import { shouldLock as checkLock, resetLockState } from "../core/lock-delay.ts";
-import { lockPiece, clearLines, isLockOut, isPerfectClear } from "../core/board.ts";
+import { lockPiece, isLockOut } from "../core/board.ts";
 import { updateEntryDelay } from "../core/entry-delay.ts";
-import { updateCombo } from "../core/combo.ts";
-import { evaluateClear, detectTSpin, effectiveLinesFor, calculateLevelFromEffective } from "../core/scoring.ts";
+import { checkModeVictory } from "../core/mode-rules.ts";
+import { executeLock } from "../core/lock.ts";
 import { createInitialState, startGame, spawnNextPiece } from "../core/state.ts";
 import { renderFrame } from "../render/canvas.ts";
 import { KeyboardHandler } from "../input/keyboard.ts";
 import { playSFX } from "../audio/sfx.ts";
 import { playMusic, stopMusic } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
-import {
-  LINE_CLEAR_ANIM_DURATION,
-  MARATHON_MAX_LEVEL,
-} from "../core/constants.ts";
-import { checkModeVictory } from "../core/mode-rules.ts";
+import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
 import { pushPopup, tickPopups } from "../render/popups.ts";
 
@@ -52,27 +48,29 @@ export class Game {
     });
     this.keyboard.attach();
     this.lastTime = performance.now();
-    this.cellSize = this.calculateCellSize();
+    this.recalcCellSize();
+    window.addEventListener("resize", this.recalcCellSize);
     this.loop(this.lastTime);
   }
 
   stop(): void {
     this.keyboard.detach();
+    window.removeEventListener("resize", this.recalcCellSize);
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
   }
 
-  private calculateCellSize(): number {
+  private recalcCellSize = (): void => {
     const dpr = window.devicePixelRatio || 1;
     const { width, height } = this.ctx.canvas;
     const logicalWidth = width / dpr;
     const logicalHeight = height / dpr;
     const byWidth = Math.floor((logicalWidth * 0.5) / 10);
     const byHeight = Math.floor((logicalHeight * 0.9) / 20);
-    return Math.min(byWidth, byHeight, 36);
-  }
+    this.cellSize = Math.min(byWidth, byHeight, 36);
+  };
 
   private handleInput(action: InputAction): void {
     // During attract mode: Enter starts a game immediately; any other key
@@ -129,13 +127,18 @@ export class Game {
       return;
     }
 
+    // During pause the only valid actions are Pause (to resume) and Mute (above)
+    if (this.state.phase === GamePhase.Paused && action.type !== "Pause") {
+      return;
+    }
+
     if (action.type === "Start" && this.state.phase === GamePhase.GameOver) {
       this.state = startGame(createInitialState(this.selectedMode), this.selectedStartLevel);
       return;
     }
 
     if (action.type === "Start" && this.state.phase === GamePhase.Victory) {
-      this.menuIsStatic = false;
+      this.menuIsStatic = true;
       this.state = createInitialState(this.selectedMode);
       return;
     }
@@ -170,17 +173,6 @@ export class Game {
     }
   }
 
-  private playLockSFX(linesCleared: number, tSpinResult: import("../core/types.ts").TSpinResult): void {
-    if (!this.audioEnabled) return;
-    if (linesCleared === 4) {
-      playSFX("tetris");
-    } else if (tSpinResult.isTSpin && linesCleared > 0) {
-      playSFX("tspin");
-    } else if (linesCleared > 0) {
-      playSFX("clear");
-    }
-  }
-
   private loop = (now: number): void => {
     let dt = now - this.lastTime;
     this.lastTime = now;
@@ -188,7 +180,6 @@ export class Game {
     if (dt > MAX_DT) dt = MAX_DT;
     if (dt < 0) dt = 0;
 
-    this.cellSize = this.calculateCellSize();
     this.update(dt);
     renderFrame(
       this.ctx,
@@ -204,7 +195,15 @@ export class Game {
   };
 
   private update(dt: number): void {
-    this.keyboard.update(dt);
+    // Don't accumulate DAS/ARR timers while paused (held keys would fire
+    // immediately on unpause otherwise).
+    if (this.state.phase !== GamePhase.Paused) {
+      this.keyboard.update(dt);
+    }
+
+    // Mode timer runs every frame regardless of phase so Ultra countdown
+    // doesn't pause during line-clear animation or entry delay.
+    this.updateModeTimer(dt);
 
     switch (this.state.phase) {
       case GamePhase.Menu:
@@ -230,6 +229,9 @@ export class Game {
         break;
       case GamePhase.Victory:
       case GamePhase.GameOver:
+        if (this.isAttractMode) {
+          this.restartAttractGame();
+        }
         break;
     }
 
@@ -259,26 +261,22 @@ export class Game {
     }
   }
 
+  private updateModeTimer(dt: number): void {
+    if (this.state.phase === GamePhase.Victory) return;
+    if (this.state.mode === GameMode.Ultra) {
+      const next = Math.max(0, this.state.modeTimer - dt);
+      this.state = { ...this.state, modeTimer: next };
+      if (next <= 0) {
+        this.triggerVictory();
+      }
+    } else if (this.state.mode === GameMode.Sprint && this.state.phase === GamePhase.Playing) {
+      this.state = { ...this.state, modeTimer: this.state.modeTimer + dt };
+    }
+  }
+
   private updatePlaying(dt: number): void {
     // Tick popups
     this.state = tickPopups(this.state, dt);
-
-    // Ultra countdown / Sprint elapsed time
-    if (this.state.mode === GameMode.Ultra) {
-      this.state = {
-        ...this.state,
-        modeTimer: Math.max(0, this.state.modeTimer - dt),
-      };
-      if (checkModeVictory(this.state)) {
-        this.triggerVictory();
-        return;
-      }
-    } else if (this.state.mode === GameMode.Sprint) {
-      this.state = {
-        ...this.state,
-        modeTimer: this.state.modeTimer + dt,
-      };
-    }
 
     const gravResult = applyGravity(this.state, dt);
     this.state = gravResult.state;
@@ -320,96 +318,32 @@ export class Game {
       return;
     }
 
-    const tSpinResult = detectTSpin(this.state.board, lockedPiece);  // detect on locked-but-pre-clear board
+    const result = executeLock(this.state, lockedPiece);
+    this.state = result.state;
 
-    const clearResult = clearLines(this.state.board);
-    this.state.board = clearResult.board;
-
-    if (clearResult.linesCleared > 0) {
-      this.state.clearedRowIndices = clearResult.clearedRowIndices;
-      this.playLockSFX(clearResult.linesCleared, tSpinResult);
-
-      const comboResult = updateCombo(this.state, clearResult.linesCleared);
-      this.state = comboResult.state;
-
-      const isPerfectClear = this.checkPerfectClear();
-      const wasB2BActive = this.state.backToBack;
-      const scoreResult = evaluateClear(
-        clearResult.linesCleared,
-        tSpinResult,
-        this.state.level,
-        this.state.backToBack,
-        isPerfectClear,
-      );
-
-      this.state.score += scoreResult.score + comboResult.bonusScore;
-      this.state.backToBack = scoreResult.isB2B;
-      this.state.lines += clearResult.linesCleared;
-
-      if (this.state.mode === GameMode.Marathon) {
-        const eff = effectiveLinesFor(
-          clearResult.linesCleared,
-          tSpinResult,
-          scoreResult.isB2B && wasB2BActive,
-        );
-        this.state.effectiveLines += eff;
-        const newLevel = calculateLevelFromEffective(this.state.effectiveLines);
-        if (newLevel > this.state.level) {
-          this.state.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
-          if (this.audioEnabled) playSFX("levelup");
-          this.state = pushPopup(this.state, `LEVEL ${this.state.level}!`, "#ffff00");
+    // Play SFX based on what happened
+    if (this.audioEnabled) {
+      if (result.linesCleared > 0) {
+        if (result.linesCleared === 4) {
+          playSFX("tetris");
+        } else if (result.tSpinResult.isTSpin) {
+          playSFX("tspin");
+        } else {
+          playSFX("clear");
         }
       }
+      if (result.needsLevelupSFX) playSFX("levelup");
+      if (result.needsTSpinSFX) playSFX("tspin");
+    }
 
-      // Push action popups
-      this.state = this.buildPopups(
-        this.state,
-        clearResult.linesCleared,
-        tSpinResult,
-        scoreResult.isB2B && wasB2BActive,
-        isPerfectClear,
-        this.state.combo,
-      );
+    // Apply popups
+    for (const popup of result.popupInfo) {
+      this.state = pushPopup(this.state, popup.text, popup.color);
+    }
 
-      // Check mode victory after scoring
-      if (checkModeVictory(this.state)) {
-        this.triggerVictory();
-        return;
-      }
-
-      this.state.phase = GamePhase.LineClear;
-      this.state.lineClearTimer = 0;
-    } else {
-      const comboResult = updateCombo(this.state, 0);
-      this.state = comboResult.state;
-
-      // Award T-spin no-clear bonus if applicable
-      if (tSpinResult.isTSpin) {
-        const wasB2BActive = this.state.backToBack;
-        const scoreResult = evaluateClear(
-          0,
-          tSpinResult,
-          this.state.level,
-          this.state.backToBack,
-          false,
-        );
-        this.state.score += scoreResult.score;
-        this.state.backToBack = scoreResult.isB2B;
-        if (this.state.mode === GameMode.Marathon) {
-          const eff = effectiveLinesFor(0, tSpinResult, scoreResult.isB2B && wasB2BActive);
-          this.state.effectiveLines += eff;
-          const newLevel = calculateLevelFromEffective(this.state.effectiveLines);
-          if (newLevel > this.state.level) {
-            this.state.level = Math.min(newLevel, MARATHON_MAX_LEVEL);
-            if (this.audioEnabled) playSFX("levelup");
-            this.state = pushPopup(this.state, `LEVEL ${this.state.level}!`, "#ffff00");
-          }
-        }
-        if (this.audioEnabled) playSFX("tspin");
-      }
-
-      this.state.phase = GamePhase.EntryDelay;
-      this.state.entryDelayTimer = 0;
+    // Check mode victory after all scoring
+    if (result.victoryTriggered) {
+      this.triggerVictory();
     }
   }
 
@@ -455,52 +389,20 @@ export class Game {
       case GamePhase.EntryDelay:
         this.updateEntryDelayPhase(dt);
         break;
-      case GamePhase.GameOver:
-      case GamePhase.Victory:
-        this.aiController.reset();
-        this.state = startGame(createInitialState());
-        this.prevPhase = GamePhase.Playing;
-        break;
     }
   }
 
-  private buildPopups(
-    state: GameState,
-    linesCleared: number,
-    tSpinResult: import("../core/types.ts").TSpinResult,
-    isB2B: boolean,
-    isPerfectClear: boolean,
-    combo: number,
-  ): GameState {
-    let s = state;
-    if (linesCleared === 4) {
-      s = pushPopup(s, "TETRIS!", "#00f0f0");
-    } else if (tSpinResult.isTSpin && linesCleared === 3) {
-      s = pushPopup(s, "T-SPIN TRIPLE", "#a000f0");
-    } else if (tSpinResult.isTSpin && linesCleared === 2) {
-      s = pushPopup(s, "T-SPIN DOUBLE", "#a000f0");
-    } else if (tSpinResult.isTSpin && linesCleared === 1) {
-      s = pushPopup(s, "T-SPIN SINGLE", "#a000f0");
-    } else if (tSpinResult.isTSpin && linesCleared === 0) {
-      s = pushPopup(s, "T-SPIN", "#a000f0");
-    }
-    if (isPerfectClear) {
-      s = pushPopup(s, "PERFECT CLEAR!", "#ffffff");
-    }
-    if (isB2B) {
-      s = pushPopup(s, "BACK-TO-BACK", "#f0a000");
-    }
-    if (combo >= 2) {
-      s = pushPopup(s, `${combo}× COMBO`, "#00f0f0");
-    }
-    return s;
+  private restartAttractGame(): void {
+    this.aiController?.reset();
+    this.state = startGame(createInitialState());
+    this.prevPhase = GamePhase.Playing;
   }
 
   private startAttractMode(): void {
     this.isAttractMode = true;
     this.audioEnabled = false;
     this.aiController = createAttractAIController();
-    this.state = startGame(createInitialState());
+    this.state = startGame(createInitialState(this.selectedMode));
     this.prevPhase = GamePhase.Playing;
   }
 
@@ -508,9 +410,5 @@ export class Game {
     this.isAttractMode = false;
     this.audioEnabled = true;
     this.aiController = null;
-  }
-
-  private checkPerfectClear(): boolean {
-    return isPerfectClear(this.state.board);
   }
 }
