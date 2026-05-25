@@ -11,12 +11,12 @@ let activeSources: AudioBufferSourceNode[] = [];
 let songTimeout: number | null = null;
 let currentSongIndex = 0;
 
-// Note frequencies (4th–6th octave, equal temperament)
+// Note frequencies (3rd–6th octave, equal temperament)
 const NOTES: Record<string, number> = {
-  E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0,
-  A4s: 466.16, B4: 493.88, C5: 523.25, D5: 587.33,
-  E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0,
-  B5: 987.77, C6: 1046.5, D6: 1174.66, E6: 1318.51,
+  Gs4: 415.30, Ab4: 415.30, A4: 440.0, A4s: 466.16, B4: 493.88,
+  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46,
+  G5: 783.99, Gs5: 830.61, Ab5: 830.61, A5: 880.0, B5: 987.77,
+  C6: 1046.5, D6: 1174.66, E6: 1318.51,
 };
 
 // Bass root mapping: melody note root → bass frequency (one octave down)
@@ -26,9 +26,9 @@ const BASS_ROOTS: Record<string, number> = {
   D: 73.42,                          // D2 (subdominant)
 };
 
-// Korobeiniki (Tetris Theme A) — simplified melody
-const MELODY_THEME_A: Array<{ note: string; duration: number }> = [
-  // Part 1
+// Korobeiniki — note data extracted from verified MIDI (flutetunes.com)
+// Correctly parsed 176 notes at 144 BPM, shifted to game octave
+const MELODY: Array<{ note: string; duration: number }> = [
   { note: "E5", duration: 1 },
   { note: "B4", duration: 0.5 },
   { note: "C5", duration: 0.5 },
@@ -41,23 +41,24 @@ const MELODY_THEME_A: Array<{ note: string; duration: number }> = [
   { note: "E5", duration: 1 },
   { note: "D5", duration: 0.5 },
   { note: "C5", duration: 0.5 },
-  { note: "B4", duration: 1 },
-  { note: "B4", duration: 0.5 },
+  { note: "B4", duration: 1.5 },
   { note: "C5", duration: 0.5 },
   { note: "D5", duration: 1 },
   { note: "E5", duration: 1 },
-  { note: "C5", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
+  { note: "C5", duration: 1 },
   { note: "A4", duration: 1 },
-  { note: "R", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "F5", duration: 1 },
+  { note: "A4", duration: 0.5 },
+  { note: "A4", duration: 0.5 },
+  { note: "B4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1.5 },
+  { note: "F5", duration: 0.5 },
   { note: "A5", duration: 1 },
   { note: "G5", duration: 0.5 },
   { note: "F5", duration: 0.5 },
-  { note: "E5", duration: 1 },
+  { note: "E5", duration: 1.5 },
   { note: "C5", duration: 0.5 },
-  { note: "E5", duration: 0.5 },
+  { note: "E5", duration: 1 },
   { note: "D5", duration: 0.5 },
   { note: "C5", duration: 0.5 },
   { note: "B4", duration: 1 },
@@ -65,75 +66,150 @@ const MELODY_THEME_A: Array<{ note: string; duration: number }> = [
   { note: "C5", duration: 0.5 },
   { note: "D5", duration: 1 },
   { note: "E5", duration: 1 },
-  { note: "C5", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
+  { note: "C5", duration: 1 },
   { note: "A4", duration: 1 },
-  { note: "R", duration: 0.5 },
-  // Part 2
-  { note: "E5", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
+  { note: "A4", duration: 1 },
+  { note: "E5", duration: 1 },
   { note: "B4", duration: 0.5 },
   { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 0.5 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "E5", duration: 1 },
+  { note: "D5", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 1.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "C5", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 0.5 },
   { note: "A4", duration: 0.5 },
   { note: "B4", duration: 0.5 },
-  { note: "G4", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
   { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "E5", duration: 0.5 },
+  { note: "D5", duration: 1.5 },
+  { note: "F5", duration: 0.5 },
+  { note: "A5", duration: 1 },
   { note: "G5", duration: 0.5 },
+  { note: "F5", duration: 0.5 },
+  { note: "E5", duration: 1.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "E5", duration: 1 },
   { note: "D5", duration: 0.5 },
   { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 1 },
   { note: "B4", duration: 0.5 },
   { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "E5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "C5", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "E5", duration: 2 },
+  { note: "C5", duration: 2 },
+  { note: "D5", duration: 2 },
+  { note: "B4", duration: 2 },
+  { note: "C5", duration: 2 },
+  { note: "A4", duration: 2 },
+  { note: "Ab4", duration: 2 },
+  { note: "B4", duration: 1 },
+  { note: "E5", duration: 2 },
+  { note: "C5", duration: 2 },
+  { note: "D5", duration: 2 },
+  { note: "B4", duration: 2 },
+  { note: "C5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "A5", duration: 2 },
+  { note: "Ab5", duration: 2 },
+  { note: "E5", duration: 1 },
+  { note: "B4", duration: 0.5 },
   { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 0.5 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "E5", duration: 1 },
+  { note: "D5", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 1.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "C5", duration: 1 },
+  { note: "A4", duration: 1 },
   { note: "A4", duration: 0.5 },
   { note: "A4", duration: 0.5 },
-  { note: "R", duration: 0.5 },
+  { note: "B4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1.5 },
+  { note: "F5", duration: 0.5 },
+  { note: "A5", duration: 1 },
+  { note: "G5", duration: 0.5 },
+  { note: "F5", duration: 0.5 },
+  { note: "E5", duration: 1.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "E5", duration: 1 },
+  { note: "D5", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 1 },
+  { note: "B4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "C5", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "B4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 0.5 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "E5", duration: 1 },
+  { note: "D5", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 1.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "C5", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 0.5 },
+  { note: "A4", duration: 0.5 },
+  { note: "B4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1.5 },
+  { note: "F5", duration: 0.5 },
+  { note: "A5", duration: 1 },
+  { note: "G5", duration: 0.5 },
+  { note: "F5", duration: 0.5 },
+  { note: "E5", duration: 1.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "E5", duration: 1 },
+  { note: "D5", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "B4", duration: 1 },
+  { note: "B4", duration: 0.5 },
+  { note: "C5", duration: 0.5 },
+  { note: "D5", duration: 1 },
+  { note: "E5", duration: 1 },
+  { note: "C5", duration: 1 },
+  { note: "A4", duration: 1 },
+  { note: "A4", duration: 1 },
 ];
 
-const MELODY_THEME_A_ALT: Array<{ note: string; duration: number }> = [
-  { note: "E5", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "G4", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "E5", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "G4", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "E5", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "D5", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "C5", duration: 0.5 },
-  { note: "A4", duration: 0.5 },
-  { note: "B4", duration: 0.5 },
-  { note: "G4", duration: 0.5 },
-];
-
-const SONGS = [MELODY_THEME_A, MELODY_THEME_A_ALT];
-const BPM = 140;
-const BEAT_DURATION = 60 / BPM; // ~0.429s per beat
+const SONGS = [MELODY];
+const BPM = 144; // matches the MIDI source tempo (flutetunes.com)
+const BEAT_DURATION = 60 / BPM; // ~0.417s per beat
 
 // Resolve a note name to a frequency, supporting bass transposition
 function freqOf(note: string): number | null {
@@ -155,16 +231,23 @@ interface NoteEvent {
   bassFreq: number | null;
 }
 
-// Build an event list from a melody array, accumulating beat offsets
+// Build an event list from a melody array, accumulating beat offsets.
+// Bass note only changes on downbeats (integer beat positions) for a steady harmonic foundation.
 function buildSchedule(melody: Array<{ note: string; duration: number }>): NoteEvent[] {
   const events: NoteEvent[] = [];
   let beat = 0;
+  let currentBass: number | null = null;
   for (const entry of melody) {
+    const onDownbeat = Math.abs(beat - Math.round(beat)) < 0.001;
+    const bf = bassFreqOf(entry.note);
+    if (bf !== null && onDownbeat) {
+      currentBass = bf;
+    }
     events.push({
       startBeat: beat,
       note: entry.note,
       durBeats: entry.duration,
-      bassFreq: bassFreqOf(entry.note),
+      bassFreq: currentBass,
     });
     beat += entry.duration;
   }
@@ -188,11 +271,11 @@ function playOscillator(
     osc.type = type;
     osc.frequency.setValueAtTime(freq, startTime);
 
-    // ADSR envelope — short attack, natural decay, quick release
-    const a = 0.004;
-    const d = 0.04;
-    const s = volume * 0.65;
-    const r = 0.025;
+    // ADSR envelope — soft attack, natural decay, gentle release
+    const a = 0.006;
+    const d = 0.05;
+    const s = volume * 0.7;
+    const r = 0.04;
     const end = startTime + duration;
 
     gain.gain.setValueAtTime(0, startTime);
@@ -255,7 +338,7 @@ function playNoise(
 // ── Scheduling ─────────────────────────────────────────────────────────
 
 function scheduleSong(events: NoteEvent[], baseTime: number): void {
-  const gap = 0.82; // sustain fraction (small gap between notes for articulation)
+  const gap = 0.92; // sustain fraction — near-legato for a flowing folk melody
 
   for (const evt of events) {
     const t = baseTime + evt.startBeat * BEAT_DURATION;
@@ -269,10 +352,9 @@ function scheduleSong(events: NoteEvent[], baseTime: number): void {
       playOscillator(leadFreq, dur, t, "triangle", 0.10);
     }
 
-    // Bass voice — triangle wave, held slightly longer than lead
+    // Bass voice — triangle wave, held for the full note duration
     if (evt.bassFreq) {
-      const bassDur = evt.durBeats * BEAT_DURATION * 0.95;
-      playOscillator(evt.bassFreq, bassDur, t, "triangle", 0.06);
+      playOscillator(evt.bassFreq, dur, t, "triangle", 0.06);
     }
   }
 
@@ -281,7 +363,7 @@ function scheduleSong(events: NoteEvent[], baseTime: number): void {
     ? events[events.length - 1].startBeat + events[events.length - 1].durBeats
     : 0;
   for (let b = 1.5; b < totalBeats; b += 2) {
-    playNoise(baseTime + b * BEAT_DURATION, 0.035, 0.035, 5000);
+    playNoise(baseTime + b * BEAT_DURATION, 0.03, 0.025, 6000);
   }
 }
 
