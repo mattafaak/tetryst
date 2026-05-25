@@ -74,7 +74,7 @@ npm run dev   # dev server at localhost:5173
 ## Development
 
 ```bash
-npm test          # run tests (459 tests across 17 files)
+npm test          # run tests (658 tests across 25 files)
 npm run build     # production build → single-file dist/index.html
 npm run preview   # preview production build
 ```

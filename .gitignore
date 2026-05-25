@@ -30,3 +30,7 @@ out/
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright
+.playwright-mcp/
+test-results/
