@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInitialState, transitionPhase, startGame, holdPiece, spawnNextPiece } from "./state.ts";
+import { createInitialState, startGame, holdPiece, spawnNextPiece } from "./state.ts";
 import { createBoard } from "./board.ts";
 import { resetLockState } from "./lock-delay.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "./types.ts";
@@ -29,39 +29,6 @@ describe("state", () => {
       expect(state.bag).toEqual([]);
       expect(state.lineClearTimer).toBe(0);
       expect(state.lastClearWasB2B).toBe(false);
-    });
-  });
-
-  describe("transitionPhase", () => {
-    it("phase changes correctly", () => {
-      const state = createInitialState();
-      expect(state.phase).toBe(GamePhase.Menu);
-      const newState = transitionPhase(state, GamePhase.Playing);
-      expect(newState.phase).toBe(GamePhase.Playing);
-      expect(state.phase).toBe(GamePhase.Menu);
-    });
-
-    it("does not mutate the original state", () => {
-      const state = createInitialState();
-      const copy = { ...state, board: state.board.map((r) => [...r]) };
-      const newState = transitionPhase(state, GamePhase.Paused);
-      expect(state.phase).toBe(copy.phase);
-      expect(state.score).toBe(copy.score);
-      expect(state.board).toEqual(copy.board);
-      expect(state.lockState).toEqual(copy.lockState);
-      // Verify only the returned state was changed
-      expect(newState.phase).toBe(GamePhase.Paused);
-      expect(newState).not.toBe(state);
-    });
-
-    it("can transition through multiple phases", () => {
-      const state = createInitialState();
-      const playing = transitionPhase(state, GamePhase.Playing);
-      const paused = transitionPhase(playing, GamePhase.Paused);
-      const resumed = transitionPhase(paused, GamePhase.Playing);
-      const over = transitionPhase(resumed, GamePhase.GameOver);
-      expect(over.phase).toBe(GamePhase.GameOver);
-      expect(state.phase).toBe(GamePhase.Menu); // original unaffected
     });
   });
 

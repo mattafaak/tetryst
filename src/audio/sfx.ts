@@ -11,11 +11,6 @@ type SFXName =
 
 import { getAudioContext } from "./audio-ctx.ts";
 
-export function initAudio(): void {
-  // Called on first user interaction to unlock audio
-  getAudioContext();
-}
-
 function playTone(
   frequency: number,
   duration: number,

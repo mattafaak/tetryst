@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   shouldLock,
-  resetLockTimer,
-  onPieceLanded,
   resetLockState,
   updateLowestY,
 } from "./lock-delay.ts";
@@ -136,47 +134,6 @@ describe("lock-delay", () => {
     });
   });
 
-  describe("resetLockTimer", () => {
-    it("resets timer and increments resets", () => {
-      const state = createTestState({
-        lockState: { timer: 400, resets: 0, onGround: true, lowestY: -1 },
-      });
-      const newState = resetLockTimer(state);
-      expect(newState.lockState.timer).toBe(0);
-      expect(newState.lockState.resets).toBe(1);
-    });
-
-    it("does nothing when resets >= MAX_LOCK_RESETS", () => {
-      const state = createTestState({
-        lockState: { timer: 400, resets: MAX_LOCK_RESETS, onGround: true, lowestY: -1 },
-      });
-      const newState = resetLockTimer(state);
-      expect(newState).toBe(state);
-    });
-
-    it("allows reset when resets is MAX_LOCK_RESETS - 1 (14 -> 15)", () => {
-      const state = createTestState({
-        lockState: { timer: 400, resets: MAX_LOCK_RESETS - 1, onGround: true, lowestY: -1 },
-      });
-      const newState = resetLockTimer(state);
-      expect(newState.lockState.timer).toBe(0);
-      expect(newState.lockState.resets).toBe(MAX_LOCK_RESETS);
-      expect(newState).not.toBe(state);
-    });
-  });
-
-  describe("onPieceLanded", () => {
-    it("sets onGround and resets timer", () => {
-      const state = createTestState({
-        lockState: { timer: 200, resets: 5, onGround: false, lowestY: -1 },
-      });
-      const newState = onPieceLanded(state);
-      expect(newState.lockState.onGround).toBe(true);
-      expect(newState.lockState.timer).toBe(0);
-      expect(newState.lockState.resets).toBe(5);
-    });
-  });
-
   describe("resetLockState", () => {
     it("returns initial state", () => {
       const lockState = resetLockState();
@@ -189,23 +146,6 @@ describe("lock-delay", () => {
     });
   });
 
-  it("integration: 16th lock timer reset is rejected after 15 allowed resets", () => {
-    let state = createTestState({
-      lockState: { timer: 100, resets: 0, onGround: true, lowestY: -1 },
-    });
-
-    // 15 resets should all succeed (resets 0, 1, ..., 14)
-    for (let i = 0; i < MAX_LOCK_RESETS; i++) {
-      state = resetLockTimer(state);
-      expect(state.lockState.timer).toBe(0);
-      expect(state.lockState.resets).toBe(i + 1);
-    }
-
-    // The 16th reset must be rejected; the same object is returned
-    const blocked = resetLockTimer(state);
-    expect(blocked).toBe(state);
-    expect(blocked.lockState.resets).toBe(MAX_LOCK_RESETS);
-  });
 
   describe("updateLowestY", () => {
     it("resets resets counter when piece descends to new lowest y", () => {

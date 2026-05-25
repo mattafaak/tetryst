@@ -25,8 +25,9 @@ export function saveHighScore(
 ): HighScore[] {
   const existing = loadHighScores(entry.mode);
   const newEntry: HighScore = { ...entry, date: new Date().toISOString() };
+  const isSprint = entry.mode === "Sprint";
   const updated = [...existing, newEntry]
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => isSprint ? a.score - b.score : b.score - a.score)
     .slice(0, 10);
   try {
     localStorage.setItem(STORAGE_KEY(entry.mode), JSON.stringify(updated));

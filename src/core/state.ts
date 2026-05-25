@@ -1,7 +1,5 @@
 import {
   type GameState,
-  type Board,
-  type Piece,
   type NextQueueItem,
   GamePhase,
   GameMode,
@@ -38,13 +36,6 @@ export function createInitialState(mode: GameMode = GameMode.Marathon): GameStat
     modeTimer: mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
     popups: [],
   };
-}
-
-export function transitionPhase(
-  state: GameState,
-  newPhase: GamePhase,
-): GameState {
-  return { ...state, phase: newPhase };
 }
 
 export function startGame(state: GameState, startLevel: number = 0): GameState {
@@ -186,6 +177,3 @@ function spawnFromQueue(state: GameState): GameState {
   };
 }
 
-export function recalculateGhostY(board: Board, piece: Piece): number {
-  return getGhostY(board, piece);
-}

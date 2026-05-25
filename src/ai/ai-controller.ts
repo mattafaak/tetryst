@@ -160,7 +160,3 @@ export function createAttractAIController(): AIController {
   return new AIController({ actionInterval: 150, useHold: true });
 }
 
-export function createCPUAIController(difficulty: number = 5): AIController {
-  const interval = Math.max(30, 100 - difficulty * 10);
-  return new AIController({ actionInterval: interval, useHold: true });
-}

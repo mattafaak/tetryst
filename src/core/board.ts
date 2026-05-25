@@ -91,6 +91,15 @@ export function clearLines(board: Board): ClearResult {
   };
 }
 
+export function isPerfectClear(board: Board): boolean {
+  for (let row = 0; row < board.length; row++) {
+    for (let col = 0; col < BOARD_WIDTH; col++) {
+      if (board[row][col] !== null) return false;
+    }
+  }
+  return true;
+}
+
 export function isLockOut(piece: Piece): boolean {
   const shape = PIECE_SHAPES[piece.type][piece.rotation];
   let hasMino = false;

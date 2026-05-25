@@ -2,7 +2,7 @@ import { type GameState, type InputAction, GamePhase, GameMode } from "../core/t
 import { processAction } from "../core/actions.ts";
 import { applyGravity } from "../core/gravity.ts";
 import { shouldLock as checkLock, resetLockState } from "../core/lock-delay.ts";
-import { lockPiece, clearLines, isLockOut } from "../core/board.ts";
+import { lockPiece, clearLines, isLockOut, isPerfectClear } from "../core/board.ts";
 import { updateEntryDelay } from "../core/entry-delay.ts";
 import { updateCombo } from "../core/combo.ts";
 import { evaluateClear, detectTSpin, effectiveLinesFor, calculateLevelFromEffective } from "../core/scoring.ts";
@@ -263,7 +263,7 @@ export class Game {
     // Tick popups
     this.state = tickPopups(this.state, dt);
 
-    // Ultra countdown
+    // Ultra countdown / Sprint elapsed time
     if (this.state.mode === GameMode.Ultra) {
       this.state = {
         ...this.state,
@@ -273,6 +273,11 @@ export class Game {
         this.triggerVictory();
         return;
       }
+    } else if (this.state.mode === GameMode.Sprint) {
+      this.state = {
+        ...this.state,
+        modeTimer: this.state.modeTimer + dt,
+      };
     }
 
     const gravResult = applyGravity(this.state, dt);
@@ -361,7 +366,7 @@ export class Game {
         this.state,
         clearResult.linesCleared,
         tSpinResult,
-        scoreResult.isB2B,
+        scoreResult.isB2B && wasB2BActive,
         isPerfectClear,
         this.state.combo,
       );
@@ -506,13 +511,6 @@ export class Game {
   }
 
   private checkPerfectClear(): boolean {
-    for (let row = 0; row < this.state.board.length; row++) {
-      for (let col = 0; col < this.state.board[row].length; col++) {
-        if (this.state.board[row][col] !== null) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return isPerfectClear(this.state.board);
   }
 }

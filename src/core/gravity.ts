@@ -1,11 +1,7 @@
-import { type GameState, type Piece, type Board } from "./types.ts";
+import { type GameState, type Piece } from "./types.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import {
-  GRAVITY_SPEED_CURVE,
-  PIECE_SHAPES,
-  BOARD_WIDTH,
-  BOARD_HEIGHT,
-} from "./constants.ts";
+import { checkCollision } from "./board.ts";
+import { GRAVITY_SPEED_CURVE } from "./constants.ts";
 
 /**
  * Return the gravity delay in milliseconds for the given level.
@@ -16,30 +12,6 @@ export function getGravityDelay(level: number): number {
     return GRAVITY_SPEED_CURVE[level];
   }
   return GRAVITY_SPEED_CURVE[GRAVITY_SPEED_CURVE.length - 1];
-}
-
-/**
- * Check whether a piece at its current position collides with the board
- * boundaries or any occupied cell. Cells above the visible area (y < 0)
- * are treated as empty.
- */
-function checkCollision(board: Board, piece: Piece): boolean {
-  const shape = PIECE_SHAPES[piece.type][piece.rotation];
-  for (let row = 0; row < shape.length; row++) {
-    for (let col = 0; col < shape[row].length; col++) {
-      if (shape[row][col]) {
-        const bx = piece.pos.x + col;
-        const by = piece.pos.y + row;
-        if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT) {
-          return true;
-        }
-        if (by >= 0 && board[by][bx] !== null) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
 }
 
 /**

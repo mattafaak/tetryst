@@ -14,7 +14,6 @@ import {
   PERFECT_CLEAR_SCORES,
   PERFECT_CLEAR_B2B_TETRIS,
   B2B_MULTIPLIER,
-  SOFT_DROP_SCORE,
   HARD_DROP_SCORE,
   BOARD_WIDTH,
   EFFECTIVE_LINE_COUNTS,
@@ -208,16 +207,6 @@ export function isB2BEligible(
   tSpinResult: TSpinResult,
 ): boolean {
   return linesCleared === 4 || tSpinResult.isTSpin;
-}
-
-/**
- * Calculate score for soft-drop (1 point per cell).
- */
-export function addSoftDropScore(
-  _state: GameState,
-  rowsDropped: number,
-): number {
-  return rowsDropped * SOFT_DROP_SCORE;
 }
 
 /**

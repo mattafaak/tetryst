@@ -1,17 +1,16 @@
 import {
   type GameState,
   type InputAction,
-  type Board,
   GamePhase,
   GameMode,
 } from "./types.ts";
 import { tryRotateCW, tryRotateCCW, movePiece, getGhostY } from "./pieces.ts";
-import { checkCollision, lockPiece, clearLines, isLockOut } from "./board.ts";
+import { checkCollision, lockPiece, clearLines, isLockOut, isPerfectClear } from "./board.ts";
 import { addHardDropScore, evaluateClear, detectTSpin, effectiveLinesFor, calculateLevelFromEffective } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { holdPiece } from "./state.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { BOARD_WIDTH, MARATHON_MAX_LEVEL, MAX_LOCK_RESETS } from "./constants.ts";
+import { MARATHON_MAX_LEVEL, MAX_LOCK_RESETS } from "./constants.ts";
 
 export function processAction(
   state: GameState,
@@ -181,7 +180,7 @@ function handleHardDrop(state: GameState): GameState {
     nextState = comboResult.state;
     nextState.score += comboResult.bonusScore;
 
-    const perfectClear = checkPerfectClear(nextState.board);
+    const perfectClear = isPerfectClear(nextState.board);
     const wasB2BActive = nextState.backToBack;
     const scoreResult = evaluateClear(
       clearResult.linesCleared,
@@ -327,11 +326,3 @@ function handleHold(state: GameState): GameState {
   return holdPiece(state);
 }
 
-function checkPerfectClear(board: Board): boolean {
-  for (let row = 0; row < board.length; row++) {
-    for (let col = 0; col < BOARD_WIDTH; col++) {
-      if (board[row][col] !== null) return false;
-    }
-  }
-  return true;
-}

@@ -3,7 +3,6 @@ import {
   detectTSpin,
   evaluateClear,
   isB2BEligible,
-  addSoftDropScore,
   addHardDropScore,
   effectiveLinesFor,
   calculateLevelFromEffective,
@@ -186,9 +185,6 @@ describe("isB2BEligible", () => {
 
 describe("drop scoring", () => {
   const s = { level: 1 } as GameState;
-  it("should score soft drop 1 per cell", () => {
-    expect(addSoftDropScore(s, 5)).toBe(5);
-  });
   it("should score hard drop 2 per cell", () => {
     expect(addHardDropScore(s, 5)).toBe(10);
   });
@@ -476,13 +472,6 @@ describe("Perfect Clear scoring", () => {
 });
 
 describe("drop scoring - level independence", () => {
-  it("soft drop is always 1 per cell regardless of level", () => {
-    const low = { level: 0 } as GameState;
-    const high = { level: 99 } as GameState;
-    expect(addSoftDropScore(low, 5)).toBe(5);
-    expect(addSoftDropScore(high, 5)).toBe(5);
-  });
-
   it("hard drop is always 2 per cell regardless of level", () => {
     const low = { level: 0 } as GameState;
     const high = { level: 99 } as GameState;

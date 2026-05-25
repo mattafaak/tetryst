@@ -187,10 +187,6 @@ function playNextNote(): void {
   currentTimeout = window.setTimeout(playNextNote, nextDelay);
 }
 
-export function initAudio(): void {
-  getAudioContext();
-}
-
 export function playMusic(): void {
   if (isPlaying) return;
   isPlaying = true;
@@ -206,17 +202,4 @@ export function stopMusic(): void {
     currentTimeout = null;
   }
   noteIndex = 0;
-}
-
-export function toggleMusic(): boolean {
-  if (isPlaying) {
-    stopMusic();
-  } else {
-    playMusic();
-  }
-  return isPlaying;
-}
-
-export function isMusicPlaying(): boolean {
-  return isPlaying;
 }

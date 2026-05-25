@@ -32,33 +32,6 @@ export function shouldLock(
   return { state: newState, shouldLock: false };
 }
 
-export function resetLockTimer(state: GameState): GameState {
-  if (state.lockState.resets >= MAX_LOCK_RESETS) {
-    return state;
-  }
-
-  return {
-    ...state,
-    lockState: {
-      ...state.lockState,
-      timer: 0,
-      resets: state.lockState.resets + 1,
-    },
-  };
-}
-
-export function onPieceLanded(state: GameState): GameState {
-  return {
-    ...state,
-    lockState: {
-      timer: 0,
-      resets: state.lockState.resets,
-      onGround: true,
-      lowestY: state.lockState.lowestY,
-    },
-  };
-}
-
 export function resetLockState(): LockState {
   return {
     timer: 0,
