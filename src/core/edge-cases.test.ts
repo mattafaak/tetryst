@@ -7,29 +7,23 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState, startGame, spawnNextPiece, holdPiece } from "./state.ts";
 import { processAction } from "./actions.ts";
-import { createBoard, isLockOut, lockPiece, clearLines, checkCollision, isPerfectClear } from "./board.ts";
+import { createBoard, isLockOut, clearLines, isPerfectClear } from "./board.ts";
 import { updateCombo } from "./combo.ts";
-import { detectTSpin, evaluateClear, effectiveLinesFor } from "./scoring.ts";
-import { updateEntryDelay } from "./entry-delay.ts";
-import { applyGravity, getGravityDelay } from "./gravity.ts";
-import { shouldLock as checkLock, resetLockState } from "./lock-delay.ts";
-import { checkModeVictory } from "./mode-rules.ts";
-import { spawnPiece, getGhostY } from "./pieces.ts";
+import { evaluateClear } from "./scoring.ts";
+import { applyGravity } from "./gravity.ts";
+import { shouldLock as checkLock } from "./lock-delay.ts";
 import { drawFromBag, createFirstBag, createBag } from "./randomizer.ts";
 import {
-  BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT,
+  BOARD_WIDTH, BOARD_HEIGHT,
   LOCK_DELAY, MAX_LOCK_RESETS,
-  ENTRY_DELAY, LINE_CLEAR_ANIM_DURATION,
-  COMBO_BASE, HARD_DROP_SCORE,
-  MAX_DT, GRAVITY_SPEED_CURVE,
+  COMBO_BASE,
   NEXT_QUEUE_SIZE,
-  PIECE_SHAPES,
 } from "../core/constants.ts";
 import {
   GameMode, GamePhase, TetriminoType, RotationState,
 } from "../core/types.ts";
-import type { GameState, Board, Piece, TSpinResult } from "../core/types.ts";
-import { baseState, asciiBoard, fillRows } from "../test-utils/test-utils.ts";
+import type { TSpinResult, Piece } from "../core/types.ts";
+import { baseState } from "../test-utils/test-utils.ts";
 
 // ── Perfect clear permutations ──────────────────────────────────────────
 

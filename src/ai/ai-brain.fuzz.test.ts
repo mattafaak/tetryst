@@ -10,14 +10,13 @@ import {
   countHoles,
   computeBumpiness,
   getPieceWidth,
-  simulatePlacement,
   generatePlacements,
   findBestPlacement,
 } from "./ai-brain.ts";
 import { checkCollision, createBoard } from "../core/board.ts";
-import { BOARD_WIDTH, BOARD_HEIGHT, PIECE_SHAPES } from "../core/constants.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT } from "../core/constants.ts";
 import { TetriminoType, RotationState } from "../core/types.ts";
-import type { Board, Cell, Piece } from "../core/types.ts";
+import type { Cell, Piece } from "../core/types.ts";
 import { baseState } from "../test-utils/test-utils.ts";
 
 // ── Generators ────────────────────────────────────────────────────────────

@@ -7,11 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Game } from "./loop.ts";
-import { createInitialState, startGame } from "../core/state.ts";
-import { processAction } from "../core/actions.ts";
-import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
-import { MARATHON_MAX_LEVEL } from "../core/constants.ts";
-import { asciiBoard, baseState } from "../test-utils/test-utils.ts";
+import { GamePhase, GameMode } from "../core/types.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 

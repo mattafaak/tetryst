@@ -9,14 +9,14 @@ import { updateCombo } from "../core/combo.ts";
 import {
   BOARD_WIDTH, BOARD_HEIGHT,
   PERFECT_CLEAR_SCORES, PERFECT_CLEAR_B2B_TETRIS,
-  B2B_MULTIPLIER, COMBO_BASE,
-  LINE_CLEAR_SCORES, TSPIN_SCORES, TSPIN_MINI_SCORES,
+  COMBO_BASE,
+  LINE_CLEAR_SCORES,
   LEVEL_GOAL_CUMULATIVE,
 } from "../core/constants.ts";
 import { TetriminoType, RotationState } from "../core/types.ts";
 import type { Board, TSpinResult } from "../core/types.ts";
 import { createBoard } from "../core/board.ts";
-import { asciiBoard, baseState } from "../test-utils/test-utils.ts";
+import { baseState } from "../test-utils/test-utils.ts";
 
 // ── Generators ────────────────────────────────────────────────────────────
 

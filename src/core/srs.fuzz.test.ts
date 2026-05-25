@@ -11,9 +11,9 @@ import {
   spawnPiece,
 } from "../core/pieces.ts";
 import { checkCollision, createBoard } from "../core/board.ts";
-import { getWallKicks, PIECE_SHAPES, BOARD_WIDTH, BOARD_HEIGHT } from "../core/constants.ts";
+import { getWallKicks, BOARD_WIDTH, BOARD_HEIGHT } from "../core/constants.ts";
 import { TetriminoType, RotationState } from "../core/types.ts";
-import type { Board, Piece } from "../core/types.ts";
+import type { Piece } from "../core/types.ts";
 
 // ── Generators ────────────────────────────────────────────────────────────
 
@@ -27,9 +27,9 @@ const allTypes = fc.constantFrom(
   TetriminoType.L, TetriminoType.S, TetriminoType.T, TetriminoType.Z,
 );
 
-const allRotations = fc.constantFrom(
-  RotationState.ZERO, RotationState.R, RotationState.TWO, RotationState.L,
-);
+//const allRotations = fc.constantFrom(
+//  RotationState.ZERO, RotationState.R, RotationState.TWO, RotationState.L,
+//);
 
 // ── SRS kick table coverage ──────────────────────────────────────────────
 
@@ -53,8 +53,6 @@ describe("SRS fuzz: wall kick table coverage", () => {
         const board = createBoard();
         for (const type of typeGroup.types) {
           const piece = spawnPiece(type);
-          const fn = trans.from < trans.to || (trans.from === RotationState.L && trans.to === RotationState.ZERO)
-            ? tryRotateCW : tryRotateCCW;
           // Actually use the correct direction
           const isCW = trans.from === RotationState.ZERO && trans.to === RotationState.R ||
                        trans.from === RotationState.R && trans.to === RotationState.TWO ||

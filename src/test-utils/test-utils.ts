@@ -3,7 +3,6 @@ import {
   type Piece,
   type GameState,
   type Cell,
-  Position,
   TetriminoType,
   RotationState,
   GamePhase,
@@ -125,7 +124,7 @@ export function randomBoard(fillProb = 0.3): Board {
   for (let r = 0; r < BOARD_HEIGHT; r++) {
     const row: Cell[] = [];
     for (let c = 0; c < BOARD_WIDTH; c++) {
-      row.push(Math.random() < fillProb ? TetriminoType.X : null);
+      row.push(Math.random() < fillProb ? TetriminoType.I : null);
     }
     board.push(row);
   }

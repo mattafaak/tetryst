@@ -18,7 +18,7 @@ import {
 import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT, PIECE_SHAPES } from "../core/constants.ts";
 import { TetriminoType, RotationState } from "../core/types.ts";
 import type { Board, Cell, Piece } from "../core/types.ts";
-import { asciiBoard, randomBoard, randomPiece } from "../test-utils/test-utils.ts";
+// randomBoard, randomPiece imported implicitly via fast-check generators
 
 // ── fast-check custom generators ──────────────────────────────────────────
 
