@@ -58,8 +58,11 @@ export class KeyboardHandler {
   }
 
   update(dt: number): void {
-    for (const [, state] of this.keys) {
+    for (const [code, state] of this.keys) {
       if (!state.pressed) continue;
+
+      // Only process DAS/ARR for movement and soft-drop keys
+      if (!(code in DAS_ACTIONS)) continue;
 
       if (!state.dasCharged) {
         state.dasTimer += dt;
