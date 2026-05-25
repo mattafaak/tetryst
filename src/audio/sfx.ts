@@ -14,6 +14,7 @@ import { getAudioContext } from "./audio-ctx.ts";
 function playTone(
   frequency: number,
   duration: number,
+  startTime: number,
   type: OscillatorType = "sine",
   volume: number = 0.3,
   decay: boolean = true
@@ -24,24 +25,21 @@ function playTone(
     const gain = ctx.createGain();
 
     osc.type = type;
-    osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+    osc.frequency.setValueAtTime(frequency, startTime);
 
     if (decay) {
-      gain.gain.setValueAtTime(volume, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        ctx.currentTime + duration
-      );
+      gain.gain.setValueAtTime(volume, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
     } else {
-      gain.gain.setValueAtTime(volume, ctx.currentTime);
-      gain.gain.setValueAtTime(volume, ctx.currentTime + duration);
+      gain.gain.setValueAtTime(volume, startTime);
+      gain.gain.setValueAtTime(volume, startTime + duration);
     }
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
   } catch {
     // Audio not available — fail silently
   }
@@ -51,6 +49,7 @@ function playSweep(
   startFreq: number,
   endFreq: number,
   duration: number,
+  startTime: number,
   type: OscillatorType = "sawtooth",
   volume: number = 0.3
 ): void {
@@ -60,20 +59,17 @@ function playSweep(
     const gain = ctx.createGain();
 
     osc.type = type;
-    osc.frequency.setValueAtTime(startFreq, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(
-      endFreq,
-      ctx.currentTime + duration
-    );
+    osc.frequency.setValueAtTime(startFreq, startTime);
+    osc.frequency.linearRampToValueAtTime(endFreq, startTime + duration);
 
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    gain.gain.setValueAtTime(volume, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
+    osc.start(startTime);
+    osc.stop(startTime + duration);
   } catch {
     // Audio not available — fail silently
   }
@@ -82,6 +78,7 @@ function playSweep(
 function playChord(
   frequencies: number[],
   duration: number,
+  startTime: number,
   type: OscillatorType = "sine",
   volume: number = 0.2
 ): void {
@@ -92,18 +89,15 @@ function playChord(
       const gain = ctx.createGain();
 
       osc.type = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(volume, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(
-        0.001,
-        ctx.currentTime + duration
-      );
+      osc.frequency.setValueAtTime(freq, startTime);
+      gain.gain.setValueAtTime(volume, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + duration);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
     }
   } catch {
     // Audio not available — fail silently
@@ -111,35 +105,39 @@ function playChord(
 }
 
 export function playSFX(name: SFXName): void {
+  const ctx = getAudioContext();
+  const now = ctx.currentTime;
+
   switch (name) {
     case "move":
-      playTone(200, 0.08, "square", 0.15);
+      playTone(200, 0.06, now, "triangle", 0.12);
       break;
     case "rotate":
-      playTone(300, 0.1, "sine", 0.2);
+      playTone(300, 0.08, now, "sine", 0.15);
       break;
     case "lock":
-      playTone(100, 0.15, "sine", 0.3);
+      playTone(100, 0.12, now, "triangle", 0.2);
       break;
     case "clear":
-      playSweep(200, 800, 0.3, "sawtooth", 0.2);
+      playSweep(200, 800, 0.25, now, "triangle", 0.15);
       break;
     case "tetris":
-      playChord([262, 330, 392, 523], 0.5, "sine", 0.2);
+      playChord([262, 330, 392, 523], 0.4, now, "triangle", 0.15);
       break;
     case "tspin":
-      playTone(400, 0.2, "triangle", 0.25);
+      playTone(400, 0.15, now, "triangle", 0.2);
       break;
     case "hold":
-      playTone(250, 0.08, "square", 0.15);
+      playTone(250, 0.06, now, "triangle", 0.12);
       break;
     case "levelup":
-      playTone(400, 0.1, "sine", 0.2);
-      setTimeout(() => playTone(500, 0.1, "sine", 0.2), 100);
-      setTimeout(() => playTone(600, 0.15, "sine", 0.25), 200);
+      // Three ascending tones — all scheduled via AudioContext time
+      playTone(400, 0.08, now, "triangle", 0.15);
+      playTone(500, 0.08, now + 0.1, "triangle", 0.15);
+      playTone(600, 0.12, now + 0.2, "triangle", 0.2);
       break;
     case "gameover":
-      playSweep(400, 100, 0.8, "sine", 0.3);
+      playSweep(400, 100, 0.7, now, "triangle", 0.25);
       break;
   }
 }
