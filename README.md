@@ -1,165 +1,198 @@
-# Tetryst — A Tetris Clone
+# Tetryst
 
-**[▶ Play Now — mattafaak.github.io/tetryst](https://mattafaak.github.io/tetryst/)**
+**[Play it here — mattafaak.github.io/tetryst](https://mattafaak.github.io/tetryst/)**
 
-A browser-based Tetris implementation in TypeScript, compliant with the **2009 Tetris Design Guideline**. Single-file build — download once, play offline forever.
+A browser-based Tetris clone in TypeScript. Single-file build, no installation.
 
 ```bash
-# Download and play offline (macOS / Linux)
+# Play offline (macOS / Linux)
 curl -fsSL https://mattafaak.github.io/tetryst/ -o tetryst.html
-open tetryst.html          # macOS
-xdg-open tetryst.html      # Linux
+open tetryst.html
 ```
 
 ---
 
-## Game Modes
-
-| Mode | Goal | Timer | Leveling |
-|------|------|-------|----------|
-| **Marathon** | Reach Level 15 | No timer | Gravity accelerates level by level (1s → 5ms per row) |
-| **Sprint** | Clear 40 lines fastest | Counts up | Fixed at selected start level |
-| **Ultra** | Max points in 3 minutes | 3:00 countdown | Fixed at selected start level |
-
----
-
-## Controls
+## How to play
 
 | Key | Action |
 |-----|--------|
 | `←` `→` | Move |
-| `↓` | Soft drop |
-| `Space` | Hard drop |
-| `↑` `Z` | Rotate CW |
-| `X` | Rotate CCW |
-| `C` `Shift` | Hold |
+| `↓` | Soft drop (1 point per row) |
+| `Space` | Hard drop (2 per row, locks instantly) |
+| `↑` `Z` | Rotate clockwise |
+| `X` | Rotate counter-clockwise |
+| `C` `Shift` | Hold — stash the current piece for later |
 | `P` `Esc` | Pause |
 | `M` | Mute |
 
-### Menu
+On the **menu**, `←` `→` changes the game mode. `↑`/`↓` adjusts the starting level in Marathon. Hit `Enter` to start.
 
-| Key | Action |
-|-----|--------|
-| `←` `→` | Change mode |
-| `↑` `Z` | Raise start level (Marathon) |
-| `↓` `Space` | Lower start level (Marathon) |
-| `H` | High scores |
-| `Enter` | Start |
+If you **pause**, `↑` `↓` navigates between Resume, Restart, and Quit to Menu.
 
-### Pause
+---
 
-| Key | Action |
-|-----|--------|
-| `↑` `↓` | Navigate |
-| `Enter` | Select |
-| `P` `Esc` | Resume |
+## Game modes
+
+| Mode | Goal |
+|------|------|
+| **Marathon** | Reach level 15. Gravity speeds up as you go — starts at 1 row/second, ends at 200 rows/second. |
+| **Sprint** | Clear 40 lines as fast as you can. Gravity stays slow the whole time. |
+| **Ultra** | Score as much as possible in 3 minutes. |
 
 ---
 
 ## Scoring
 
-| Action | Points |
-|--------|--------|
-| Single | 100 × level |
-| Double | 300 × level |
-| Triple | 500 × level |
-| Tetris | 800 × level |
-| T-Spin (no lines) | 400 × level |
-| T-Spin Single | 800 × level |
-| T-Spin Double | 1,200 × level |
-| T-Spin Triple | 1,600 × level |
-| T-Spin Mini (no lines) | 100 × level |
-| T-Spin Mini Single | 200 × level |
-| Back-to-Back | ×1.5 multiplier |
-| Perfect Clear | 800–3,200 × level |
-| Combo | 50 × combo × (level + 1) |
-| Soft drop | 1/cell |
-| Hard drop | 2/cell |
+Line clears are the main event:
+
+| Lines | Base |
+|-------|------|
+| 1 (Single) | 100 × level |
+| 2 (Double) | 300 × level |
+| 3 (Triple) | 500 × level |
+| 4 (Tetris) | 800 × level |
+
+A **T-Spin** is when you wedge a T-piece into a gap using a wall kick (not just turning it in open air). It pays way more:
+
+| | No lines | Single | Double | Triple |
+|---|:---:|:---:|:---:|:---:|
+| T-Spin | 400 | 800 | 1,200 | 1,600 |
+| T-Spin Mini | 100 | 200 | — | — |
+
+**Back-to-back (B2B):** If you chain two "difficult" clears (Tetris or T-Spin), the second one gets a 1.5× multiplier. A single line clear breaks the streak.
+
+**Combo:** Every consecutive piece that clears lines adds 50 × combo count × (level + 1).
+
+**Perfect Clear:** Clear the entire board at once — 800–3,200 × level depending on how many lines.
 
 ---
 
-## Features
+## How leveling works
 
-**TDG 2009 Compliance** — 91 tests verify §2–§15: SRS wall kicks, 7-bag randomizer (first-piece guarantee), ghost piece, lock delay with 15 move resets, T-Spin detection via 3-corner rule, Variable Goal leveling, DAS 167ms/ARR 33ms, 5-piece next queue.
+Marathon doesn't just count lines. "Difficult" clears count for more:
 
-**NES-Style Chiptune** — Real-time Web Audio synthesis of Korobeiniki (three voices: triangle lead, bass, noise hi-hat). 9 distinct SFX (move, rotate, lock, line clear, Tetris, T-Spin, hold, level-up, game over). No audio files.
+| Clear | Effective lines |
+|-------|:---:|
+| Single | 1 |
+| Double | 3 |
+| Triple | 5 |
+| Tetris | 8 |
+| T-Spin Double | 12 |
 
-**AI Attract Mode** — When idle on the menu, an AI plays indefinitely. Evaluates every possible placement per piece by aggregate height, holes, bumpiness, and line clears. Press any key to take control.
-
-**Single-File Build** — Everything inlined into one HTML file via `vite-plugin-singlefile`. No server, no internet, no dependencies after download.
-
-**Visual Polish** — Animated star field background, colored line-clear particle bursts, screen flash on Tetris/T-Spin/Perfect Clear, offscreen canvas caching for the static board, popup action feed (TETRIS!, T-SPIN!, B2B, PERFECT CLEAR, LEVEL UP).
-
-**High Scores** — Top 10 per mode saved to localStorage. Browse Marathon/Sprint/Ultra leaderboards with arrow keys (press H from menu). Sprint ranked by time; Marathon/Ultra by score.
-
-**Pause Menu** — Resume, Restart, or Quit to Menu. Auto-pauses on tab blur.
-
-**Responsive** — Canvas adapts to any window size. Playable portrait or landscape.
+You need 10 effective lines for the next level. So one T-Spin Double jumps you a level. One Tetris almost does. Back-to-back clears give a 1.5× multiplier on effective lines too.
 
 ---
 
-## Testing
+## What makes this Tetris tick
 
-670+ unit tests — 91 TDG compliance tests, property-based fuzz (collision, SRS, scoring, AI brain), full game-loop integration, DAS/ARR timing, and 15 Playwright E2E screenshot tests.
+**7-bag randomizer.** Older Tetris was pure random — you could get five Z-pieces in a row. This shuffles all 7 pieces into a bag, deals them one at a time, then reshuffles. Every 7 drops you get exactly one of each shape. The first piece is always I, J, L, or T (never O, S, or Z — easier to place on an empty board).
 
-```bash
-npm test            # All tests
-npm run test:watch  # Watch mode
-npm run test:e2e    # Playwright E2E
+**SRS (Super Rotation System).** The official rotation standard. Try to rotate near a wall and the piece "kicks" sideways by 1–2 cells to make room. Without this you couldn't rotate near the edges. Different pieces have different kick tables — I-piece gets longer kicks, O-piece has none (rotating a square is pointless anyway).
+
+**T-spin detection (3-corner rule).** The game checks the four diagonals around a T-piece's center. If at least 3 are occupied, it's a T-Spin. If the two corners on the flat side are the occupied ones, it's a Mini (fewer points).
+
+**Lock delay.** When a piece lands, you have 500ms before it locks. Moving or rotating resets that timer — up to 15 times. Then it's locked. Between pieces there's a 200ms pause (entry delay) for the board to settle.
+
+**DAS/ARR.** Hold a direction: the piece moves once, waits 167ms (DAS), then slides every 33ms (ARR). Prevents accidental double-taps.
+
+**Ghost piece.** A faint outline showing exactly where the piece lands if you hard drop.
+
+**5-piece next queue.** You can see what's coming and plan ahead.
+
+**Hold.** Swap the current piece with storage. Once per piece drop — saves you from wasting a good piece.
+
+---
+
+## Board layout
+
+```
+   ┌────────────────────────┐
+   │  BUFFER ZONE           │  ← hidden, pieces spawn here
+   │  (20 rows above field) │
+   ├────────────────────────┤
+   │                        │  ← visible: 20 × 10 grid
+   │  . . . . . . . . . .   │
+   │  . . . . X X . . . .   │  ← active piece
+   │  . . . . X X . . . .   │
+   │  . . . . . . . . . .   │
+   │  L L . . . . . . . .   │
+   │  L L L Z Z . . . . .   │
+   │  J L L Z Z . . . . .   │  ← locked pieces (the stack)
+   │  J J L Z Z Z . . . .   │
+   └────────────────────────┘
 ```
 
+A **hole** is an empty cell with something above it — you can never fill those, so they're permanent damage. **Bumpiness** is how uneven your stack top is; flat is good. A **well** is a 1-wide gap; drop an I-piece through one for a Tetris.
+
 ---
 
-## Development
-
-```bash
-npm install            # Install dependencies
-npm run dev            # Dev server at localhost:5173
-npm run build          # TypeScript check + build → dist/index.html
-npm run preview        # Preview production build
-```
-
-| Tech | Purpose |
-|------|---------|
-| TypeScript ~6.0 | Strict mode throughout |
-| Vite ~8.0 | Dev server, HMR, build |
-| Vitest ~4.1 | Unit + integration tests |
-| Playwright ~1.60 | E2E screenshot tests |
-| vite-plugin-singlefile | Single HTML output |
-| Web Audio API | Synthesized chiptune + SFX |
-
-### Structure
+## What's in the repo
 
 ```
 src/
 ├── core/        Game logic: board, SRS, gravity, scoring, lock delay
-├── render/      Canvas: board, HUD, menus, popups, effects, star field
-├── input/       Keyboard handler with DAS/ARR autorepeat
-├── audio/       Web Audio synthesizer and SFX engine
-├── ai/          Placement evaluator and AI controller
-└── game/        Game loop: state machine, phase management
+├── render/      Canvas drawing: board, HUD, menus, effects, star field
+├── input/       Keyboard handler with DAS/ARR
+├── audio/       Synthesized chiptune and SFX (Web Audio API)
+├── ai/          AI that plays itself (attract mode on the menu)
+└── game/        Game loop and state machine
 ```
 
----
-
-## TDG Compliance
-
-| § | Requirement | Status |
-|---|-------------|--------|
-| §2 | 10×20 visible playfield + buffer zone | ✓ |
-| §3 | SRS wall kicks (separate JLSTZ / I tables) | ✓ |
-| §5 | 7-bag randomizer, first-piece guarantee | ✓ |
-| §6 | Ghost piece (30% opacity) | ✓ |
-| §7 | Scoring: T-Spins, B2B, Perfect Clear, combos | ✓ |
-| §8 | 5 next queue, 500ms lock delay, 15 resets, 200ms entry delay | ✓ |
-| §9 | 3-corner T-Spin detection (full vs. Mini) | ✓ |
-| §11 | Variable Goal leveling (effective lines) | ✓ |
-| §12 | Gravity curve (1,000ms → 5ms) | ✓ |
-| §13 | DAS 167ms / ARR 33ms | ✓ |
-| §15 | Mode-specific level behavior | ✓ |
+Everything compiles to one HTML file. No server, no dependencies, no internet once it's downloaded.
 
 ---
 
-## Glossary
+## Running it
 
-New to Tetris? See **[docs/glossary.md](docs/glossary.md)** for a plain-English guide to every term used here — from tetriminos and the 7-bag system to T-Spins and competitive slang.
+```bash
+npm install
+npm run dev       # localhost:5173
+npm run build     # TypeScript check + build → dist/index.html
+npm run preview   # serve the built file
+```
+
+Tests use Vitest (~740, including 91 TDG compliance tests). Playwright covers E2E screenshots.
+
+```bash
+npm test            # unit + integration
+npm run test:e2e    # Playwright
+```
+
+| Tech | What for |
+|------|----------|
+| TypeScript 6 | strict mode everywhere |
+| Vite 8 | dev server, build |
+| Vitest 4 | tests |
+| Playwright 1.60 | E2E screenshot tests |
+| Web Audio API | synthesized music + SFX (no audio files) |
+
+---
+
+## The 7 pieces
+
+| Piece | Color | Shape |
+|-------|-------|-------|
+| I | Cyan | ████ |
+| J | Blue | ┐ |
+| L | Orange | └ |
+| O | Yellow | ■ |
+| S | Green | ᔑ |
+| T | Purple | ┬ |
+| Z | Red | ᓂ |
+
+S and Z are mirrors of each other. Same with J and L. In rotation code, they're grouped as **JLSTZ** (same kick table), **I** (its own table), and **O** (no kicks).
+
+---
+
+## Things you might hear in competitive Tetris
+
+| Term | What it means |
+|------|---------------|
+| **APM** | Attacks per minute — garbage sent per minute in versus modes |
+| **Downstack** | Clearing lines to lower your stack (defense) |
+| **Upstack** | Building higher to set up T-Spins (offense) |
+| **Finesse** | Minimum key presses to place each piece |
+| **Misdrop** | Put the piece in the wrong spot. We've all done it. |
+| **Spike** | A sudden burst of garbage sent at once |
+| **PC Opener** | An opening sequence designed for a Perfect Clear in the first ~10 pieces |
+| **DAS Preservation** | Holding a direction through the entry delay so the next piece moves instantly |
