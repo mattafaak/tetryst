@@ -3,7 +3,7 @@ import { executeLock } from "./lock.ts";
 import { lockPiece } from "./board.ts";
 import { TetriminoType, RotationState, GamePhase, GameMode } from "./types.ts";
 import type { GameState, Cell } from "./types.ts";
-import { BOARD_WIDTH, BOARD_HEIGHT, SPRINT_LINE_TARGET } from "./constants.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT, SPRINT_LINE_TARGET, MARATHON_MAX_LEVEL } from "./constants.ts";
 import { createBoard } from "./board.ts";
 
 function baseState(overrides?: Partial<GameState>): GameState {
@@ -271,5 +271,32 @@ describe("executeLock", () => {
       effectiveLines: 9,
     });
     expect(result.popupInfo.some((p) => p.text.includes("LEVEL"))).toBe(true);
+  });
+
+  it("T-spin no-clear at max Marathon level triggers victory", () => {
+    const board = createBoard();
+    const py = BOARD_HEIGHT - 3;
+    // Populate 3 corners of the T-piece 3×3 bounding box
+    board[py][3] = TetriminoType.S;               // TL corner
+    board[py][5] = TetriminoType.Z;               // TR corner
+    board[BOARD_HEIGHT - 1][3] = TetriminoType.J;  // BL corner
+    // T-piece ZERO at (3, py): fills (4,py), (3,py+1),(4,py+1),(5,py+1)
+    // Board rows py and py+1 are not full; bottom row has only 1 cell at col 3
+    const piece = { type: TetriminoType.T, pos: { x: 3, y: py }, rotation: RotationState.ZERO };
+    const result = lockAndExecute(board, piece, { level: MARATHON_MAX_LEVEL });
+    expect(result.linesCleared).toBe(0);
+    expect(result.tSpinResult.isTSpin).toBe(true);
+    expect(result.victoryTriggered).toBe(true);
+  });
+
+  it("non-T-spin no-clear at max Marathon level triggers victory", () => {
+    const board = createBoard();
+    board[BOARD_HEIGHT - 1][0] = TetriminoType.S;
+    // I-piece ZERO at (0, BOARD_HEIGHT-2): fills cols 0-3 at row BOARD_HEIGHT-2
+    // Bottom row has 1 cell at col 0; row BOARD_HEIGHT-2 has 4 I-piece cells → neither full
+    const piece = { type: TetriminoType.I, pos: { x: 0, y: BOARD_HEIGHT - 2 }, rotation: RotationState.ZERO };
+    const result = lockAndExecute(board, piece, { level: MARATHON_MAX_LEVEL });
+    expect(result.linesCleared).toBe(0);
+    expect(result.victoryTriggered).toBe(true);
   });
 });

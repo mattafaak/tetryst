@@ -27,7 +27,6 @@ const NON_DAS_ACTIONS: Record<string, InputAction> = {
   Escape: { type: "Pause" },
   Enter: { type: "Start" },
   KeyM: { type: "Mute" },
-  KeyH: { type: "ShowHighScores" },
 };
 
 type InputCallback = (action: InputAction) => void;

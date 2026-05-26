@@ -16,13 +16,26 @@ import {
   PIECE_SHAPES,
   NEXT_QUEUE_SIZE,
   ULTRA_DANGER_THRESHOLD,
+  SPRINT_LINE_TARGET,
 } from "../core/constants.ts";
-import { loadHighScores } from "../core/high-scores.ts";
+import { loadHighScores, getScoresGeneration } from "../core/high-scores.ts";
 import { renderBackground } from "./background.ts";
-import { renderEffects, spawnClearParticles, setParticleRowKey, getParticleRowKey } from "./effects.ts";
+import { renderEffects, setParticleLayout } from "./effects.ts";
 
 // ── Design tokens ──────────────────────────────────────────────────────
 const TEXT       = "#e2e2e2";
+
+// Cached DPR: initialized once and re-read when canvas dimensions change.
+let _dpr = typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1;
+let _lastCanvasW = 0;
+let _lastCanvasH = 0;
+
+// Menu overlay cache — offscreen canvas + cache key that invalidates on
+// mode, level, audio, or score change. Avoids ~30 fillText calls per frame.
+let _menuCacheCanvas: HTMLCanvasElement | null = null;
+let _menuCacheCtx: CanvasRenderingContext2D | null = null;
+let _menuCacheKey = "";
+
 const TEXT_DIM   = "#777";
 const TEXT_FAINT = "#444";
 const ACCENT     = "#00e5ff";
@@ -96,7 +109,14 @@ export function renderFrame(
   audioEnabled?: boolean,
   pauseMenuSelection?: number,
 ): void {
-  const dpr = window.devicePixelRatio || 1;
+  // Refresh DPR cache when canvas dimensions change (window resize)
+  const { width, height } = ctx.canvas;
+  if (width !== _lastCanvasW || height !== _lastCanvasH) {
+    _dpr = window.devicePixelRatio || 1;
+    _lastCanvasW = width;
+    _lastCanvasH = height;
+  }
+  const dpr = _dpr;
   const canvasWidth = ctx.canvas.width / dpr;
   const canvasHeight = ctx.canvas.height / dpr;
 
@@ -111,6 +131,9 @@ export function renderFrame(
   const boardPixelHeight = VISIBLE_HEIGHT * cellSize;
   const boardX = Math.floor((canvasWidth - boardPixelWidth) / 2);
   const boardY = Math.floor((canvasHeight - boardPixelHeight) / 2);
+
+  // Push layout to effects module for update-phase particle spawning
+  setParticleLayout(boardX, boardY, cellSize);
 
   // Draw cached board static layer — only redrawn when board ref changes
   if (state.board !== cachedBoard || cellSize !== cachedCellSize) {
@@ -133,10 +156,9 @@ export function renderFrame(
     drawPiece(ctx, state.activePiece, cellSize);
   }
 
-  // Draw line clear animation + spawn particles
+  // Draw line clear animation
   if (state.phase === GamePhase.LineClear) {
     drawLineClearAnimation(ctx, state, cellSize);
-    spawnClearParticlesOnce(state.clearedRowIndices, boardX, boardY, cellSize);
   }
 
   ctx.restore();
@@ -260,21 +282,6 @@ function drawLineClearAnimation(
   }
 }
 
-/** Spawn particles once per line-clear event (not every animation frame).
- *  Row-key tracking is in effects.ts and reset on clearEffects() so it
- *  doesn't leak across game sessions. */
-function spawnClearParticlesOnce(
-  rows: number[],
-  boardX: number,
-  boardY: number,
-  cellSize: number,
-): void {
-  const key = rows.join(",");
-  if (key === getParticleRowKey()) return;
-  setParticleRowKey(key);
-  spawnClearParticles(rows, boardX, boardY, cellSize);
-}
-
 // ── Overlay helpers ────────────────────────────────────────────────────
 
 function overlayBg(ctx: CanvasRenderingContext2D, w: number, h: number, alpha = 0.82): void {
@@ -307,7 +314,7 @@ function hudLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 // ── Screen functions ───────────────────────────────────────────────────
 
-function drawMenuOverlay(
+function renderMenuContent(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   canvasHeight: number,
@@ -408,6 +415,56 @@ function drawMenuOverlay(
     ? "← → mode  ·  ↑ ↓ level  ·  Z / X rotate  ·  Space drop  ·  C hold  ·  M mute"
     : "← → mode  ·  Z / X rotate  ·  Space drop  ·  C hold  ·  M mute";
   ctx.fillText(hint, cx, canvasHeight - barH / 2 + 5);
+}
+
+function drawMenuOverlay(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  selectedMode: GameMode,
+  selectedStartLevel: number,
+  audioEnabled: boolean,
+): void {
+  const cacheKey = `${selectedMode}:${selectedStartLevel}:${audioEnabled}:${getScoresGeneration()}`;
+
+  // Ensure cache canvas matches current dimensions
+  if (!_menuCacheCanvas || _menuCacheCanvas.width !== canvasWidth || _menuCacheCanvas.height !== canvasHeight) {
+    try {
+      if (typeof OffscreenCanvas !== "undefined") {
+        _menuCacheCanvas = new OffscreenCanvas(canvasWidth, canvasHeight) as unknown as HTMLCanvasElement;
+      } else if (typeof document !== "undefined" && typeof document.createElement === "function") {
+        _menuCacheCanvas = document.createElement("canvas");
+        _menuCacheCanvas.width = canvasWidth;
+        _menuCacheCanvas.height = canvasHeight;
+      } else {
+        _menuCacheCanvas = null;
+      }
+      _menuCacheCtx = _menuCacheCanvas?.getContext("2d") ?? null;
+    } catch {
+      _menuCacheCanvas = null;
+      _menuCacheCtx = null;
+    }
+    _menuCacheKey = ""; // force re-render
+  }
+
+  if (_menuCacheCtx && _menuCacheKey === cacheKey) {
+    // Cache hit — blit cached overlay
+    ctx.drawImage(_menuCacheCanvas!, 0, 0);
+    return;
+  }
+
+  // Cache miss — render to cache canvas
+  if (_menuCacheCtx) {
+    _menuCacheCtx.save();
+    renderMenuContent(_menuCacheCtx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
+    _menuCacheCtx.restore();
+    _menuCacheKey = cacheKey;
+    // Blit to main canvas
+    ctx.drawImage(_menuCacheCanvas!, 0, 0);
+  } else {
+    // No cache available — render directly
+    renderMenuContent(ctx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
+  }
 }
 
 const PAUSE_OPTIONS = ["Resume", "Restart", "Quit to Menu"];
@@ -616,7 +673,7 @@ function drawHUD(
     hudLabel(ctx, "LINES LEFT", hudX, hudY + 96);
     ctx.font = "20px monospace";
     ctx.fillStyle = ACCENT;
-    ctx.fillText(Math.max(0, 40 - state.lines).toString(), hudX, hudY + 118);
+    ctx.fillText(Math.max(0, SPRINT_LINE_TARGET - state.lines).toString(), hudX, hudY + 118);
 
   } else if (state.mode === GameMode.Ultra) {
     hudLabel(ctx, "TIME LEFT", hudX, hudY + 40);

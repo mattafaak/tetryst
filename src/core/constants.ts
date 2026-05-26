@@ -471,3 +471,7 @@ export const EFFECTIVE_LINE_COUNTS: Record<string, number> = {
 export const LEVEL_GOAL_CUMULATIVE: number[] = [
   0, 5, 15, 30, 50, 75, 105, 140, 180, 225, 275, 330, 390, 455, 525, 600,
 ];
+
+// Star-field background
+export const STAR_COUNT = 65;
+export const STAR_TWINKLE_SPEED = 0.002;

@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { playSFX } from "../audio/sfx.ts";
+import { stopMusic } from "../audio/music.ts";
 import { triggerFlash } from "../render/effects.ts";
 import { Game } from "./loop.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
@@ -733,6 +734,99 @@ describe("Game integration", () => {
 
       expect(playSFX).toHaveBeenCalledWith("lock");
       expect(triggerFlash).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("phase transition audio (21.6)", () => {
+    it("stopMusic is called when pausing", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+      vi.clearAllMocks();
+
+      pressKey("Escape"); releaseKey("Escape");
+      advanceFrames(10);
+
+      expect(stopMusic).toHaveBeenCalled();
+    });
+
+    it("playSFX gameover is called on GameOver phase after exiting attract", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      // Exit attract mode first so GameOver doesn't auto-restart
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState };
+      vi.clearAllMocks();
+      g.state = { ...g.state, phase: GamePhase.GameOver as GamePhase };
+
+      advanceFrames(1);
+
+      expect(playSFX).toHaveBeenCalledWith("gameover");
+    });
+  });
+
+  describe("Ultra mode timer (21.6)", () => {
+    it("Ultra timer expiry during play triggers Victory and clears activePiece", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      // Select Ultra mode
+      pressKey("ArrowRight"); releaseKey("ArrowRight");
+      advanceFrames(5);
+      pressKey("ArrowRight"); releaseKey("ArrowRight");
+      advanceFrames(5);
+
+      // Start Ultra game
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState };
+      expect(g.state.mode).toBe(GameMode.Ultra);
+      expect(g.state.phase).toBe(GamePhase.Playing);
+
+      // Set timer to nearly expired
+      g.state = {
+        ...g.state,
+        modeTimer: 10, // expires in ~10ms
+        activePiece: {
+          type: TetriminoType.I,
+          pos: { x: 3, y: 0 },
+          rotation: RotationState.ZERO,
+        },
+      };
+
+      advanceFrames(5, 16); // ~80ms, enough to expire
+
+      expect(g.state.phase).toBe(GamePhase.Victory);
+      expect(g.state.activePiece).toBeNull();
+    });
+  });
+
+  describe("popup expiry (21.6)", () => {
+    it("popups expire and are removed after their duration", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState };
+      // Inject a popup with a short duration
+      g.state = {
+        ...g.state,
+        popups: [{ text: "TEST", color: "#ffffff", timer: 0, duration: 50 }],
+      };
+
+      // Advance past the popup duration
+      advanceFrames(5, 16); // ~80ms
+
+      expect(g.state.popups).toHaveLength(0);
     });
   });
 });

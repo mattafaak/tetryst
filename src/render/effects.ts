@@ -3,7 +3,7 @@
  * Module-level state — purely visual, no game logic coupling.
  */
 
-import { BOARD_WIDTH, VISIBLE_HEIGHT, BUFFER_HEIGHT } from "../core/constants.ts";
+import { BOARD_WIDTH, VISIBLE_HEIGHT, BUFFER_HEIGHT, PIECE_COLORS } from "../core/constants.ts";
 
 // ── Screen flash ─────────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ export function spawnClearParticles(
   boardY: number,
   cellSize: number,
 ): void {
-  const colors = ["#00e5ff", "#ff5252", "#ffb300", "#69f0ae", "#b388ff", "#ff80ab"];
+  const colors = Object.values(PIECE_COLORS);
   for (const boardRow of rows) {
     const vr = boardRow - BUFFER_HEIGHT;
     if (vr < 0 || vr >= VISIBLE_HEIGHT) continue;
@@ -127,4 +127,28 @@ export function setParticleRowKey(key: string): void {
 /** Read the last row key (used by canvas.ts to avoid duplicate spawning). */
 export function getParticleRowKey(): string {
   return lastParticleRowKey;
+}
+
+// ── Particle spawning from update phase ──────────────────────────────────
+
+/** Layout values set by the render phase each frame, used by update-phase particle spawning.
+ *  These only change on window resize, so using values from the last render is safe. */
+let _particleBoardX = 0;
+let _particleBoardY = 0;
+let _particleCellSize = 30;
+
+/** Update the cached particle layout (called from renderFrame each frame). */
+export function setParticleLayout(boardX: number, boardY: number, cellSize: number): void {
+  _particleBoardX = boardX;
+  _particleBoardY = boardY;
+  _particleCellSize = cellSize;
+}
+
+/** Spawn particles for the given cleared rows. Called from the game loop's update phase
+ *  instead of from the render phase, decoupling particle logic from rendering. */
+export function spawnParticlesForRows(rows: number[]): void {
+  const key = rows.join(",");
+  if (key === lastParticleRowKey) return;
+  lastParticleRowKey = key;
+  spawnClearParticles(rows, _particleBoardX, _particleBoardY, _particleCellSize);
 }

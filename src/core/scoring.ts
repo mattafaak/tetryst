@@ -121,8 +121,6 @@ export function detectTSpin(board: Board, piece: Piece): TSpinResult {
   }
 
   const bothBackOccupied =
-    backIndices[0] !== undefined &&
-    backIndices[1] !== undefined &&
     occupiedSet.has(backIndices[0]) &&
     occupiedSet.has(backIndices[1]);
 

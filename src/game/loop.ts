@@ -14,7 +14,7 @@ import { AIController, createAttractAIController } from "../ai/ai-controller.ts"
 import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL, MAX_CELL_SIZE } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
 import { pushPopup, tickPopups } from "../render/popups.ts";
-import { triggerFlash, clearEffects } from "../render/effects.ts";
+import { triggerFlash, clearEffects, spawnParticlesForRows } from "../render/effects.ts";
 
 const GAME_MODES: readonly GameMode[] = Object.freeze([GameMode.Marathon, GameMode.Sprint, GameMode.Ultra]);
 
@@ -482,6 +482,10 @@ export class Game {
   private updateLineClear(dt: number): void {
     this.state = tickPopups(this.state, dt);
     this.state.lineClearTimer += dt;
+    // Spawn particles on entry (dedup handled inside effects.ts)
+    if (this.state.clearedRowIndices.length > 0) {
+      spawnParticlesForRows(this.state.clearedRowIndices);
+    }
     if (this.state.lineClearTimer >= LINE_CLEAR_ANIM_DURATION) {
       this.state.phase = GamePhase.EntryDelay;
       this.state.entryDelayTimer = 0;

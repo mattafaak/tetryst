@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { loadHighScores, saveHighScore } from "./high-scores.ts";
+import { loadHighScores, saveHighScore, clearScoresCache } from "./high-scores.ts";
 
 function mockStorage() {
   const store: Record<string, string> = {};
@@ -17,6 +17,7 @@ describe("high-scores", () => {
   beforeEach(() => {
     storage = mockStorage();
     vi.stubGlobal("localStorage", storage);
+    clearScoresCache();
   });
 
   it("returns empty array when localStorage is empty", () => {
@@ -70,5 +71,26 @@ describe("high-scores", () => {
     saveHighScore({ score: 500, level: 1, lines: 10, mode: "Marathon" });
     saveHighScore({ score: 500, level: 1, lines: 10, mode: "Marathon" });
     expect(loadHighScores("Marathon")).toHaveLength(2);
+  });
+
+  it("rejects corrupt data with invalid fields", () => {
+    storage.setItem("tetryst_hs_Marathon", JSON.stringify([{ score: -100, level: 1, lines: 0, mode: "Marathon", date: "x" }]));
+    expect(loadHighScores("Marathon")).toEqual([]);
+    expect(storage.getItem("tetryst_hs_Marathon")).toBeNull();
+  });
+
+  it("rejects data with unknown mode string", () => {
+    storage.setItem("tetryst_hs_Marathon", JSON.stringify([{ score: 100, level: 1, lines: 0, mode: "InvalidMode", date: "x" }]));
+    expect(loadHighScores("Marathon")).toEqual([]);
+  });
+
+  it("rejects data with missing fields", () => {
+    storage.setItem("tetryst_hs_Marathon", JSON.stringify([{ score: 100 }]));
+    expect(loadHighScores("Marathon")).toEqual([]);
+  });
+
+  it("rejects non-array JSON data", () => {
+    storage.setItem("tetryst_hs_Marathon", JSON.stringify({ score: 100, level: 1 }));
+    expect(loadHighScores("Marathon")).toEqual([]);
   });
 });

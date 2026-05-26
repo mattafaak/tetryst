@@ -209,23 +209,33 @@ const MELODY: Array<{ note: string; duration: number }> = [
 ];
 
 const SONGS = [MELODY];
-const BPM = 144; // matches the MIDI source tempo (flutetunes.com)
-const BEAT_DURATION = 60 / BPM; // ~0.417s per beat
+
+/** @internal exported for testing */
+export const BPM = 144; // matches the MIDI source tempo (flutetunes.com)
+
+/** @internal exported for testing */
+export const BEAT_DURATION = 60 / BPM; // ~0.417s per beat
+
+/** @internal exported for testing */
+export const MELODY_DATA = MELODY;
 
 // Resolve a note name to a frequency, supporting bass transposition
-function freqOf(note: string): number | null {
+/** @internal exported for testing */
+export function freqOf(note: string): number | null {
   return NOTES[note] ?? null;
 }
 
 // Derive bass frequency from a melody note's root letter
-function bassFreqOf(note: string): number | null {
+/** @internal exported for testing */
+export function bassFreqOf(note: string): number | null {
   if (note === "R") return null;
   const root = note[0];
   return BASS_ROOTS[root] ?? 110.0;
 }
 
 // Pre-scheduled note event
-interface NoteEvent {
+/** @internal exported for testing */
+export interface NoteEvent {
   startBeat: number;
   durBeats: number;
   note: string;
@@ -234,7 +244,8 @@ interface NoteEvent {
 
 // Build an event list from a melody array, accumulating beat offsets.
 // Bass note only changes on downbeats (integer beat positions) for a steady harmonic foundation.
-function buildSchedule(melody: Array<{ note: string; duration: number }>): NoteEvent[] {
+/** @internal exported for testing */
+export function buildSchedule(melody: Array<{ note: string; duration: number }>): NoteEvent[] {
   const events: NoteEvent[] = [];
   let beat = 0;
   let currentBass: number | null = null;

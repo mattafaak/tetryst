@@ -211,6 +211,52 @@ Created: 2026-05-25
 | 20.5 | **Remove obsolete `drawHighScores()` function** — With scores always visible on the menu overlay, `drawHighScores()` is dead code. Remove the entire function to simplify the rendering module. | `drawHighScores()` removed; no remaining references; build passes; all tests pass | 20.4 | cc:完了 |
 | 20.6 | **Update tests for new menu flow** — Update or add tests covering: menu input handling with persistent attract mode (arrow keys don't exit attract, Enter does), unified overlay renders without error, mode switching updates high score display, game-over/victory returns to attract menu. | All menu-related tests pass with new simplified flow; coverage maintained | 20.2, 20.3, 20.4 | cc:完了 |
 
+## Phase 21: Deep research cleanup — dead code, type safety, perf, test coverage
+
+**Overview**: Comprehensive cleanup pass across the entire codebase addressing findings from deep research audit. Covers 4 categories: dead code removal and type safety hardening (Required), test coverage for under-tested paths (Required), performance optimizations (Recommended), and low-priority polish (Optional). Each category is ordered by impact within its priority tier.
+
+### Required — correctness and safety
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 21.1 | **Remove dead `ShowHighScores` action** — Phase 20 made the `ShowHighScores` action fully dead (high scores are always visible on the unified menu overlay). Remove: the `"ShowHighScores"` literal from the `InputAction` union type (types.ts), the `KeyH` mapping in keyboard.ts (line 30), and the dead `case "ShowHighScores"` handler in actions.ts (lines 40-41). | `ShowHighScores` removed from InputAction, keyboard mapping, and actions handler; build passes; all tests pass | - | cc:完了 |
+| 21.2 | **Add runtime validation for high score deserialization** — `loadHighScores` (high-scores.ts:17) uses `JSON.parse` + `parsed as HighScore[]` with zero runtime validation. Corrupt localStorage data (manual edit, stale format from a past version) silently produces garbage scores with missing fields. Fix: add a `isValidHighScoreArray` type guard that checks every entry has the correct shape (score is number ≥ 0, level is number, lines is number, mode is valid GameMode enum value). On validation failure, return empty array and clear the corrupt entry. | Corrupt localStorage data returns `[]` instead of crashing or showing garbage; valid data unchanged; all tests pass | - | cc:完了 |
+| 21.3 | **Replace hardcoded `40` with `SPRINT_LINE_TARGET`** — `drawGameOver` in canvas.ts:619 hardcodes `40` as the Sprint line target. Replace with the imported `SPRINT_LINE_TARGET` constant so a constant change propagates automatically. | canvas.ts uses `SPRINT_LINE_TARGET` instead of `40`; no visual change; all tests pass | - | cc:完了 |
+| 21.4 | **Remove always-true type guard in scoring.ts** — `detectTSpin` (scoring.ts:124-126) guards `backIndices[0] !== undefined && backIndices[1] !== undefined` which is always true for a fixed-length `[number, number]` tuple. Remove the dead guard. | Dead `backIndices[0] !== undefined && backIndices[1] !== undefined` removed; build passes; all tests pass | - | cc:完了 |
+| 21.5 | **Deduplicate hardcoded piece colors** — `spawnClearParticles` (effects.ts:45) hardcodes a color palette. Import `PIECE_COLORS` and use `Object.values(PIECE_COLORS)` instead. | effects.ts uses `PIECE_COLORS` instead of duplicate palette; all tests pass | - | cc:完了 |
+
+### Required — test coverage for under-tested paths
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 21.6 | **Add direct unit tests for loop.ts private-method behavior** — `lockActivePiece`, `triggerVictory`, `tickPlayingState`, `applyUltraTimer`, and `onPhaseTransition` are tested only through integration tests in `loop.test.ts`. Add focused unit tests using module-level mocking: (a) `applyUltraTimer` returns Victory state when timer expires, (b) `tickPlayingState` correctly handles popup expiry + mode timer for Ultra/Sprint/Marathon, (c) `onPhaseTransition` calls correct audio functions per phase change. These are observable through their side effects on state and mocked audio/effects modules. The integration tests already cover `lockActivePiece` and `triggerVictory` at a high level — skip those and focus on the 3 methods above. | ≥6 direct unit tests for tickPlayingState, applyUltraTimer, onPhaseTransition; all pass | - | cc:完了 |
+| 21.7 | **Add direct tests for executeLock no-clear paths** — `executeLock` (lock.ts:121-159) has two no-clear paths (T-spin and non-T-spin) that only test for Marathon level-cap victory and aren't directly covered by existing tests (Phase 16.4 added 20 tests but coverage of the no-clear else branches may be thin). Verify that when a lock produces 0 lines cleared on a T-spin at max level, `victoryTriggered` is true. Use the Phase 16.4 test infra. | ≥2 tests verifying no-clear T-spin and non-T-spin paths through executeLock; all pass | 16.4 | cc:完了 |
+| 21.8 | **Add unit tests for high-scores.ts** — `high-scores.ts` has zero direct tests. Add: (a) `loadHighScores` returns empty array when localStorage is empty, (b) `loadHighScores` returns parsed array when localStorage has valid data, (c) `saveHighScore` stores a new entry, (d) `saveHighScore` maintains sorted order (descending by score), (e) `saveHighScore` caps at 10 entries, (f) corrupt localStorage data returns `[]` after 21.2 validation. Mock `localStorage` via `vi.stubGlobal`. | ≥6 high-scores.ts unit tests; all pass | 21.2 | cc:完了 |
+
+### Recommended — performance
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 21.9 | **Cache menu overlay on offscreen canvas** — `drawMenuOverlay` renders ~30 fillText calls per frame, all of which are static between mode/level/score changes. Cache the overlay to an offscreen canvas keyed on `${mode}:${level}:${audio}:${scoresGeneration}`. Re-render only when the key changes; otherwise `drawImage` the cached canvas. Also adds `getScoresGeneration()` to high-scores.ts to enable cache invalidation. | Menu overlay cached to offscreen canvas; re-rendered only on mode/level/audio/score change; all tests pass | - | cc:完了 |
+| 21.10 | **Move particle spawning from render to update phase** — `spawnClearParticles` was called from canvas.ts during render, coupling particle logic to the render pass. Store layout (boardX/boardY/cellSize) in effects.ts via `setParticleLayout()` called from renderFrame. Add `spawnParticlesForRows()` to effects.ts and call it from `updateLineClear` in loop.ts. Remove `spawnClearParticlesOnce` from canvas.ts. | Particles spawned during update phase; no render-phase spawning; all tests pass | - | cc:完了 |
+| 21.11 | **Cache loadHighScores results** — `loadHighScores` is called every frame in `drawMenuOverlay` (canvas.ts) for each of the 3 modes (to check if a mode has any scores). Each call does `localStorage.getItem`, `JSON.parse`, and sort. Cache the parsed result and invalidate only on `saveHighScore`. Since the cache lives through the module lifecycle, reset it on `clearEffects` or add a generation counter. | loadHighScores reads localStorage at most once per game; cached results used during play; all tests pass | - | cc:完了 |
+| 21.12 | **Cache star field on offscreen canvas** — Create an offscreen canvas for the star field background. Render the full star field (dark fill + star positions) to the cache at ~15fps throttled rate, then `drawImage` each frame. Overlay twinkle highlights per-frame with individual fillRect calls. Gracefully degrades when OffscreenCanvas/document.createElement are unavailable. | Star field cached on offscreen canvas with throttled re-render; twinkle overlaid per-frame; all tests pass | - | cc:完了 |
+
+### Recommended — code quality and hardening
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 21.13 | **Extract background.ts magic numbers** — `renderBackground` uses hardcoded `65` (star count) and `0.002` (twinkle speed). Extract to named constants in constants.ts: `STAR_COUNT` and `STAR_TWINKLE_SPEED`. | Named constants used; star field behavior unchanged; all tests pass | - | cc:完了 |
+| 21.14 | **Add audio music scheduling direct tests** — Export `buildSchedule`, `freqOf`, `bassFreqOf` from music.ts for testing. Add 13 tests covering frequency resolution, bass mapping, schedule beat offsets, downbeat handling, melody data size, and BPM constants. | 13 music scheduling unit tests; all pass | - | cc:完了 |
+| 21.15 | **Add render module unit tests beyond "doesn't throw"** — The canvas.ts `renderFrame` test (Phase 16.5) only verifies it doesn't throw. Add targeted rendering tests: (a) `fmtScore` formats edge cases (0, 999999, MAX_SAFE_INTEGER, negative — though negative shouldn't occur), (b) `drawMenuOverlay` produces expected text output (verify specific fillText calls via spy), (c) HUD rendering shows correct score/lines/level values for a known state, (d) drawPause renders correctly with menu selection, (e) drawGameOver shows correct statistics. Use `vi.spyOn(ctx, "fillText")` to verify text content without visual output. | ≥6 targeted render tests with fillText verification; all pass | - | cc:完了 |
+
+### Optional — low priority
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 21.16 | **Remove unused test-only production exports** — Several production functions are exported only for test consumption: `isB2BEligible` (scoring.ts), `getGravityDelay` (gravity.ts), and all 6 ai-brain.ts functions. If tests import them directly, the exports are necessary — verify each. For any that are truly unused, remove the export. For those used by tests, consider whether to keep the export or move the test to use the public API. | Unnecessary exports removed; all existing imports updated; all tests pass | - | cc:完了 |
+| 21.17 | **Cache DPR value to avoid per-frame devicePixelRatio reads** — `recalcCellSize` reads `window.devicePixelRatio` on resize (already optimized per 8.2), but `renderFrame` calls `this.ctx.canvas.width / (window.devicePixelRatio || 1)` for every render. Cache the DPR value at game start and update it on resize events. This eliminates a layout-read-triggering property access per frame. | devicePixelRatio cached; updated on resize; all tests pass | 8.2 | cc:完了 |
+
 ## Archive
 
 (none)
