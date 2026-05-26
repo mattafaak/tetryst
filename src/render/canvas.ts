@@ -17,6 +17,8 @@ import {
   NEXT_QUEUE_SIZE,
 } from "../core/constants.ts";
 import { loadHighScores } from "../core/high-scores.ts";
+import { renderBackground } from "./background.ts";
+import { renderEffects, spawnClearParticles } from "./effects.ts";
 
 // ── Design tokens ──────────────────────────────────────────────────────
 const TEXT       = "#e2e2e2";
@@ -101,9 +103,8 @@ export function renderFrame(
   ctx.save();
   ctx.scale(dpr, dpr);
 
-  // Clear
-  ctx.fillStyle = "#0a0a0a";
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  // Background (dark fill + subtle star field)
+  renderBackground(ctx, canvasWidth, canvasHeight);
 
   // Calculate board position (centered)
   const boardPixelWidth = BOARD_WIDTH * cellSize;
@@ -132,9 +133,10 @@ export function renderFrame(
     drawPiece(ctx, state.activePiece, cellSize);
   }
 
-  // Draw line clear animation
+  // Draw line clear animation + spawn particles
   if (state.phase === GamePhase.LineClear) {
     drawLineClearAnimation(ctx, state, cellSize);
+    spawnClearParticlesOnce(state.clearedRowIndices, boardX, boardY, cellSize);
   }
 
   ctx.restore();
@@ -163,6 +165,9 @@ export function renderFrame(
   if (!isAttractMode) {
     drawHUD(ctx, boardX + boardPixelWidth + 20, boardY, state, cellSize, audioEnabled ?? true);
   }
+
+  // Visual effects (particles, screen flash)
+  renderEffects(ctx, dpr, canvasWidth, canvasHeight);
 
   ctx.restore();
 }
@@ -256,6 +261,22 @@ function drawLineClearAnimation(
       ctx.fillRect(0, visibleRow * cellSize, BOARD_WIDTH * cellSize, cellSize);
     }
   }
+}
+
+/** Track which cleared-row set we last spawned particles for, so we only
+ *  spawn once per line-clear event (not every animation frame). */
+let lastParticleRows: string = "";
+
+function spawnClearParticlesOnce(
+  rows: number[],
+  boardX: number,
+  boardY: number,
+  cellSize: number,
+): void {
+  const key = rows.join(",");
+  if (key === lastParticleRows) return;
+  lastParticleRows = key;
+  spawnClearParticles(rows, boardX, boardY, cellSize);
 }
 
 // ── Overlay helpers ────────────────────────────────────────────────────

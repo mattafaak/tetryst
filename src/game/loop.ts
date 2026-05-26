@@ -1,4 +1,4 @@
-import { type GameState, type InputAction, GamePhase, GameMode } from "../core/types.ts";
+import { type GameState, type InputAction, type PopupItem, GamePhase, GameMode } from "../core/types.ts";
 import { processAction } from "../core/actions.ts";
 import { applyGravity } from "../core/gravity.ts";
 import { shouldLock as checkLock, resetLockState } from "../core/lock-delay.ts";
@@ -15,6 +15,7 @@ import { AIController, createAttractAIController } from "../ai/ai-controller.ts"
 import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
 import { pushPopup, tickPopups } from "../render/popups.ts";
+import { triggerFlash, clearEffects } from "../render/effects.ts";
 
 const GAME_MODES: GameMode[] = [GameMode.Marathon, GameMode.Sprint, GameMode.Ultra];
 
@@ -53,17 +54,32 @@ export class Game {
     this.lastTime = performance.now();
     this.recalcCellSize();
     window.addEventListener("resize", this.recalcCellSize);
+    // Guard for non-browser test environments
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", this.onVisibilityChange);
+    }
     this.loop(this.lastTime);
   }
 
   stop(): void {
     this.keyboard.detach();
     window.removeEventListener("resize", this.recalcCellSize);
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    }
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
   }
+
+  /** Auto-pause when the tab loses focus so the game loop doesn't accumulate
+   *  invisible time (especially important for Ultra mode's countdown). */
+  private onVisibilityChange = (): void => {
+    if (typeof document !== "undefined" && document.hidden && this.state.phase === GamePhase.Playing) {
+      this.handleInput({ type: "Pause" });
+    }
+  };
 
   private recalcCellSize = (): void => {
     const dpr = window.devicePixelRatio || 1;
@@ -122,6 +138,7 @@ export class Game {
 
       if (action.type === "Start") {
         this.menuIsStatic = false;
+        clearEffects();
         this.state = startGame(
           createInitialState(this.selectedMode),
           this.selectedStartLevel,
@@ -182,6 +199,7 @@ export class Game {
         } else if (this.pauseMenuSelection === 1) {
           // Restart
           this.pauseMenuSelection = 0;
+          clearEffects();
           this.state = startGame(createInitialState(this.selectedMode), this.selectedStartLevel);
           this.prevPhase = GamePhase.Playing;
         } else {
@@ -198,11 +216,13 @@ export class Game {
     }
 
     if (action.type === "Start" && this.state.phase === GamePhase.GameOver) {
+      clearEffects();
       this.state = startGame(createInitialState(this.selectedMode), this.selectedStartLevel);
       return;
     }
 
     if (action.type === "Start" && this.state.phase === GamePhase.Victory) {
+      clearEffects();
       this.menuIsStatic = true;
       this.state = createInitialState(this.selectedMode);
       return;
@@ -269,10 +289,6 @@ export class Game {
       this.keyboard.update(dt);
     }
 
-    // Mode timer runs every frame regardless of phase so Ultra countdown
-    // doesn't pause during line-clear animation or entry delay.
-    this.updateModeTimer(dt);
-
     switch (this.state.phase) {
       case GamePhase.Menu:
         if (!this.isAttractMode && !this.menuIsStatic) {
@@ -290,9 +306,13 @@ export class Game {
         }
         break;
       case GamePhase.LineClear:
+        // Ultra mode timer counts down during line-clear animation (fix 5.4)
+        this.state = this.applyUltraTimer(this.state, dt);
         this.updateLineClear(dt);
         break;
       case GamePhase.EntryDelay:
+        // Ultra mode timer counts down during entry delay (fix 5.4)
+        this.state = this.applyUltraTimer(this.state, dt);
         this.updateEntryDelayPhase(dt);
         break;
       case GamePhase.Victory:
@@ -329,22 +349,18 @@ export class Game {
     }
   }
 
-  private updateModeTimer(dt: number): void {
-    if (this.state.phase === GamePhase.Victory) return;
-    if (this.state.mode === GameMode.Ultra) {
-      const next = Math.max(0, this.state.modeTimer - dt);
-      this.state = { ...this.state, modeTimer: next };
-      if (next <= 0) {
-        this.triggerVictory();
-      }
-    } else if (this.state.mode === GameMode.Sprint && this.state.phase === GamePhase.Playing) {
-      this.state = { ...this.state, modeTimer: this.state.modeTimer + dt };
-    }
+  /** Apply Ultra countdown in non-Playing phases so timer stays continuous. */
+  private applyUltraTimer(state: GameState, dt: number): GameState {
+    if (state.mode !== GameMode.Ultra) return state;
+    const next = Math.max(0, state.modeTimer - dt);
+    if (next <= 0) this.triggerVictory();
+    return { ...state, modeTimer: next };
   }
 
   private updatePlaying(dt: number): void {
-    // Tick popups
-    this.state = tickPopups(this.state, dt);
+    // Single spread combining popup tick + mode timer (reduces per-frame
+    // GameState spreads from 2→1 in the Playing hot path — fix 8.4).
+    this.state = this.tickPlayingState(this.state, dt);
 
     const gravResult = applyGravity(this.state, dt);
     this.state = gravResult.state;
@@ -355,6 +371,26 @@ export class Game {
     if (lockResult.shouldLock) {
       this.lockActivePiece();
     }
+  }
+
+  /** Combine popup expiry + mode timer update into a single state spread. */
+  private tickPlayingState(state: GameState, dt: number): GameState {
+    const nextPopups: PopupItem[] = [];
+    for (const p of state.popups) {
+      const t = p.timer + dt;
+      if (t < p.duration) nextPopups.push({ ...p, timer: t });
+    }
+    let nextTimer: number | undefined;
+    if (state.mode === GameMode.Ultra) {
+      nextTimer = Math.max(0, state.modeTimer - dt);
+      if (nextTimer <= 0) this.triggerVictory();
+    } else if (state.mode === GameMode.Sprint) {
+      nextTimer = state.modeTimer + dt;
+    }
+    if (nextTimer !== undefined) {
+      return { ...state, popups: nextPopups, modeTimer: nextTimer };
+    }
+    return { ...state, popups: nextPopups };
   }
 
   private triggerVictory(): void {
@@ -402,6 +438,16 @@ export class Game {
       }
       if (result.needsLevelupSFX) playSFX("levelup");
       if (result.needsTSpinSFX) playSFX("tspin");
+    }
+
+    // Screen flash for major events
+    if (result.linesCleared === 4) {
+      triggerFlash("#ffffff", 160);
+    } else if (result.tSpinResult.isTSpin && result.linesCleared >= 2) {
+      triggerFlash("#ffb300", 160);
+    }
+    if (result.isPerfectClear) {
+      triggerFlash("#ffffff", 200);
     }
 
     // Apply popups
@@ -462,6 +508,7 @@ export class Game {
 
   private restartAttractGame(): void {
     this.aiController?.reset();
+    clearEffects();
     this.state = startGame(createInitialState());
     this.prevPhase = GamePhase.Playing;
   }
@@ -470,6 +517,7 @@ export class Game {
     this.isAttractMode = true;
     this.audioEnabled = false;
     this.aiController = createAttractAIController();
+    clearEffects();
     this.state = startGame(createInitialState(this.selectedMode));
     this.prevPhase = GamePhase.Playing;
   }
