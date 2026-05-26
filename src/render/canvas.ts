@@ -447,33 +447,7 @@ function renderMenuContent(
     scoresY = cy + 58;
   }
 
-  // High scores
-  const scores = loadHighScores(selectedMode).slice(0, 5);
-  if (scores.length > 0) {
-    ctx.font = FONT_BOLD_11;
-    ctx.fillStyle = AMBER;
-    ctx.fillText("TOP  SCORES", cx, scoresY);
-
-    const scoreLabel = selectedMode === GameMode.Sprint ? "TIME" : "SCORE";
-    ctx.fillText(`#    ${scoreLabel}           LVL   LINES`, cx, scoresY + 16);
-
-    ctx.font = FONT_13;
-    scores.forEach((s, i) => {
-      const y = scoresY + 34 + i * 16;
-      const primary = selectedMode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
-      const rank = `${i + 1}.${i < 9 ? "  " : " "}`;
-      ctx.fillStyle = i < 3 ? TEXT : TEXT_DIM;
-      ctx.fillText(
-        `${rank}${primary.padEnd(12)}  Lv ${s.level + 1}  ${s.lines}L`,
-        cx,
-        y,
-      );
-    });
-  } else {
-    ctx.font = FONT_EMPTY;
-    ctx.fillStyle = TEXT_DIM;
-    ctx.fillText("No scores yet!", cx, scoresY + 18);
-  }
+  drawBestScores(ctx, selectedMode, cx, scoresY, "menu");
 
   const promptY = isMarathon ? cy + 196 : cy + 176;
   ctx.font = FONT_PROMPT;
@@ -690,19 +664,40 @@ function drawVictory(
   ctx.fillText("PRESS  ENTER  FOR  MENU", cx, cy + 152);
 }
 
-/** Shared high scores rendering used by game-over and victory overlays. */
-function drawBestScores(ctx: CanvasRenderingContext2D, mode: string, cx: number, y: number): void {
+function drawBestScores(ctx: CanvasRenderingContext2D, mode: string, cx: number, y: number, style: "menu" | "summary" = "summary"): void {
   const scores = loadHighScores(mode).slice(0, 5);
-  if (scores.length === 0) return;
-  ctx.font = FONT_BOLD_11;
-  ctx.fillStyle = AMBER;
-  ctx.fillText("BEST  SCORES", cx, y);
-  ctx.font = FONT_13;
-  ctx.fillStyle = TEXT_DIM;
-  scores.forEach((s, i) => {
-    const primary = mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
-    ctx.fillText(`${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`, cx, y + 18 + i * 18);
-  });
+  if (style === "menu") {
+    ctx.font = FONT_BOLD_11;
+    ctx.fillStyle = AMBER;
+    ctx.fillText("TOP  SCORES", cx, y);
+    const scoreLabel = mode === GameMode.Sprint ? "TIME" : "SCORE";
+    ctx.fillText(`#    ${scoreLabel}           LVL   LINES`, cx, y + 16);
+    if (scores.length === 0) {
+      ctx.font = FONT_EMPTY;
+      ctx.fillStyle = TEXT_DIM;
+      ctx.fillText("No scores yet!", cx, y + 34);
+      return;
+    }
+    ctx.font = FONT_13;
+    scores.forEach((s, i) => {
+      const rowY = y + 34 + i * 16;
+      const primary = mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
+      const rank = `${i + 1}.${i < 9 ? "  " : " "}`;
+      ctx.fillStyle = i < 3 ? TEXT : TEXT_DIM;
+      ctx.fillText(`${rank}${primary.padEnd(12)}  Lv ${s.level + 1}  ${s.lines}L`, cx, rowY);
+    });
+  } else {
+    if (scores.length === 0) return;
+    ctx.font = FONT_BOLD_11;
+    ctx.fillStyle = AMBER;
+    ctx.fillText("BEST  SCORES", cx, y);
+    ctx.font = FONT_13;
+    ctx.fillStyle = TEXT_DIM;
+    scores.forEach((s, i) => {
+      const primary = mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
+      ctx.fillText(`${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`, cx, y + 18 + i * 18);
+    });
+  }
 }
 
 function formatMs(ms: number): string {
