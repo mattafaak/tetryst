@@ -17,6 +17,7 @@ import {
   NEXT_QUEUE_SIZE,
   ULTRA_DANGER_THRESHOLD,
   SPRINT_LINE_TARGET,
+  LINE_CLEAR_ANIM_DURATION,
 } from "../core/constants.ts";
 import { loadHighScores, getScoresGeneration } from "../core/high-scores.ts";
 import { renderBackground } from "./background.ts";
@@ -24,6 +25,12 @@ import { renderEffects, setParticleLayout } from "./effects.ts";
 
 // ── Design tokens ──────────────────────────────────────────────────────
 const TEXT       = "#e2e2e2";
+
+// Shared font constants — deduplicated across ~20 font assignments in rendering functions.
+const FONT_BOLD_11   = "bold 11px monospace";
+const FONT_BOLD_26   = "bold 26px monospace";
+const FONT_13        = "13px monospace";
+const FONT_12        = "12px monospace";
 
 // Cached DPR: initialized once and re-read when canvas dimensions change.
 let _dpr = typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1;
@@ -43,8 +50,16 @@ const AMBER      = "#ffb300";
 const RED        = "#ff5252";
 
 function fmtScore(n: number): string {
-  return n.toLocaleString("en-US");
+  if (n === _lastFmtScore) return _lastFmtResult;
+  _lastFmtScore = n;
+  _lastFmtResult = n.toLocaleString("en-US");
+  return _lastFmtResult;
 }
+
+// Single-entry cache for fmtScore — avoids per-frame toLocaleString overhead
+// when the score hasn't changed between frames (common in slow-paced play).
+let _lastFmtScore = 0;
+let _lastFmtResult = "0";
 
 // Offscreen canvas cache — only redrawn when the board reference changes
 let boardCacheCanvas: HTMLCanvasElement | null = null;
@@ -140,7 +155,9 @@ export function renderFrame(
     renderBoardStatic(state.board, cellSize);
     cachedBoard = state.board;
   }
-  ctx.drawImage(boardCacheCanvas!, boardX, boardY);
+  if (boardCacheCanvas) {
+    ctx.drawImage(boardCacheCanvas, boardX, boardY);
+  }
 
   // Board-area drawings use a translated context so coordinates are grid-relative
   ctx.save();
@@ -270,7 +287,7 @@ function drawLineClearAnimation(
   state: GameState,
   cellSize: number
 ): void {
-  const flash = Math.sin(state.lineClearTimer * 0.03) > 0;
+  const flash = Math.sin(state.lineClearTimer * (3 * Math.PI / LINE_CLEAR_ANIM_DURATION)) > 0;
   if (!flash) return;
 
   ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
@@ -307,7 +324,7 @@ function rule(ctx: CanvasRenderingContext2D, cx: number, y: number, halfW = 110)
 }
 
 function hudLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
-  ctx.font = "bold 11px monospace";
+  ctx.font = FONT_BOLD_11;
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(text, x, y);
 }
@@ -332,12 +349,12 @@ function renderMenuContent(
   rule(ctx, cx, cy - 42);
 
   // Mode label
-  ctx.font = "bold 11px monospace";
+  ctx.font = FONT_BOLD_11;
   ctx.fillStyle = TEXT_FAINT;
   ctx.fillText("MODE", cx, cy - 18);
 
   // Mode selector
-  ctx.font = "bold 26px monospace";
+  ctx.font = FONT_BOLD_26;
   ctx.fillStyle = ACCENT;
   ctx.fillText(`‹  ${selectedMode}  ›`, cx, cy + 8);
 
@@ -346,21 +363,21 @@ function renderMenuContent(
   let scoresY: number;
 
   if (isMarathon) {
-    ctx.font = "bold 11px monospace";
+    ctx.font = FONT_BOLD_11;
     ctx.fillStyle = TEXT_FAINT;
     ctx.fillText("START LEVEL", cx, cy + 32);
 
-    ctx.font = "bold 26px monospace";
+    ctx.font = FONT_BOLD_26;
     ctx.fillStyle = AMBER;
     ctx.fillText(`↑  ${selectedStartLevel + 1}  ↓`, cx, cy + 56);
     scoresY = cy + 82;
   } else if (selectedMode === GameMode.Sprint) {
-    ctx.font = "13px monospace";
+    ctx.font = FONT_13;
     ctx.fillStyle = TEXT_DIM;
     ctx.fillText("Clear 40 lines as fast as you can", cx, cy + 34);
     scoresY = cy + 58;
   } else {
-    ctx.font = "13px monospace";
+    ctx.font = FONT_13;
     ctx.fillStyle = TEXT_DIM;
     ctx.fillText("Score as many points as you can in 2 min", cx, cy + 34);
     scoresY = cy + 58;
@@ -369,14 +386,14 @@ function renderMenuContent(
   // High scores
   const scores = loadHighScores(selectedMode).slice(0, 5);
   if (scores.length > 0) {
-    ctx.font = "bold 11px monospace";
+    ctx.font = FONT_BOLD_11;
     ctx.fillStyle = AMBER;
     ctx.fillText("TOP  SCORES", cx, scoresY);
 
     const scoreLabel = selectedMode === GameMode.Sprint ? "TIME" : "SCORE";
     ctx.fillText(`#    ${scoreLabel}           LVL   LINES`, cx, scoresY + 16);
 
-    ctx.font = "13px monospace";
+    ctx.font = FONT_13;
     scores.forEach((s, i) => {
       const y = scoresY + 34 + i * 16;
       const primary = selectedMode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
@@ -400,7 +417,7 @@ function renderMenuContent(
   ctx.fillText("PRESS  ENTER  TO  PLAY", cx, promptY);
 
   // Audio indicator
-  ctx.font = "12px monospace";
+  ctx.font = FONT_12;
   ctx.fillStyle = audioEnabled ? "#44aa66" : "#885555";
   ctx.fillText(audioEnabled ? "♪  on" : "♪  off", cx, promptY + 20);
 
@@ -409,7 +426,7 @@ function renderMenuContent(
   ctx.fillStyle = "rgba(0,0,0,0.82)";
   ctx.fillRect(0, canvasHeight - barH, canvasWidth, barH);
 
-  ctx.font = "13px monospace";
+  ctx.font = FONT_13;
   ctx.fillStyle = TEXT_DIM;
   const hint = isMarathon
     ? "← → mode  ·  ↑ ↓ level  ·  Z / X rotate  ·  Space drop  ·  C hold  ·  M mute"
@@ -447,20 +464,20 @@ function drawMenuOverlay(
     _menuCacheKey = ""; // force re-render
   }
 
-  if (_menuCacheCtx && _menuCacheKey === cacheKey) {
+  if (_menuCacheCanvas && _menuCacheCtx && _menuCacheKey === cacheKey) {
     // Cache hit — blit cached overlay
-    ctx.drawImage(_menuCacheCanvas!, 0, 0);
+    ctx.drawImage(_menuCacheCanvas, 0, 0);
     return;
   }
 
   // Cache miss — render to cache canvas
-  if (_menuCacheCtx) {
+  if (_menuCacheCanvas && _menuCacheCtx) {
     _menuCacheCtx.save();
     renderMenuContent(_menuCacheCtx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
     _menuCacheCtx.restore();
     _menuCacheKey = cacheKey;
     // Blit to main canvas
-    ctx.drawImage(_menuCacheCanvas!, 0, 0);
+    ctx.drawImage(_menuCacheCanvas, 0, 0);
   } else {
     // No cache available — render directly
     renderMenuContent(ctx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
@@ -496,7 +513,7 @@ function drawPauseMenu(
   });
 
   // Hint
-  ctx.font = "12px monospace";
+  ctx.font = FONT_12;
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText("↑ ↓ navigate  ·  Enter select  ·  P resume", cx, cy + 86);
 }
@@ -523,17 +540,17 @@ function drawGameOver(
 
   // Primary stat
   if (state.mode === GameMode.Sprint) {
-    ctx.font = "bold 11px monospace";
+    ctx.font = FONT_BOLD_11;
     ctx.fillStyle = TEXT_FAINT;
     ctx.fillText("TIME", cx, cy - 44);
-    ctx.font = "bold 26px monospace";
+    ctx.font = FONT_BOLD_26;
     ctx.fillStyle = TEXT;
     ctx.fillText(formatMs(state.modeTimer), cx, cy - 18);
   } else {
-    ctx.font = "bold 11px monospace";
+    ctx.font = FONT_BOLD_11;
     ctx.fillStyle = TEXT_FAINT;
     ctx.fillText("SCORE", cx, cy - 44);
-    ctx.font = "bold 26px monospace";
+    ctx.font = FONT_BOLD_26;
     ctx.fillStyle = TEXT;
     ctx.fillText(fmtScore(state.score), cx, cy - 18);
   }
@@ -542,23 +559,7 @@ function drawGameOver(
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
 
-  // High scores
-  const scores = loadHighScores(state.mode).slice(0, 5);
-  if (scores.length > 0) {
-    ctx.font = "bold 11px monospace";
-    ctx.fillStyle = AMBER;
-    ctx.fillText("BEST  SCORES", cx, cy + 40);
-    ctx.font = "13px monospace";
-    ctx.fillStyle = TEXT_DIM;
-    scores.forEach((s, i) => {
-      const primary = state.mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
-      ctx.fillText(
-        `${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`,
-        cx,
-        cy + 58 + i * 18,
-      );
-    });
-  }
+  drawBestScores(ctx, state.mode, cx, cy + 40);
 
   ctx.font = "bold 14px monospace";
   ctx.fillStyle = AMBER;
@@ -607,10 +608,10 @@ function drawVictory(
 
   rule(ctx, cx, cy - 66);
 
-  ctx.font = "bold 11px monospace";
+  ctx.font = FONT_BOLD_11;
   ctx.fillStyle = TEXT_FAINT;
   ctx.fillText(primaryLabel, cx, cy - 44);
-  ctx.font = "bold 26px monospace";
+  ctx.font = FONT_BOLD_26;
   ctx.fillStyle = TEXT;
   ctx.fillText(primaryValue, cx, cy - 18);
 
@@ -618,27 +619,26 @@ function drawVictory(
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
 
-  // High scores
-  const scores = loadHighScores(state.mode).slice(0, 5);
-  if (scores.length > 0) {
-    ctx.font = "bold 11px monospace";
-    ctx.fillStyle = AMBER;
-    ctx.fillText("BEST  SCORES", cx, cy + 40);
-    ctx.font = "13px monospace";
-    ctx.fillStyle = TEXT_DIM;
-    scores.forEach((s, i) => {
-      const primary = state.mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
-      ctx.fillText(
-        `${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`,
-        cx,
-        cy + 58 + i * 18,
-      );
-    });
-  }
+  drawBestScores(ctx, state.mode, cx, cy + 40);
 
   ctx.font = "bold 14px monospace";
   ctx.fillStyle = AMBER;
   ctx.fillText("PRESS  ENTER  FOR  MENU", cx, cy + 152);
+}
+
+/** Shared high scores rendering used by game-over and victory overlays. */
+function drawBestScores(ctx: CanvasRenderingContext2D, mode: string, cx: number, y: number): void {
+  const scores = loadHighScores(mode).slice(0, 5);
+  if (scores.length === 0) return;
+  ctx.font = FONT_BOLD_11;
+  ctx.fillStyle = AMBER;
+  ctx.fillText("BEST  SCORES", cx, y);
+  ctx.font = FONT_13;
+  ctx.fillStyle = TEXT_DIM;
+  scores.forEach((s, i) => {
+    const primary = mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
+    ctx.fillText(`${i + 1}.  ${primary}   Lv ${s.level + 1}   ${s.lines}L`, cx, y + 18 + i * 18);
+  });
 }
 
 function formatMs(ms: number): string {
@@ -660,7 +660,7 @@ function drawHUD(
   ctx.textAlign = "left";
 
   // Mode name
-  ctx.font = "bold 11px monospace";
+  ctx.font = FONT_BOLD_11;
   ctx.fillStyle = TEXT_FAINT;
   ctx.fillText(state.mode.toUpperCase(), hudX, hudY + 14);
 

@@ -332,6 +332,12 @@ export class Game {
     switch (newPhase) {
       case GamePhase.Playing:
         if (this.audioEnabled) playMusic();
+        // Transient popup feedback should not persist across pause boundaries.
+        // Without this, popup timers freeze during pause and resume after,
+        // making them visible far longer than intended.
+        if (this.prevPhase === GamePhase.Paused) {
+          this.state = { ...this.state, popups: [] };
+        }
         break;
       case GamePhase.Paused:
         if (this.audioEnabled) stopMusic();
@@ -439,15 +445,22 @@ export class Game {
     if (this.audioEnabled) playSFX("lock");
 
     const lockedPiece = this.state.activePiece;
-    this.state.board = lockPiece(this.state.board, lockedPiece);
-    this.state.activePiece = null;
 
-    // Lock-Out: all minos in buffer zone ends the game (TDG §8)
+    // Lock-Out (TDG §8): all minos in buffer zone → game over.
+    // Check before lockPiece so the piece isn't painted to the board,
+    // consistent with the hard-drop path (handleHardDrop in actions.ts).
     if (isLockOut(lockedPiece)) {
-      this.state.lockState = resetLockState();
-      this.state.phase = GamePhase.GameOver;
+      this.state = {
+        ...this.state,
+        activePiece: null,
+        lockState: resetLockState(),
+        phase: GamePhase.GameOver,
+      };
       return;
     }
+
+    this.state.board = lockPiece(this.state.board, lockedPiece);
+    this.state.activePiece = null;
 
     const result = executeLock(this.state, lockedPiece);
     this.state = result.state;

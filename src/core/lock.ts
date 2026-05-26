@@ -141,6 +141,12 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
       }
       needsTSpinSFX = true;
 
+      // Popup for T-Spin with 0-line clear (scoring applies but no visual feedback otherwise)
+      popupInfo.push({
+        text: tSpinResult.isMini ? "T-SPIN MINI" : "T-SPIN",
+        color: "#a000f0",
+      });
+
       if (needsLevelupSFX) {
         popupInfo.push({ text: `LEVEL ${s.level}!`, color: "#ffff00" });
       }

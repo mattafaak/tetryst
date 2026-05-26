@@ -8,6 +8,7 @@ let isPlaying = false;
 let activeOscs: OscillatorNode[] = [];
 let activeGains: GainNode[] = [];
 let activeSources: AudioBufferSourceNode[] = [];
+let activeFilters: BiquadFilterNode[] = [];
 let songTimeout: number | null = null;
 let currentSongIndex = 0;
 let cachedSchedule: NoteEvent[] | null = null;
@@ -344,6 +345,7 @@ function playNoise(
     source.stop(startTime + duration + 0.01);
 
     activeSources.push(source);
+    activeFilters.push(filter);
     activeGains.push(gain);
   } catch {
     // Audio context not available
@@ -385,6 +387,17 @@ function scheduleSong(events: NoteEvent[], baseTime: number): void {
 function playSongCycle(): void {
   if (!isPlaying) return;
 
+  // Purge previous cycle's finished audio nodes to prevent unbounded accumulation.
+  // By the time setTimeout fires (songMs elapsed), all scheduled oscillators and
+  // buffer sources have stopped naturally — only disconnect is needed to release
+  // graph resources before clearing the tracking arrays.
+  for (const f of activeFilters) try { f.disconnect(); } catch { /* already done */ }
+  for (const g of activeGains) try { g.disconnect(); } catch { /* already done */ }
+  activeOscs = [];
+  activeSources = [];
+  activeFilters = [];
+  activeGains = [];
+
   const ctx = getAudioContext();
   if (!ctx) {
     stopMusic();
@@ -416,9 +429,11 @@ export function playMusic(): void {
 function cleanup(): void {
   for (const n of activeOscs) try { n.stop(); } catch { /* already stopped */ }
   for (const n of activeSources) try { n.stop(); } catch { /* already stopped */ }
+  for (const f of activeFilters) try { f.disconnect(); } catch { /* already done */ }
   for (const g of activeGains) try { g.disconnect(); } catch { /* already done */ }
   activeOscs = [];
   activeSources = [];
+  activeFilters = [];
   activeGains = [];
   if (songTimeout !== null) {
     clearTimeout(songTimeout);

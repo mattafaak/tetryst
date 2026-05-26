@@ -39,6 +39,8 @@ function playTone(
     osc.connect(gain);
     gain.connect(ctx.destination);
 
+    osc.onended = () => { try { gain.disconnect(); } catch { /* already done */ } };
+
     osc.start(startTime);
     osc.stop(startTime + duration);
   } catch {
@@ -70,6 +72,8 @@ function playSweep(
     osc.connect(gain);
     gain.connect(ctx.destination);
 
+    osc.onended = () => { try { gain.disconnect(); } catch { /* already done */ } };
+
     osc.start(startTime);
     osc.stop(startTime + duration);
   } catch {
@@ -98,6 +102,8 @@ function playChord(
 
       osc.connect(gain);
       gain.connect(ctx.destination);
+
+      osc.onended = () => { try { gain.disconnect(); } catch { /* already done */ } };
 
       osc.start(startTime);
       osc.stop(startTime + duration);

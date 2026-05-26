@@ -26,20 +26,21 @@ export function applyGravity(
   state: GameState,
   dt: number,
 ): { state: GameState; dropped: boolean } {
-  if (state.activePiece === null) {
+  const activePiece = state.activePiece;
+  if (activePiece === null) {
     return { state, dropped: false };
   }
 
   const delay = getGravityDelay(state.level);
   let timer = state.gravityTimer + dt;
-  let pieceY = state.activePiece.pos.y;
+  let pieceY = activePiece.pos.y;
   let dropped = false;
   let onGround = state.lockState.onGround;
 
   // Inline collision check against the piece's shape at a target Y to avoid
   // allocating Piece objects per drop tick on the hot path.
   function wouldCollide(y: number): boolean {
-    const p = state.activePiece!;
+    const p = activePiece!;
     const shape = PIECE_SHAPES[p.type][p.rotation];
     for (let r = 0; r < shape.length; r++) {
       for (let c = 0; c < shape[r].length; c++) {
@@ -69,7 +70,7 @@ export function applyGravity(
   let finalState: GameState = {
     ...state,
     gravityTimer: timer,
-    activePiece: { ...state.activePiece, pos: { x: state.activePiece.pos.x, y: pieceY } },
+    activePiece: { ...activePiece, pos: { x: activePiece.pos.x, y: pieceY } },
     lockState: {
       ...state.lockState,
       onGround,

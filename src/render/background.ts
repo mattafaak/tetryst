@@ -18,6 +18,9 @@ interface Star {
 let stars: Star[] = [];
 let initialized = false;
 
+/** Frame-rate independent star drift — track real elapsed time. */
+let lastDriftTime = 0;
+
 /** Offscreen canvas for cached star field. */
 let cacheCanvas: HTMLCanvasElement | null = null;
 let cacheCtx: CanvasRenderingContext2D | null = null;
@@ -85,6 +88,9 @@ export function renderBackground(
   w: number,
   h: number,
 ): void {
+  // Bail early on zero-dimension canvas (e.g., during tab switch or initial load)
+  if (w <= 0 || h <= 0) return;
+
   // Re-init on resize
   if (w !== lastW || h !== lastH) {
     initialized = false;
@@ -92,12 +98,16 @@ export function renderBackground(
     cacheCtx = null;
     lastW = w;
     lastH = h;
+    lastDriftTime = 0;
   }
   ensureStars(w, h);
   ensureCache(w, h);
 
-  // Drift stars at ~60fps-equivalent speed
-  const step = 1 / 60;
+  // Drift stars at frame-rate-independent speed
+  const now = performance.now();
+  const dt = lastDriftTime === 0 ? 16 : now - lastDriftTime;
+  lastDriftTime = now;
+  const step = dt / 1000;
   for (const s of stars) {
     s.y += s.speed * step;
     if (s.y > h) {
@@ -107,7 +117,6 @@ export function renderBackground(
   }
 
   // Throttled re-render to cache canvas
-  const now = performance.now();
   if (now - lastCacheTime > CACHE_INTERVAL) {
     renderCache(w, h);
     lastCacheTime = now;

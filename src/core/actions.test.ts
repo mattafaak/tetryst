@@ -162,7 +162,7 @@ describe("handleSoftDrop", () => {
     expect(next.activePiece?.pos.y).toBe(21);
     expect(next.lockState.lowestY).toBe(21);
     expect(next.lockState.resets).toBe(0);
-    expect(next.lockState.timer).toBe(0); // timer resets on descent to new lowest row
+    expect(next.lockState.timer).toBe(200); // timer NOT reset by soft drop — only horizontal moves/rotations reset it
     expect(next.score).toBe(1); // 1 point per cell soft-dropped
   });
 
@@ -177,7 +177,7 @@ describe("handleSoftDrop", () => {
 
     expect(next.activePiece?.pos.y).toBe(21);
     expect(next.lockState.onGround).toBe(false);  // can still fall → not on ground
-    expect(next.lockState.timer).toBe(0);
+    expect(next.lockState.timer).toBe(400); // timer NOT reset by soft drop
   });
 
   it("sets onGround=true immediately when soft drop lands piece on solid", () => {

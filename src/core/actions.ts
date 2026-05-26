@@ -125,10 +125,12 @@ function handleSoftDrop(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, moved);
   newState.score = state.score + SOFT_DROP_SCORE;
 
-  // Recompute onGround — stale-true (from a rotation kick) would cause premature locking
+  // Recompute onGround — stale-true (from a rotation kick) would cause premature locking.
+  // Per TDG §7, soft drop does NOT reset the lock delay timer — only horizontal
+  // moves and rotations do (via updateLockStateAfterMove).
   const belowMoved = movePiece(moved, 0, 1);
   const nowOnGround = checkCollision(state.board, belowMoved);
-  newState.lockState = { ...state.lockState, onGround: nowOnGround, timer: 0 };
+  newState.lockState = { ...state.lockState, onGround: nowOnGround };
   newState.gravityTimer = 0;
 
   return updateLowestY(newState, moved.pos.y);

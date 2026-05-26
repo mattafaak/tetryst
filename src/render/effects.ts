@@ -35,6 +35,8 @@ interface Particle {
 
 let particles: Particle[] = [];
 
+const MAX_PARTICLES = 200; // cap to prevent runaway allocation on rapid clears
+
 /** Spawn particles from cleared board rows. */
 export function spawnClearParticles(
   rows: number[],
@@ -44,12 +46,15 @@ export function spawnClearParticles(
 ): void {
   const colors = Object.values(PIECE_COLORS);
   for (const boardRow of rows) {
+    if (particles.length >= MAX_PARTICLES) break;
     const vr = boardRow - BUFFER_HEIGHT;
     if (vr < 0 || vr >= VISIBLE_HEIGHT) continue;
     const cy = boardY + vr * cellSize + cellSize / 2;
     for (let c = 0; c < BOARD_WIDTH; c++) {
+      if (particles.length >= MAX_PARTICLES) break;
       const cx = boardX + c * cellSize + cellSize / 2;
       for (let n = 0; n < 2; n++) {
+        if (particles.length >= MAX_PARTICLES) break;
         particles.push({
           x: cx,
           y: cy,
