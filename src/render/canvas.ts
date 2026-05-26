@@ -135,6 +135,10 @@ function renderBoardStatic(board: Board, cellSize: number): HTMLCanvasElement {
     boardCacheCanvas.width = BOARD_WIDTH * cellSize;
     boardCacheCanvas.height = VISIBLE_HEIGHT * cellSize;
     cachedCellSize = cellSize;
+    cachedBoard = null; // force re-render on cellSize change
+  }
+  if (board === cachedBoard && boardCacheCanvas !== null) {
+    return boardCacheCanvas;
   }
   const off = boardCacheCanvas.getContext("2d");
   if (!off) return boardCacheCanvas;
@@ -174,6 +178,7 @@ function renderBoardStatic(board: Board, cellSize: number): HTMLCanvasElement {
     }
   }
 
+  cachedBoard = board;
   return boardCacheCanvas;
 }
 
@@ -214,14 +219,8 @@ export function renderFrame(
   // Push layout to effects module for update-phase particle spawning
   setParticleLayout(boardX, boardY, cellSize);
 
-  // Draw cached board static layer — only redrawn when board ref changes
-  if (state.board !== cachedBoard || cellSize !== cachedCellSize) {
-    renderBoardStatic(state.board, cellSize);
-    cachedBoard = state.board;
-  }
-  if (boardCacheCanvas) {
-    ctx.drawImage(boardCacheCanvas, boardX, boardY);
-  }
+  // Draw cached board static layer — only redrawn when board ref or cellSize changes
+  ctx.drawImage(renderBoardStatic(state.board, cellSize), boardX, boardY);
 
   // Board-area drawings use a translated context so coordinates are grid-relative
   ctx.save();
