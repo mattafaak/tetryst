@@ -134,6 +134,23 @@ Created: 2026-05-25
 | 13.15 | **Enforce minimum cellSize** — `recalcCellSize` can produce 0 in tiny windows, making board invisible and risking division-by-zero. Clamp to minimum of 1. | `cellSize` never drops below 1; all tests pass | - | cc:完了 |
 | 13.16 | **Re-enable 180° rotation** — Implement the previously deferred SRS 180° rotation support. Add kick table for 180° rotations, wire into rotation handlers. | 180° rotation works for all piece types with SRS kick tests; all existing tests pass | - | deferred |
 
+## Phase 14: Post-hardening bug fixes [tdd:required]
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 14.1 | **Fix hard drop missing screen flash + full SFX** — `handleHardDrop` calls `executeLock` which returns full scoring metadata (linesCleared, tSpinResult, isPerfectClear, needsLevelupSFX, needsTSpinSFX), but the hard drop path in `loop.ts:handleInput` only plays `playSFX("lock")` and never calls `triggerFlash()`. Fix: in the HardDrop case of `handleInput`, after `processAction`, read the returned state's phase + popup info to determine which SFX and flashes to apply, matching `lockActivePiece` behavior. | Hard drops trigger flash on Tetris (white), T-Spin Double+ (yellow), Perfect Clear (white); play SFX for tetris, tspin, clear, levelup matching gravity-lock path; all tests pass | - | cc:TODO |
+| 14.2 | **Fix clearedRowIndices stale data in zero-clear path** — `executeLock` (lock.ts:50-52) sets `s.clearedRowIndices` only in the lines-cleared branch. The zero-clear `else` branch (lines 117-151) never assigns it, leaving stale row indices from the previous lock. This causes canvas.ts:258 to render line-clear flash particles on rows that were cleared many locks ago. Fix: add `s.clearedRowIndices = [];` in the else branch. | Zero-clear locks reset `clearedRowIndices`; no stale line-clear flash on non-clear locks; all tests pass | - | cc:TODO |
+| 14.3 | **Fix gravity timer not reset on soft drop** — `handleSoftDrop` (actions.ts:124) resets `lockState.timer` but never resets `gravityTimer`. If gravity timer is near threshold (e.g., 950ms of 1000ms), the piece drops immediately after the soft drop moves down, creating a double-drop feel. Fix: add `gravityTimer: 0` to the new state returned by `handleSoftDrop`. | Soft drop resets gravity timer; no immediate gravity drop after soft drop; all tests pass | - | cc:TODO |
+| 14.4 | **Remove redundant victory check in hard drop path** — `executeLock` already calls `checkModeVictory` and returns `victoryTriggered` flag. The hard drop path in loop.ts:256-258 has a redundant second `checkModeVictory` call. Fix: check `result.victoryTriggered` instead, or rely on the state's phase transition. The `executeLock` return value is already available in `actions.ts` after the call. | Hard drop victory uses `victoryTriggered` from executeLock; redundant check removed; all tests pass | 14.1 | cc:TODO |
+| 14.5 | **Tests for Phase 14 fixes** — (a) hard drop screen flash test: verify `triggerFlash` call count/color matches expectations for Tetris + T-Spin + PC, (b) clearedRowIndices test: after two locks (first clears lines, second does not), verify clearedRowIndices is empty, (c) gravity timer reset test: soft drop produces `gravityTimer: 0`, (d) redundant victory test: mock `checkModeVictory` and verify it's called exactly once per lock. | ≥10 new tests for hard drop flash/SFX, clearedRowIndices, gravity timer reset, victory dedup; all pass | 14.1, 14.2, 14.3, 14.4 | cc:TODO |
+
+## Phase 15: Operational hardening
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 15.1 | **Verify deploy workflow after GitHub incident** — The deploy.yml now uses git commands instead of third-party GitHub Actions. The 2026-05-26 GitHub auth incident caused 403 errors on git push. Once the incident is resolved, manually trigger the workflow and verify it deploys successfully. | Workflow completes successfully; game accessible at GitHub Pages URL; all steps pass (test, build, deploy) | - | cc:TODO |
+| 15.2 | **Consider Perfect Clear B2B modern rule** — Per 2009 TDG spec, Perfect Clear was NOT B2B-eligible. However, modern Tetris games (Tetris.com, Puyo Puyo Tetris, 2019 TGMP) do count PC as B2B-eligible. If the intent is to match modern conventions, add PC to `isB2BEligible` in scoring.ts. Code is currently correct for 2009 rules. | Decision documented; if changed: PC clears can continue B2B streak; no regression in existing tests | - | cc:TODO |
+
 ## Backlog
 (none pending)
 
