@@ -38,10 +38,15 @@ jobs:
           DEPLOY_ID=$(gh api \
             --method POST \
             repos/${{ github.repository }}/deployments \
-            -f ref='${{ github.sha }}' \
-            -f environment='github-pages' \
-            -F auto_merge=false \
-            -f description='Deploy to GitHub Pages' \
+            --input - <<'JSON'
+          {
+            "ref": "${{ github.sha }}",
+            "environment": "github-pages",
+            "auto_merge": false,
+            "required_contexts": [],
+            "description": "Deploy to GitHub Pages"
+          }
+        JSON
             --jq '.id')
           gh api \
             --method POST \
