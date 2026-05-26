@@ -342,6 +342,7 @@ export class Game {
         break;
       case GamePhase.Paused:
         if (this.audioEnabled) stopMusic();
+        this.state = { ...this.state, popups: [] };
         break;
       case GamePhase.GameOver:
         if (!this.isAttractMode) {
