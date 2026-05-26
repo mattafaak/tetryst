@@ -11,12 +11,12 @@ import { KeyboardHandler } from "../input/keyboard.ts";
 import { playSFX } from "../audio/sfx.ts";
 import { playMusic, stopMusic } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
-import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL } from "../core/constants.ts";
+import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL, MAX_CELL_SIZE } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
 import { pushPopup, tickPopups } from "../render/popups.ts";
 import { triggerFlash, clearEffects } from "../render/effects.ts";
 
-const GAME_MODES: GameMode[] = [GameMode.Marathon, GameMode.Sprint, GameMode.Ultra];
+const GAME_MODES: readonly GameMode[] = Object.freeze([GameMode.Marathon, GameMode.Sprint, GameMode.Ultra]);
 
 const MAX_DT = 100;
 
@@ -87,7 +87,7 @@ export class Game {
     const logicalHeight = height / dpr;
     const byWidth = Math.floor((logicalWidth * 0.5) / 10);
     const byHeight = Math.floor((logicalHeight * 0.9) / 20);
-    this.cellSize = Math.max(1, Math.min(byWidth, byHeight, 36));
+    this.cellSize = Math.max(1, Math.min(byWidth, byHeight, MAX_CELL_SIZE));
   };
 
   private handleInput(action: InputAction): void {
@@ -200,7 +200,6 @@ export class Game {
           this.pauseMenuSelection = 0;
           clearEffects();
           this.state = startGame(createInitialState(this.selectedMode), this.selectedStartLevel);
-          this.prevPhase = GamePhase.Playing;
         } else {
           // Quit to Menu
           this.pauseMenuSelection = 0;

@@ -15,7 +15,7 @@ export enum RotationState {
   L = 3,
 }
 
-export type Cell = string | null;
+export type Cell = TetriminoType | null;
 
 export type Board = Cell[][];
 

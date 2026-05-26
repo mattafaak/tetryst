@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { processAction } from "./actions.ts";
 import { GamePhase, TetriminoType, RotationState , GameMode } from "./types.ts";
-import type { GameState } from "./types.ts";
+import type { Cell, GameState } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
 import { checkModeVictory } from "./mode-rules.ts";
 import { shouldLock } from "./lock-delay.ts";
 
-function emptyBoard() {
+function emptyBoard(): Cell[][] {
   return Array.from({ length: BOARD_HEIGHT }, () =>
-    Array<string | null>(BOARD_WIDTH).fill(null),
+    Array<Cell>(BOARD_WIDTH).fill(null),
   );
 }
 

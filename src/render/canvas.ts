@@ -15,6 +15,7 @@ import {
   GHOST_OPACITY,
   PIECE_SHAPES,
   NEXT_QUEUE_SIZE,
+  ULTRA_DANGER_THRESHOLD,
 } from "../core/constants.ts";
 import { loadHighScores } from "../core/high-scores.ts";
 import { renderBackground } from "./background.ts";
@@ -44,7 +45,8 @@ function renderBoardStatic(board: Board, cellSize: number): HTMLCanvasElement {
     boardCacheCanvas.height = VISIBLE_HEIGHT * cellSize;
     cachedCellSize = cellSize;
   }
-  const off = boardCacheCanvas.getContext("2d")!;
+  const off = boardCacheCanvas.getContext("2d");
+  if (!off) return boardCacheCanvas;
 
   // Board background
   off.fillStyle = "#1a1a2e";
@@ -167,7 +169,7 @@ export function renderFrame(
   }
 
   // Visual effects (particles, screen flash)
-  renderEffects(ctx, dpr, canvasWidth, canvasHeight);
+  renderEffects(ctx, canvasWidth, canvasHeight);
 
   ctx.restore();
 }
@@ -703,7 +705,7 @@ function drawHUD(
   } else if (state.mode === GameMode.Ultra) {
     hudLabel(ctx, "TIME LEFT", hudX, hudY + 40);
     ctx.font = "bold 20px monospace";
-    ctx.fillStyle = state.modeTimer < 30000 ? RED : TEXT;
+    ctx.fillStyle = state.modeTimer < ULTRA_DANGER_THRESHOLD ? RED : TEXT;
     ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 62);
 
     hudLabel(ctx, "SCORE", hudX, hudY + 96);

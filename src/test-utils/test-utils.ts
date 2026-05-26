@@ -39,7 +39,7 @@ export function asciiBoard(ascii: string): Board {
     const row: Cell[] = [];
     for (let c = 0; c < BOARD_WIDTH; c++) {
       const ch = line[c] ?? ".";
-      row.push(ch === "." || ch === " " ? null : ch.toUpperCase());
+      row.push(ch === "." || ch === " " ? null : ch.toUpperCase() as TetriminoType);
     }
     board.push(row);
   }
@@ -81,7 +81,7 @@ export function baseState(overrides?: Partial<GameState>): GameState {
     level: 0,
     lines: 0,
     effectiveLines: 0,
-    combo: -1,
+    combo: 0,
     backToBack: false,
     phase: GamePhase.Menu,
     gravityTimer: 0,

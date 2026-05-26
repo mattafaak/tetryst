@@ -24,7 +24,7 @@ describe("computeColumnHeights", () => {
 
   it("finds height of a single block at the bottom of column 0", () => {
     const board = createBoard();
-    board[BOARD_HEIGHT - 1][0] = "I";
+    board[BOARD_HEIGHT - 1][0] = TetriminoType.I;
     const heights = computeColumnHeights(board);
     expect(heights[0]).toBe(1);
     for (let x = 1; x < BOARD_WIDTH; x++) {
@@ -35,9 +35,9 @@ describe("computeColumnHeights", () => {
   it("finds height of a 3-block tower in column 5", () => {
     const board = createBoard();
     // Fill rows 37, 38, 39 in column 5 (height = 3)
-    board[BOARD_HEIGHT - 3][5] = "I";
-    board[BOARD_HEIGHT - 2][5] = "I";
-    board[BOARD_HEIGHT - 1][5] = "I";
+    board[BOARD_HEIGHT - 3][5] = TetriminoType.I;
+    board[BOARD_HEIGHT - 2][5] = TetriminoType.I;
+    board[BOARD_HEIGHT - 1][5] = TetriminoType.I;
     const heights = computeColumnHeights(board);
     expect(heights[5]).toBe(3);
   });
@@ -45,7 +45,7 @@ describe("computeColumnHeights", () => {
   it("reports height 40 for a fully filled column", () => {
     const board = createBoard();
     for (let y = 0; y < BOARD_HEIGHT; y++) {
-      board[y][3] = "I";
+      board[y][3] = TetriminoType.I;
     }
     const heights = computeColumnHeights(board);
     expect(heights[3]).toBe(BOARD_HEIGHT);
@@ -53,7 +53,7 @@ describe("computeColumnHeights", () => {
 
   it("handles blocks at the top row correctly", () => {
     const board = createBoard();
-    board[0][0] = "I"; // very top of board
+    board[0][0] = TetriminoType.I; // very top of board
     expect(computeColumnHeights(board)[0]).toBe(BOARD_HEIGHT);
   });
 });
@@ -66,7 +66,7 @@ describe("countHoles", () => {
 
   it("counts one hole under a block", () => {
     const board = createBoard();
-    board[BOARD_HEIGHT - 3][0] = "I"; // block at row 37
+    board[BOARD_HEIGHT - 3][0] = TetriminoType.I; // block at row 37
     // Rows 38-39 are empty below = 2 holes
     const heights = computeColumnHeights(board);
     expect(heights[0]).toBe(3);
@@ -75,8 +75,8 @@ describe("countHoles", () => {
 
   it("counts multiple holes in the same column", () => {
     const board = createBoard();
-    board[BOARD_HEIGHT - 5][0] = "I"; // block at row 35
-    board[BOARD_HEIGHT - 3][0] = "I"; // block at row 37
+    board[BOARD_HEIGHT - 5][0] = TetriminoType.I; // block at row 35
+    board[BOARD_HEIGHT - 3][0] = TetriminoType.I; // block at row 37
     // holes at rows 36, 38, 39 = 3 holes
     const heights = computeColumnHeights(board);
     expect(heights[0]).toBe(5);
@@ -85,8 +85,8 @@ describe("countHoles", () => {
 
   it("counts holes across multiple columns", () => {
     const board = createBoard();
-    board[BOARD_HEIGHT - 3][2] = "I"; // height 3, 2 holes below
-    board[BOARD_HEIGHT - 4][5] = "I"; // height 4, 3 holes below
+    board[BOARD_HEIGHT - 3][2] = TetriminoType.I; // height 3, 2 holes below
+    board[BOARD_HEIGHT - 4][5] = TetriminoType.I; // height 4, 3 holes below
     const heights = computeColumnHeights(board);
     expect(countHoles(board, heights)).toBe(5);
   });
@@ -94,7 +94,7 @@ describe("countHoles", () => {
   it("returns 0 for a solid column with no gaps", () => {
     const board = createBoard();
     for (let y = BOARD_HEIGHT - 5; y < BOARD_HEIGHT; y++) {
-      board[y][0] = "I";
+      board[y][0] = TetriminoType.I;
     }
     const heights = computeColumnHeights(board);
     expect(countHoles(board, heights)).toBe(0);
@@ -141,7 +141,7 @@ describe("evaluateBoard", () => {
     const empty = evaluateBoard(board, 0);
     // Fill one column to height 10
     for (let y = BOARD_HEIGHT - 10; y < BOARD_HEIGHT; y++) {
-      board[y][0] = "I";
+      board[y][0] = TetriminoType.I;
     }
     const withHeight = evaluateBoard(board, 0);
     // Should be lower than empty since height is penalized
@@ -151,16 +151,16 @@ describe("evaluateBoard", () => {
   it("penalizes holes heavily", () => {
     const board = createBoard();
     // Create a block in column 0 at row 35 (hole at row 36)
-    board[BOARD_HEIGHT - 5][0] = "I";
+    board[BOARD_HEIGHT - 5][0] = TetriminoType.I;
     // Create a block in column 1 at row 39
-    board[BOARD_HEIGHT - 1][1] = "I";
+    board[BOARD_HEIGHT - 1][1] = TetriminoType.I;
     const heights = computeColumnHeights(board);
     const holeCount = countHoles(board, heights);
     expect(holeCount).toBeGreaterThan(0);
     // Board with holes scores lower than a board with no holes but same height
     const board2 = createBoard();
-    board2[BOARD_HEIGHT - 1][0] = "I";
-    board2[BOARD_HEIGHT - 1][1] = "I";
+    board2[BOARD_HEIGHT - 1][0] = TetriminoType.I;
+    board2[BOARD_HEIGHT - 1][1] = TetriminoType.I;
     expect(evaluateBoard(board, 0)).toBeLessThan(evaluateBoard(board2, 0));
   });
 });
@@ -215,9 +215,9 @@ describe("simulatePlacement", () => {
   it("returns null when target position collides", () => {
     const board = createBoard();
     // Fill the bottom of column 3-5
-    board[BOARD_HEIGHT - 1][3] = "I";
-    board[BOARD_HEIGHT - 1][4] = "I";
-    board[BOARD_HEIGHT - 1][5] = "I";
+    board[BOARD_HEIGHT - 1][3] = TetriminoType.I;
+    board[BOARD_HEIGHT - 1][4] = TetriminoType.I;
+    board[BOARD_HEIGHT - 1][5] = TetriminoType.I;
     const piece = { type: TetriminoType.T, pos: { x: 3, y: BOARD_HEIGHT - 2 }, rotation: RotationState.ZERO };
     // T-piece at x=3, y=BOARD_HEIGHT-2, the stem cell is at y=BOARD_HEIGHT-1 which collides
     // Actually T-shape at rotation 0: row 0 = [0,1,0], row 1 = [1,1,1]
@@ -235,7 +235,7 @@ describe("simulatePlacement", () => {
     const board = createBoard();
     // Fill columns 0-5 in the bottom row (leave 6-9 empty → row not complete)
     for (let x = 0; x < 6; x++) {
-      board[BOARD_HEIGHT - 1][x] = "I";
+      board[BOARD_HEIGHT - 1][x] = TetriminoType.I;
     }
     // I-piece horizontal at x=6 fills columns 6-9, completing the row
     const IPiece = { type: TetriminoType.I, pos: { x: 6, y: BOARD_HEIGHT - 2 }, rotation: RotationState.ZERO };
@@ -281,7 +281,7 @@ describe("generatePlacements", () => {
     // Fill every cell
     for (let y = 0; y < BOARD_HEIGHT; y++) {
       for (let x = 0; x < BOARD_WIDTH; x++) {
-        board[y][x] = "I";
+        board[y][x] = TetriminoType.I;
       }
     }
     const piece = { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO };
@@ -293,7 +293,7 @@ describe("generatePlacements", () => {
     const board = createBoard();
     // Fill columns 0-5 in the bottom row (gap at 6-9)
     for (let x = 0; x < 6; x++) {
-      board[BOARD_HEIGHT - 1][x] = "I";
+      board[BOARD_HEIGHT - 1][x] = TetriminoType.I;
     }
     // I-piece horizontal fills columns 6-9 when at x=6
     const piece = { type: TetriminoType.I, pos: { x: 6, y: BOARD_HEIGHT - 2 }, rotation: RotationState.ZERO };
@@ -327,7 +327,7 @@ describe("findBestPlacement", () => {
     state.board = createBoard();
     // Fill columns 0-5 in the bottom row (leave 6-9 empty)
     for (let x = 0; x < 6; x++) {
-      state.board[BOARD_HEIGHT - 1][x] = "I";
+      state.board[BOARD_HEIGHT - 1][x] = TetriminoType.I;
     }
     // Create an I-piece that's horizontal and positioned to fill the gap
     state.activePiece = {

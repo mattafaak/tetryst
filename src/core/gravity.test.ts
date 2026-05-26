@@ -8,12 +8,13 @@ import {
   GameMode,
   type Piece,
   type Board,
+  type Cell,
 } from "./types.ts";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "./constants.ts";
 
 function emptyBoard(): Board {
   return Array.from({ length: BOARD_HEIGHT }, () =>
-    Array<string | null>(BOARD_WIDTH).fill(null),
+    Array<Cell>(BOARD_WIDTH).fill(null),
   );
 }
 

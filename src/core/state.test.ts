@@ -188,7 +188,7 @@ describe("state", () => {
       const board = createBoard();
       // I-piece spawns at y=18. Its filled row (row 1 of shape) occupies
       // board row 19. Block one of those cells.
-      board[19][3] = "X";
+      board[19][3] = TetriminoType.I;
 
       const state: GameState = {
         ...createInitialState(),
@@ -246,7 +246,7 @@ describe("state", () => {
 
     it("game over when collision at spawn", () => {
       const board = createBoard();
-      board[20][4] = "X"; // Blocks T-piece at spawn (3, 19)
+      board[20][4] = TetriminoType.I; // Blocks T-piece at spawn (3, 19)
 
       const state: GameState = {
         ...createInitialState(),
@@ -301,7 +301,7 @@ describe("state", () => {
       const board = createBoard();
       // I-piece spawns at (3, 18).  Its filled cells are at
       // board row 19 (shape row 1) in columns 3-6.
-      board[19][3] = "X";
+      board[19][3] = TetriminoType.I;
 
       const state: GameState = {
         ...createInitialState(),
@@ -328,7 +328,7 @@ describe("state", () => {
       const board = createBoard();
       // O-piece spawns at (3, 19).  Filled cells at (3,19), (4,19),
       // (3,20), (4,20).  Block one of those.
-      board[20][3] = "X";
+      board[20][3] = TetriminoType.I;
 
       const state: GameState = {
         ...createInitialState(),

@@ -371,7 +371,13 @@ function scheduleSong(events: NoteEvent[], baseTime: number): void {
 function playSongCycle(): void {
   if (!isPlaying) return;
 
-  const ctx = getAudioContext();
+  let ctx: AudioContext;
+  try {
+    ctx = getAudioContext();
+  } catch {
+    stopMusic();
+    return;
+  }
   const now = ctx.currentTime;
   const lookAhead = 0.08; // small buffer for reliable scheduling
   const song = SONGS[currentSongIndex];

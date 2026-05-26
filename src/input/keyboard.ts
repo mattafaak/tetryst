@@ -92,7 +92,7 @@ export class KeyboardHandler {
     // Handle non-DAS actions (fire once on press)
     const nonDasAction = NON_DAS_ACTIONS[e.code];
     if (nonDasAction) {
-      if (!this.keys.has(e.code) || !this.keys.get(e.code)!.pressed) {
+      if (!this.keys.get(e.code)?.pressed) {
         this.keys.set(e.code, {
           action: nonDasAction,
           pressed: true,
@@ -108,7 +108,7 @@ export class KeyboardHandler {
     // Handle DAS actions
     const dasAction = DAS_ACTIONS[e.code];
     if (dasAction) {
-      if (!this.keys.has(e.code) || !this.keys.get(e.code)!.pressed) {
+      if (!this.keys.get(e.code)?.pressed) {
         this.keys.set(e.code, {
           action: dasAction,
           pressed: true,

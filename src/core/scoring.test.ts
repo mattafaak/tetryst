@@ -7,12 +7,12 @@ import {
   effectiveLinesFor,
   calculateLevelFromEffective,
 } from "./scoring.ts";
-import { TetriminoType, RotationState, type GameState, type Board } from "./types.ts";
+import { TetriminoType, RotationState, type Board, type Cell } from "./types.ts";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "./constants.ts";
 
 function emptyBoard(): Board {
   return Array.from({ length: BOARD_HEIGHT }, () =>
-    Array<string | null>(BOARD_WIDTH).fill(null),
+    Array<Cell>(BOARD_WIDTH).fill(null),
   );
 }
 
@@ -184,9 +184,8 @@ describe("isB2BEligible", () => {
 });
 
 describe("drop scoring", () => {
-  const s = { level: 1 } as GameState;
   it("should score hard drop 2 per cell", () => {
-    expect(addHardDropScore(s, 5)).toBe(10);
+    expect(addHardDropScore(5)).toBe(10);
   });
 });
 
@@ -502,19 +501,16 @@ describe("Perfect Clear scoring", () => {
     expect(evaluateClear(4, r, 0, true, true).isB2B).toBe(true);
   });
 
-  it("PC Single breaks B2B streak (not B2B-eligible)", () => {
+  it("PC Single continues B2B streak (now B2B-eligible per modern rule)", () => {
     const result = evaluateClear(1, r, 0, true, true);
-    expect(result.isB2B).toBe(false);
-    expect(result.isB2BBroken).toBe(true);
+    expect(result.isB2B).toBe(true);
+    expect(result.isB2BBroken).toBe(false);
   });
 });
 
 describe("drop scoring - level independence", () => {
   it("hard drop is always 2 per cell regardless of level", () => {
-    const low = { level: 0 } as GameState;
-    const high = { level: 99 } as GameState;
-    expect(addHardDropScore(low, 5)).toBe(10);
-    expect(addHardDropScore(high, 5)).toBe(10);
+    expect(addHardDropScore(5)).toBe(10);
   });
 });
 

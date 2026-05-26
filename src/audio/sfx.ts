@@ -105,7 +105,12 @@ function playChord(
 }
 
 export function playSFX(name: SFXName): void {
-  const ctx = getAudioContext();
+  let ctx: AudioContext;
+  try {
+    ctx = getAudioContext();
+  } catch {
+    return; // Audio unavailable — degrade gracefully
+  }
   const now = ctx.currentTime;
 
   switch (name) {

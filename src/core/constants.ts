@@ -9,8 +9,8 @@ export const BUFFER_HEIGHT = 20;
 // Spawn positions (in board coordinates)
 // Board is 40 rows: rows 0-19 = buffer (hidden), rows 20-39 = visible
 // Spawn 1 row into buffer zone (TDG: pieces spawn just above skyline)
-export const SPAWN_POSITION: Position = { x: 3, y: 19 };
-export const I_SPAWN_POSITION: Position = { x: 3, y: 18 };
+export const SPAWN_POSITION: Position = Object.freeze({ x: 3, y: 19 });
+export const I_SPAWN_POSITION: Position = Object.freeze({ x: 3, y: 18 });
 
 // Timing constants (ms) — aligned with TDG §13
 export const DAS_DELAY = 300;   // was 167 (TDG: ~300ms initial delay before autorepeat)
@@ -423,6 +423,10 @@ export const COMBO_BASE = 50;
 export const SOFT_DROP_SCORE = 1;
 // Hard drop: 2 points per cell
 export const HARD_DROP_SCORE = 2;
+// Maximum cell size for board rendering
+export const MAX_CELL_SIZE = 36;
+// Ultra mode timer turns red below this threshold (ms)
+export const ULTRA_DANGER_THRESHOLD = 30000;
 
 // Gravity speed curve: index = level, value = ms per drop
 // Based on TDG speed curve (NES-inspired timing)

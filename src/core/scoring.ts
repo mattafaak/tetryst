@@ -3,7 +3,6 @@ import {
   type Piece,
   type ScoreResult,
   type TSpinResult,
-  type GameState,
   TetriminoType,
   RotationState,
 } from "./types.ts";
@@ -133,11 +132,7 @@ export function detectTSpin(board: Board, piece: Piece): TSpinResult {
 
   // Exactly 3 corners but NOT both back -> T-spin Mini
   // (both front corners on the flat-edge side are occupied)
-  if (occupiedCount === 3) {
-    return { isTSpin: true, isMini: true };
-  }
-
-  return { isTSpin: false, isMini: false };
+  return { isTSpin: true, isMini: true };
 }
 
 /**
@@ -156,7 +151,7 @@ export function evaluateClear(
   let isB2B = false;
   let isB2BBroken = false;
 
-  const currentEligible = isB2BEligible(linesCleared, tSpinResult);
+  const currentEligible = isB2BEligible(linesCleared, tSpinResult, isPerfectClear);
 
   if (isPerfectClear) {
     // B2B Tetris PC has its own fixed total (TDG §7 — not 2000×1.5)
@@ -205,15 +200,15 @@ export function evaluateClear(
 export function isB2BEligible(
   linesCleared: number,
   tSpinResult: TSpinResult,
+  isPerfectClear?: boolean,
 ): boolean {
-  return linesCleared === 4 || tSpinResult.isTSpin;
+  return linesCleared === 4 || tSpinResult.isTSpin || isPerfectClear === true;
 }
 
 /**
  * Calculate score for hard-drop (2 points per cell).
  */
 export function addHardDropScore(
-  _state: GameState,
   rowsDropped: number,
 ): number {
   return rowsDropped * HARD_DROP_SCORE;

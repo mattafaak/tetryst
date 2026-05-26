@@ -1,16 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAudioContext } from "./audio-ctx.ts";
 import { playSFX } from "./sfx.ts";
 import { playMusic, stopMusic } from "./music.ts";
 
-// Mock constructors used by audio modules
-beforeEach(() => {
-  const mockGain = {
+let mockGain: Record<string, unknown>;
+let mockOsc: Record<string, unknown>;
+
+function setupAudioCtx(state = "running") {
+  mockGain = {
     connect: vi.fn(),
     disconnect: vi.fn(),
     gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
   };
-  const mockOsc = {
+  mockOsc = {
     type: "",
     frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
     connect: vi.fn(() => mockGain),
@@ -28,7 +30,7 @@ beforeEach(() => {
   vi.stubGlobal("AudioContext", vi.fn(function () {
     return {
       currentTime: 0,
-      state: "running",
+      state,
       destination: {},
       sampleRate: 44100,
       createOscillator: vi.fn(() => mockOsc),
@@ -43,6 +45,15 @@ beforeEach(() => {
       resume: vi.fn(() => Promise.resolve()),
     };
   }));
+}
+
+beforeEach(() => {
+  setupAudioCtx();
+});
+
+afterEach(() => {
+  stopMusic();
+  vi.unstubAllGlobals();
 });
 
 describe("audio-ctx", () => {
@@ -57,6 +68,15 @@ describe("audio-ctx", () => {
     const b = getAudioContext();
     expect(a).toBe(b);
   });
+
+  it("throws when AudioContext cannot be constructed", async () => {
+    vi.resetModules();
+    vi.stubGlobal("AudioContext", vi.fn(function () {
+      throw new DOMException("AudioContext not supported");
+    }));
+    const { getAudioContext: getCtx } = await import("./audio-ctx.ts");
+    expect(() => getCtx()).toThrow("AudioContext not available");
+  });
 });
 
 describe("sfx", () => {
@@ -64,6 +84,18 @@ describe("sfx", () => {
     const types = ["move", "rotate", "lock", "clear", "tetris", "tspin", "hold", "levelup", "gameover"] as const;
     for (const t of types) {
       expect(() => playSFX(t)).not.toThrow();
+    }
+  });
+
+  it("playSFX degrades gracefully when AudioContext is unavailable", async () => {
+    vi.resetModules();
+    vi.stubGlobal("AudioContext", vi.fn(function () {
+      throw new DOMException("AudioContext not supported");
+    }));
+    const { playSFX: sfx } = await import("./sfx.ts");
+    const types = ["move", "rotate", "lock", "clear", "tetris", "tspin", "hold", "levelup", "gameover"] as const;
+    for (const t of types) {
+      expect(() => sfx(t)).not.toThrow();
     }
   });
 });
@@ -82,7 +114,15 @@ describe("music", () => {
 
   it("playMusic is idempotent", () => {
     playMusic();
-    playMusic(); // second call should be a no-op
+    playMusic();
+    stopMusic();
+  });
+
+  it("playMusic/stopMusic cycle does not throw", () => {
+    playMusic();
+    stopMusic();
+    expect(() => stopMusic()).not.toThrow();
+    playMusic();
     stopMusic();
   });
 });

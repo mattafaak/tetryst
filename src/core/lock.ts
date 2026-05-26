@@ -87,6 +87,8 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
     // Build popup info
     if (linesCleared === 4) {
       popupInfo.push({ text: "TETRIS!", color: "#00f0f0" });
+    } else if (tSpinResult.isMini && linesCleared >= 1) {
+      popupInfo.push({ text: "T-SPIN MINI", color: "#a000f0" });
     } else if (tSpinResult.isTSpin && linesCleared === 3) {
       popupInfo.push({ text: "T-SPIN TRIPLE", color: "#a000f0" });
     } else if (tSpinResult.isTSpin && linesCleared === 2) {
@@ -99,6 +101,8 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
     }
     if (scoreResult.isB2B && wasB2BActive) {
       popupInfo.push({ text: "BACK-TO-BACK", color: "#f0a000" });
+    } else if (scoreResult.isB2BBroken) {
+      popupInfo.push({ text: "BREAK", color: "#f0a000" });
     }
     if (combo >= 2) {
       popupInfo.push({ text: `${combo}× COMBO`, color: "#00f0f0" });
@@ -139,6 +143,9 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
 
       if (needsLevelupSFX) {
         popupInfo.push({ text: `LEVEL ${s.level}!`, color: "#ffff00" });
+      }
+      if (scoreResult.isB2BBroken) {
+        popupInfo.push({ text: "BREAK", color: "#f0a000" });
       }
     }
 

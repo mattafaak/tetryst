@@ -10,7 +10,7 @@ import { playSFX } from "../audio/sfx.ts";
 import { triggerFlash } from "../render/effects.ts";
 import { Game } from "./loop.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
-import type { GameState } from "../core/types.ts";
+import type { GameState, Cell } from "../core/types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "../core/constants.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
@@ -606,7 +606,7 @@ describe("Game integration", () => {
 
       // Set up board: 4 full rows at the bottom
       const board = Array.from({ length: BOARD_HEIGHT }, () =>
-        Array<string | null>(BOARD_WIDTH).fill(null),
+        Array<Cell>(BOARD_WIDTH).fill(null),
       );
       for (let i = 0; i < 4; i++) {
         board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
@@ -637,7 +637,7 @@ describe("Game integration", () => {
       const g = startPlayingGame();
 
       const board = Array.from({ length: BOARD_HEIGHT }, () =>
-        Array<string | null>(BOARD_WIDTH).fill(null),
+        Array<Cell>(BOARD_WIDTH).fill(null),
       );
       for (let i = 0; i < 4; i++) {
         board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
@@ -665,7 +665,7 @@ describe("Game integration", () => {
 
       // Empty board — piece drops but clears no lines
       const board = Array.from({ length: BOARD_HEIGHT }, () =>
-        Array<string | null>(BOARD_WIDTH).fill(null),
+        Array<Cell>(BOARD_WIDTH).fill(null),
       );
 
       g.state = {

@@ -69,7 +69,7 @@ export function spawnClearParticles(
 
 let lastEffectsTime = 0;
 
-export function renderEffects(ctx: CanvasRenderingContext2D, _dpr: number, canvasW: number, canvasH: number): void {
+export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, canvasH: number): void {
   const now = performance.now();
   const dt = lastEffectsTime === 0 ? 16 : now - lastEffectsTime;
   lastEffectsTime = now;

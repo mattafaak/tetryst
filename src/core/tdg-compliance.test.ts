@@ -23,12 +23,12 @@ import {
 } from "./constants.ts";
 import {
   GameMode, GamePhase, TetriminoType, RotationState,
-  type GameState, type Board,
+  type GameState, type Board, type Cell,
 } from "./types.ts";
 
 function emptyBoard(): Board {
   return Array.from({ length: BOARD_HEIGHT }, () =>
-    Array<string | null>(BOARD_WIDTH).fill(null),
+    Array<Cell>(BOARD_WIDTH).fill(null),
   );
 }
 

@@ -9,8 +9,9 @@ import { addHardDropScore } from "./scoring.ts";
 import { executeLock } from "./lock.ts";
 import { holdPiece } from "./state.ts";
 import { resetLockState, updateLowestY } from "./lock-delay.ts";
-import { MAX_LOCK_RESETS } from "./constants.ts";
+import { MAX_LOCK_RESETS, SOFT_DROP_SCORE } from "./constants.ts";
 import { pushPopup } from "../render/popups.ts";
+import type { LockState, Piece } from "./types.ts";
 
 export function processAction(
   state: GameState,
@@ -51,6 +52,35 @@ function handlePause(state: GameState): GameState {
   return state;
 }
 
+/**
+ * Shared lock-delay reset logic for horizontal moves and rotations.
+ * Replaces 3 near-identical implementations (handleMove, handleRotateCW, handleRotateCCW).
+ */
+function updateLockStateAfterMove(
+  state: GameState,
+  newPiece: Piece,
+): LockState {
+  const below = movePiece(newPiece, 0, 1);
+  if (state.lockState.onGround) {
+    if (checkCollision(state.board, below)) {
+      if (state.lockState.resets < MAX_LOCK_RESETS) {
+        return { ...state.lockState, timer: 0, resets: state.lockState.resets + 1 };
+      }
+      return { ...state.lockState };
+    }
+    const canReset = state.lockState.resets < MAX_LOCK_RESETS;
+    return {
+      ...state.lockState,
+      onGround: false,
+      ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
+    };
+  }
+  if (checkCollision(state.board, below)) {
+    return { ...state.lockState, onGround: true };
+  }
+  return state.lockState;
+}
+
 function handleMove(
   state: GameState,
   dx: number,
@@ -72,30 +102,8 @@ function handleMove(
   newState.ghostY = getGhostY(newState.board, moved);
 
   // If piece is on ground and moving horizontally, update lock state
-  if (dy === 0 && state.lockState.onGround) {
-    const belowMoved = movePiece(moved, 0, 1);
-    if (checkCollision(state.board, belowMoved)) {
-      // Still on ground — reset lock timer
-      newState.lockState = { ...state.lockState };
-      if (newState.lockState.resets < MAX_LOCK_RESETS) {
-        newState.lockState.timer = 0;
-        newState.lockState.resets += 1;
-      }
-    } else {
-      // Slid into open air — counts as a reset (TDG §7)
-      const canReset = state.lockState.resets < MAX_LOCK_RESETS;
-      newState.lockState = {
-        ...state.lockState,
-        onGround: false,
-        ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
-      };
-    }
-  } else if (dy === 0) {
-    // Airborne horizontal move — recheck whether the new position is now grounded
-    const belowMoved = movePiece(moved, 0, 1);
-    if (checkCollision(state.board, belowMoved)) {
-      newState.lockState = { ...state.lockState, onGround: true };
-    }
+  if (dy === 0) {
+    newState.lockState = updateLockStateAfterMove(state, moved);
   }
 
   return newState;
@@ -116,7 +124,7 @@ function handleSoftDrop(state: GameState): GameState {
 
   const newState = { ...state, activePiece: moved };
   newState.ghostY = getGhostY(newState.board, moved);
-  newState.score = state.score + 1; // 1 point per cell soft dropped
+  newState.score = state.score + SOFT_DROP_SCORE;
 
   // Recompute onGround — stale-true (from a rotation kick) would cause premature locking
   const belowMoved = movePiece(moved, 0, 1);
@@ -156,7 +164,7 @@ function handleHardDrop(state: GameState): GameState {
     ...state,
     board: lockPiece(state.board, dropped),
     activePiece: null,
-    score: state.score + addHardDropScore(state, rows),
+    score: state.score + addHardDropScore(rows),
     ghostY: dropped.pos.y,
     lockState: resetLockState(),
   };
@@ -188,27 +196,7 @@ function handleRotateCW(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, result.piece);
 
   // Recheck groundedness after rotation — kicks can move the piece on or off the ground
-  const belowRotatedCW = movePiece(result.piece, 0, 1);
-  if (state.lockState.onGround) {
-    if (checkCollision(state.board, belowRotatedCW)) {
-      newState.lockState = { ...state.lockState };
-      if (newState.lockState.resets < MAX_LOCK_RESETS) {
-        newState.lockState.timer = 0;
-        newState.lockState.resets += 1;
-      }
-    } else {
-      // Kicked into open air — still counts as a reset (TDG §7)
-      const canReset = state.lockState.resets < MAX_LOCK_RESETS;
-      newState.lockState = {
-        ...state.lockState,
-        onGround: false,
-        ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
-      };
-    }
-  } else if (checkCollision(state.board, belowRotatedCW)) {
-    // Was airborne; rotation landed piece on ground — detect so shouldLock can fire
-    newState.lockState = { ...state.lockState, onGround: true };
-  }
+  newState.lockState = updateLockStateAfterMove(state, result.piece);
 
   return newState;
 }
@@ -228,27 +216,7 @@ function handleRotateCCW(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, result.piece);
 
   // Recheck groundedness after rotation — kicks can move the piece on or off the ground
-  const belowRotatedCCW = movePiece(result.piece, 0, 1);
-  if (state.lockState.onGround) {
-    if (checkCollision(state.board, belowRotatedCCW)) {
-      newState.lockState = { ...state.lockState };
-      if (newState.lockState.resets < MAX_LOCK_RESETS) {
-        newState.lockState.timer = 0;
-        newState.lockState.resets += 1;
-      }
-    } else {
-      // Kicked into open air — still counts as a reset (TDG §7)
-      const canReset = state.lockState.resets < MAX_LOCK_RESETS;
-      newState.lockState = {
-        ...state.lockState,
-        onGround: false,
-        ...(canReset ? { timer: 0, resets: state.lockState.resets + 1 } : {}),
-      };
-    }
-  } else if (checkCollision(state.board, belowRotatedCCW)) {
-    // Was airborne; rotation landed piece on ground — detect so shouldLock can fire
-    newState.lockState = { ...state.lockState, onGround: true };
-  }
+  newState.lockState = updateLockStateAfterMove(state, result.piece);
 
   return newState;
 }

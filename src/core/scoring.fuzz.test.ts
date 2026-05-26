@@ -289,12 +289,13 @@ describe("scoring fuzz: perfect clear", () => {
     expect(withoutB2B.score).toBe(2000);
   });
 
-  it("PC with non-eligible clear does NOT get B2B multiplier", () => {
-    // Single-line PC is not B2B-eligible (single is not Tetris or T-spin)
+  it("PC Single gets B2B multiplier (modern rule — PC is B2B-eligible)", () => {
+    // Modern rule: PC is B2B-eligible regardless of line count
     const withB2B = evaluateClear(1, { isTSpin: false, isMini: false }, 0, true, true);
     const withoutB2B = evaluateClear(1, { isTSpin: false, isMini: false }, 0, false, true);
-    expect(withB2B.score).toBe(800); // No B2B multiplier applied
-    expect(withB2B.score).toBe(withoutB2B.score);
+    expect(withB2B.score).toBe(1200); // 800 × 1.5 B2B multiplier applied
+    expect(withoutB2B.score).toBe(800);
+    expect(withB2B.score).toBeGreaterThan(withoutB2B.score);
   });
 
   it("PC multiplies by (level+1)", () => {
