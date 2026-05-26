@@ -82,6 +82,18 @@ const FONT_BOLD_11   = "bold 11px monospace";
 const FONT_BOLD_26   = "bold 26px monospace";
 const FONT_13        = "13px monospace";
 const FONT_12        = "12px monospace";
+const FONT_TITLE     = "bold 52px monospace";
+const FONT_HEADING   = "bold 44px monospace";
+const FONT_HEADING_SM = "bold 40px monospace";
+const FONT_VALUE     = "20px monospace";
+const FONT_VALUE_BOLD = "bold 20px monospace";
+const FONT_PROMPT    = "bold 15px monospace";
+const FONT_PROMPT_SM = "bold 14px monospace";
+const FONT_POPUP     = "bold 22px monospace";
+const FONT_STAT      = "14px monospace";
+const FONT_EMPTY     = "16px monospace";
+const FONT_MUTE      = "11px monospace";
+const FONT_BADGE     = "bold 12px monospace";
 
 // Cached DPR: initialized once and re-read when canvas dimensions change.
 let _dpr = typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1;
@@ -360,7 +372,7 @@ function overlayBg(ctx: CanvasRenderingContext2D, w: number, h: number, alpha = 
 
 function drawTitle(ctx: CanvasRenderingContext2D, cx: number, y: number): void {
   ctx.letterSpacing = "6px";
-  ctx.font = "bold 52px monospace";
+  ctx.font = FONT_TITLE;
   ctx.fillStyle = TEXT;
   ctx.fillText("TETRYST", cx, y);
   ctx.letterSpacing = "0px";
@@ -458,13 +470,13 @@ function renderMenuContent(
       );
     });
   } else {
-    ctx.font = "16px monospace";
+    ctx.font = FONT_EMPTY;
     ctx.fillStyle = TEXT_DIM;
     ctx.fillText("No scores yet!", cx, scoresY + 18);
   }
 
   const promptY = isMarathon ? cy + 196 : cy + 176;
-  ctx.font = "bold 15px monospace";
+  ctx.font = FONT_PROMPT;
   ctx.fillStyle = AMBER;
   ctx.fillText("PRESS  ENTER  TO  PLAY", cx, promptY);
 
@@ -551,13 +563,13 @@ function drawPauseMenu(
   ctx.textAlign = "center";
 
   ctx.letterSpacing = "6px";
-  ctx.font = "bold 40px monospace";
+  ctx.font = FONT_HEADING_SM;
   ctx.fillStyle = TEXT;
   ctx.fillText("PAUSED", cx, cy - 64);
   ctx.letterSpacing = "0px";
 
   // Menu options — color indicates selection; no prefix to avoid font-metric shifting
-  ctx.font = "bold 20px monospace";
+  ctx.font = FONT_VALUE_BOLD;
   PAUSE_OPTIONS.forEach((opt, i) => {
     const y = cy - 8 + i * 32;
     ctx.fillStyle = i === selection ? ACCENT : TEXT;
@@ -583,7 +595,7 @@ function drawGameOver(
   ctx.textAlign = "center";
 
   ctx.letterSpacing = "4px";
-  ctx.font = "bold 44px monospace";
+  ctx.font = FONT_HEADING;
   ctx.fillStyle = RED;
   ctx.fillText("GAME  OVER", cx, cy - 90);
   ctx.letterSpacing = "0px";
@@ -607,13 +619,13 @@ function drawGameOver(
     ctx.fillText(fmtScore(state.score), cx, cy - 18);
   }
 
-  ctx.font = "14px monospace";
+  ctx.font = FONT_STAT;
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
 
   drawBestScores(ctx, state.mode, cx, cy + 40);
 
-  ctx.font = "bold 14px monospace";
+  ctx.font = FONT_PROMPT_SM;
   ctx.fillStyle = AMBER;
   ctx.fillText("PRESS  ENTER  TO  PLAY  AGAIN", cx, cy + 152);
 }
@@ -653,7 +665,7 @@ function drawVictory(
   }
 
   ctx.letterSpacing = "4px";
-  ctx.font = "bold 44px monospace";
+  ctx.font = FONT_HEADING;
   ctx.fillStyle = headlineColor;
   ctx.fillText(headline, cx, cy - 90);
   ctx.letterSpacing = "0px";
@@ -667,13 +679,13 @@ function drawVictory(
   ctx.fillStyle = TEXT;
   ctx.fillText(primaryValue, cx, cy - 18);
 
-  ctx.font = "14px monospace";
+  ctx.font = FONT_STAT;
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
 
   drawBestScores(ctx, state.mode, cx, cy + 40);
 
-  ctx.font = "bold 14px monospace";
+  ctx.font = FONT_PROMPT_SM;
   ctx.fillStyle = AMBER;
   ctx.fillText("PRESS  ENTER  FOR  MENU", cx, cy + 152);
 }
@@ -718,52 +730,52 @@ function drawHUD(
 
   if (state.mode === GameMode.Sprint) {
     hudLabel(ctx, "TIME", hudX, hudY + 40);
-    ctx.font = "20px monospace";
+    ctx.font = FONT_VALUE;
     ctx.fillStyle = TEXT;
     ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 62);
 
     hudLabel(ctx, "LINES LEFT", hudX, hudY + 96);
-    ctx.font = "20px monospace";
+    ctx.font = FONT_VALUE;
     ctx.fillStyle = ACCENT;
     ctx.fillText(Math.max(0, SPRINT_LINE_TARGET - state.lines).toString(), hudX, hudY + 118);
 
   } else if (state.mode === GameMode.Ultra) {
     hudLabel(ctx, "TIME LEFT", hudX, hudY + 40);
-    ctx.font = "bold 20px monospace";
+    ctx.font = FONT_VALUE_BOLD;
     ctx.fillStyle = state.modeTimer < ULTRA_DANGER_THRESHOLD ? RED : TEXT;
     ctx.fillText(formatMs(state.modeTimer), hudX, hudY + 62);
 
     hudLabel(ctx, "SCORE", hudX, hudY + 96);
-    ctx.font = "20px monospace";
+    ctx.font = FONT_VALUE;
     ctx.fillStyle = TEXT;
     ctx.fillText(fmtScore(state.score), hudX, hudY + 118);
 
   } else {
     // Marathon
     hudLabel(ctx, "SCORE", hudX, hudY + 40);
-    ctx.font = "20px monospace";
+    ctx.font = FONT_VALUE;
     ctx.fillStyle = TEXT;
     ctx.fillText(fmtScore(state.score), hudX, hudY + 62);
 
     hudLabel(ctx, "LEVEL", hudX, hudY + 96);
-    ctx.font = "20px monospace";
+    ctx.font = FONT_VALUE;
     ctx.fillStyle = TEXT;
     ctx.fillText((state.level + 1).toString(), hudX, hudY + 118);
 
     hudLabel(ctx, "LINES", hudX, hudY + 152);
-    ctx.font = "20px monospace";
+    ctx.font = FONT_VALUE;
     ctx.fillStyle = TEXT;
     ctx.fillText(state.lines.toString(), hudX, hudY + 174);
   }
 
   // B2B / combo indicators
   if (state.backToBack) {
-    ctx.font = "bold 12px monospace";
+    ctx.font = FONT_BADGE;
     ctx.fillStyle = AMBER;
     ctx.fillText("B2B", hudX, hudY + 204);
   }
   if (state.combo >= 1) {
-    ctx.font = "bold 12px monospace";
+    ctx.font = FONT_BADGE;
     ctx.fillStyle = ACCENT;
     ctx.fillText(`${state.combo}× COMBO`, hudX, state.backToBack ? hudY + 220 : hudY + 204);
   }
@@ -777,7 +789,7 @@ function drawHUD(
   }
 
   // Mute indicator
-  ctx.font = "11px monospace";
+  ctx.font = FONT_MUTE;
   ctx.fillStyle = audioEnabled ? "#44aa66" : "#885555";
   ctx.fillText(audioEnabled ? "♪  on" : "♪  off", hudX, holdY + 90);
 
@@ -825,7 +837,7 @@ function drawPopups(
   const cx = boardX + boardW / 2;
   const baseY = boardY + 80;
   ctx.textAlign = "center";
-  ctx.font = "bold 22px monospace";
+  ctx.font = FONT_POPUP;
   popups.forEach((p, i) => {
     const alpha = 1 - p.timer / p.duration;
     const dy = (p.timer / p.duration) * -40;
