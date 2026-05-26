@@ -1,4 +1,4 @@
-import { type GameState } from "./types.ts";
+import { type GameState, type Piece, type Board } from "./types.ts";
 import { updateLowestY } from "./lock-delay.ts";
 import { PIECE_SHAPES, GRAVITY_SPEED_CURVE, BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
 
@@ -11,6 +11,20 @@ export function getGravityDelay(level: number): number {
     return GRAVITY_SPEED_CURVE[level];
   }
   return GRAVITY_SPEED_CURVE[GRAVITY_SPEED_CURVE.length - 1];
+}
+
+function wouldCollide(piece: Piece, board: Board, y: number): boolean {
+  const shape = PIECE_SHAPES[piece.type][piece.rotation];
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (!shape[r][c]) continue;
+      const bx = piece.pos.x + c;
+      const by = y + r;
+      if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT) return true;
+      if (by >= 0 && board[by][bx] !== null) return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -37,27 +51,10 @@ export function applyGravity(
   let dropped = false;
   let onGround = state.lockState.onGround;
 
-  // Inline collision check against the piece's shape at a target Y to avoid
-  // allocating Piece objects per drop tick on the hot path.
-  function wouldCollide(y: number): boolean {
-    const p = activePiece!;
-    const shape = PIECE_SHAPES[p.type][p.rotation];
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (!shape[r][c]) continue;
-        const bx = p.pos.x + c;
-        const by = y + r;
-        if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT) return true;
-        if (by >= 0 && state.board[by][bx] !== null) return true;
-      }
-    }
-    return false;
-  }
-
   while (timer >= delay) {
     timer -= delay;
 
-    if (wouldCollide(pieceY + 1)) {
+    if (wouldCollide(activePiece, state.board, pieceY + 1)) {
       onGround = true;
       break;
     }
