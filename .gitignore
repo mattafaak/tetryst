@@ -34,3 +34,4 @@ out/
 # Playwright
 .playwright-mcp/
 test-results/
+.vercel
