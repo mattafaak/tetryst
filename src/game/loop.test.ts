@@ -255,7 +255,7 @@ describe("Game integration", () => {
       expect(typeof g.state.score).toBe("number");
     });
 
-    it("pressing a key exits attract mode", () => {
+    it("navigation keys do not exit attract mode", () => {
       game = new Game(mockCtx);
       game.start();
 
@@ -264,11 +264,31 @@ describe("Game integration", () => {
       let g = game as unknown as { isAttractMode: boolean };
       expect(g.isAttractMode).toBe(true);
 
-      // Press any key
+      // Arrow keys change mode/level but keep attract active
       pressKey("ArrowRight");
       advanceFrames(5);
-
       g = game as unknown as { isAttractMode: boolean };
+      expect(g.isAttractMode).toBe(true);
+
+      // Mute toggles without exiting attract
+      pressKey("KeyM");
+      advanceFrames(5);
+      g = game as unknown as { isAttractMode: boolean };
+      expect(g.isAttractMode).toBe(true);
+    });
+
+    it("Enter exits attract mode and starts a game", () => {
+      game = new Game(mockCtx);
+      game.start();
+
+      advanceFrames(200, 16); // enter attract mode
+
+      const g = game as unknown as { isAttractMode: boolean };
+      expect(g.isAttractMode).toBe(true);
+
+      pressKey("Enter");
+      advanceFrames(5);
+
       expect(g.isAttractMode).toBe(false);
     });
   });
@@ -475,7 +495,7 @@ describe("Game integration", () => {
       expect(g.state.phase).toBe(GamePhase.Playing);
     });
 
-    it("Enter on Quit to Menu returns to menu", () => {
+    it("Enter on Quit to Menu returns to attract mode", () => {
       startAndPause();
 
       pressKey("ArrowDown"); releaseKey("ArrowDown");
@@ -483,8 +503,12 @@ describe("Game integration", () => {
       pressKey("Enter"); releaseKey("Enter");
       advanceFrames(5);
 
-      const g = game as unknown as { state: { phase: GamePhase } };
-      expect(g.state.phase).toBe(GamePhase.Menu);
+      const g = game as unknown as {
+        state: { phase: GamePhase };
+        isAttractMode: boolean;
+      };
+      expect(g.state.phase).toBe(GamePhase.Playing); // attract mode runs in background
+      expect(g.isAttractMode).toBe(true);
     });
 
     it("selection resets to 0 on re-pause", () => {
@@ -502,85 +526,111 @@ describe("Game integration", () => {
     });
   });
 
-  describe("high score screen", () => {
-    function enterMenu(): unknown {
+  describe("unified menu / persistent attract", () => {
+    it("ArrowRight cycles mode without exiting attract", () => {
       game = new Game(mockCtx);
       game.start();
-      advanceFrames(5);
-
-      // Exit attract mode via Mute (no side effects on mode/level)
-      pressKey("KeyM"); releaseKey("KeyM");
-      advanceFrames(5);
+      advanceFrames(200, 16);
 
       const g = game as unknown as {
-        state: { phase: GamePhase };
-        showHighScores: boolean;
-        highScoreMode: GameMode;
         selectedMode: GameMode;
+        isAttractMode: boolean;
       };
-      expect(g.state.phase).toBe(GamePhase.Menu);
-      return g;
-    }
-
-    it("pressing H from menu shows high scores", () => {
-      const g = enterMenu() as { showHighScores: boolean };
-      expect(g.showHighScores).toBe(false);
-
-      pressKey("KeyH"); releaseKey("KeyH");
-      expect(g.showHighScores).toBe(true);
-    });
-
-    it("pressing H again dismisses high scores", () => {
-      const g = enterMenu() as { showHighScores: boolean };
-
-      pressKey("KeyH"); releaseKey("KeyH");
-      expect(g.showHighScores).toBe(true);
-
-      pressKey("KeyH"); releaseKey("KeyH");
-      expect(g.showHighScores).toBe(false);
-    });
-
-    it("ArrowRight cycles high score mode without changing selected mode", () => {
-      const g = enterMenu() as {
-        showHighScores: boolean;
-        highScoreMode: GameMode;
-        selectedMode: GameMode;
-      };
-
-      pressKey("KeyH"); releaseKey("KeyH");
-      expect(g.highScoreMode).toBe(GameMode.Marathon);
+      expect(g.isAttractMode).toBe(true);
+      expect(g.selectedMode).toBe(GameMode.Marathon);
 
       pressKey("ArrowRight"); releaseKey("ArrowRight");
-      expect(g.highScoreMode).toBe(GameMode.Sprint);
+      expect(g.selectedMode).toBe(GameMode.Sprint);
+      expect(g.isAttractMode).toBe(true); // still in attract
+    });
+
+    it("ArrowLeft cycles mode backward without exiting attract", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(200, 16);
+
+      const g = game as unknown as {
+        selectedMode: GameMode;
+        isAttractMode: boolean;
+      };
+
+      pressKey("ArrowLeft"); releaseKey("ArrowLeft");
+      expect(g.selectedMode).toBe(GameMode.Ultra);
+      expect(g.isAttractMode).toBe(true);
+    });
+
+    it("up/down changes start level in attract", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(200, 16);
+
+      const g = game as unknown as {
+        selectedStartLevel: number;
+        isAttractMode: boolean;
+      };
+
+      pressKey("ArrowUp"); releaseKey("ArrowUp");
+      expect(g.selectedStartLevel).toBe(1);
+      expect(g.isAttractMode).toBe(true);
+
+      pressKey("ArrowUp"); releaseKey("ArrowUp");
+      expect(g.selectedStartLevel).toBe(2);
+    });
+
+    it("Mute toggles during attract without exiting", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(200, 16);
+
+      const g = game as unknown as {
+        audioEnabled: boolean;
+        isAttractMode: boolean;
+      };
+      expect(g.audioEnabled).toBe(false); // attract disables audio
+      expect(g.isAttractMode).toBe(true);
+
+      pressKey("KeyM"); releaseKey("KeyM");
+      expect(g.audioEnabled).toBe(true);
+      expect(g.isAttractMode).toBe(true); // still in attract
+    });
+
+    it("non-navigation keys are ignored during attract", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(200, 16);
+
+      const g = game as unknown as {
+        isAttractMode: boolean;
+        selectedMode: GameMode;
+      };
+      expect(g.selectedMode).toBe(GameMode.Marathon);
+
+      // Keys that previously exited attract mode
+      pressKey("KeyH"); releaseKey("KeyH");
+      pressKey("Space"); releaseKey("Space");
+      advanceFrames(5);
+
+      expect(g.isAttractMode).toBe(true);
       expect(g.selectedMode).toBe(GameMode.Marathon); // unchanged
     });
 
-    it("ArrowLeft cycles high score mode backward", () => {
-      const g = enterMenu() as {
-        showHighScores: boolean;
-        highScoreMode: GameMode;
+    it("Enter exits attract and starts player game", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(200, 16);
+
+      const g = game as unknown as {
+        isAttractMode: boolean;
+        state: { phase: GamePhase; mode: GameMode };
       };
+      expect(g.isAttractMode).toBe(true);
 
-      pressKey("KeyH"); releaseKey("KeyH");
+      pressKey("Enter");
+      advanceFrames(10);
 
-      pressKey("ArrowRight"); releaseKey("ArrowRight"); // → Sprint
-      expect(g.highScoreMode).toBe(GameMode.Sprint);
-
-      pressKey("ArrowLeft"); releaseKey("ArrowLeft"); // ← Marathon
-      expect(g.highScoreMode).toBe(GameMode.Marathon);
-
-      pressKey("ArrowLeft"); releaseKey("ArrowLeft"); // ← Ultra
-      expect(g.highScoreMode).toBe(GameMode.Ultra);
-    });
-
-    it("pressing any other key dismisses high scores", () => {
-      const g = enterMenu() as { showHighScores: boolean };
-
-      pressKey("KeyH"); releaseKey("KeyH");
-      expect(g.showHighScores).toBe(true);
-
-      pressKey("ArrowDown"); releaseKey("ArrowDown");
-      expect(g.showHighScores).toBe(false);
+      expect(g.isAttractMode).toBe(false);
+      expect(g.state.mode).toBe(GameMode.Marathon);
+      expect(g.state.phase).toBe(GamePhase.Playing);
     });
   });
 

@@ -31,13 +31,10 @@ export class Game {
   private aiController: AIController | null = null;
   private audioEnabled: boolean = true;
   private isAttractMode: boolean = false;
-  private menuIsStatic: boolean = false;
   private attractNeedsReset: boolean = false;
   private selectedMode: GameMode = GameMode.Marathon;
   private selectedStartLevel: number = 0;
   private pauseMenuSelection = 0;
-  private showHighScores = false;
-  private highScoreMode: GameMode = GameMode.Marathon;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
@@ -57,6 +54,8 @@ export class Game {
     if (typeof document !== "undefined") {
       document.addEventListener("visibilitychange", this.onVisibilityChange);
     }
+    // Start attract mode immediately so AI gameplay runs behind the menu overlay
+    this.startAttractMode();
     this.loop(this.lastTime);
   }
 
@@ -91,52 +90,11 @@ export class Game {
   };
 
   private handleInput(action: InputAction): void {
-    // During attract mode: Enter starts a game immediately; any other key
-    // returns to the menu so the player can choose mode and level first.
-    if (this.isAttractMode) {
-      this.exitAttractMode();
-      this.state = createInitialState(this.selectedMode);
-      this.prevPhase = GamePhase.Menu;
+    // Menu / attract mode — attract AI game plays in background while player
+    // browses modes. Only Enter exits attract and starts a real game.
+    if (this.state.phase === GamePhase.Menu || this.isAttractMode) {
       if (action.type === "Start") {
-        this.state = startGame(this.state, this.selectedStartLevel);
-        return;
-      }
-      // Navigation and other keys return to the static menu.
-      this.menuIsStatic = true;
-      // Fall through to the Menu handler below.
-    }
-
-    if (this.state.phase === GamePhase.Menu) {
-      // High score screen is active — handle its navigation
-      if (this.showHighScores) {
-        if (action.type === "ShowHighScores") {
-          this.showHighScores = false;
-          return;
-        }
-        if (action.type === "MoveLeft") {
-          const idx = GAME_MODES.indexOf(this.highScoreMode);
-          this.highScoreMode = GAME_MODES[(idx - 1 + GAME_MODES.length) % GAME_MODES.length];
-          return;
-        }
-        if (action.type === "MoveRight") {
-          const idx = GAME_MODES.indexOf(this.highScoreMode);
-          this.highScoreMode = GAME_MODES[(idx + 1) % GAME_MODES.length];
-          return;
-        }
-        // Any other key dismisses high scores
-        this.showHighScores = false;
-        return;
-      }
-
-      // Handle toggle to high score screen
-      if (action.type === "ShowHighScores") {
-        this.showHighScores = true;
-        this.highScoreMode = this.selectedMode;
-        return;
-      }
-
-      if (action.type === "Start") {
-        this.menuIsStatic = false;
+        this.exitAttractMode();
         clearEffects();
         this.state = startGame(
           createInitialState(this.selectedMode),
@@ -162,6 +120,12 @@ export class Game {
         this.selectedStartLevel = (this.selectedStartLevel - 1 + MARATHON_MAX_LEVEL) % MARATHON_MAX_LEVEL;
         return;
       }
+      if (action.type === "Mute") {
+        this.audioEnabled = !this.audioEnabled;
+        return;
+      }
+      // All other actions ignored during menu — attract continues uninterrupted
+      return;
     }
 
     if (action.type === "Mute") {
@@ -204,8 +168,8 @@ export class Game {
           // Quit to Menu
           this.pauseMenuSelection = 0;
           this.state = createInitialState(this.selectedMode);
-          this.menuIsStatic = true;
           this.prevPhase = GamePhase.Menu;
+          this.startAttractMode();
         }
         return;
       }
@@ -221,8 +185,9 @@ export class Game {
 
     if (action.type === "Start" && this.state.phase === GamePhase.Victory) {
       clearEffects();
-      this.menuIsStatic = true;
       this.state = createInitialState(this.selectedMode);
+      this.prevPhase = GamePhase.Victory;
+      this.startAttractMode();
       return;
     }
 
@@ -307,8 +272,6 @@ export class Game {
         this.selectedStartLevel,
         this.audioEnabled,
         this.pauseMenuSelection,
-        this.showHighScores,
-        this.highScoreMode,
       );
     } catch (err) {
       console.error("Game loop error:", err);
@@ -326,7 +289,7 @@ export class Game {
 
     switch (this.state.phase) {
       case GamePhase.Menu:
-        if (!this.isAttractMode && !this.menuIsStatic) {
+        if (!this.isAttractMode) {
           this.startAttractMode();
         }
         if (this.isAttractMode) {
