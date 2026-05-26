@@ -217,6 +217,7 @@ export const BPM = 144; // matches the MIDI source tempo (flutetunes.com)
 export const BEAT_DURATION = 60 / BPM; // ~0.417s per beat
 
 /** @internal exported for testing */
+/** Test-only export: the melody data used to build the music schedule. */
 export const MELODY_DATA = MELODY;
 
 // Resolve a note name to a frequency, supporting bass transposition
@@ -277,6 +278,7 @@ function playOscillator(
 ): void {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -317,6 +319,7 @@ function playNoise(
 ): void {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const bufLen = Math.max(1, Math.ceil(ctx.sampleRate * duration));
     const buffer = ctx.createBuffer(1, bufLen, ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -382,10 +385,8 @@ function scheduleSong(events: NoteEvent[], baseTime: number): void {
 function playSongCycle(): void {
   if (!isPlaying) return;
 
-  let ctx: AudioContext;
-  try {
-    ctx = getAudioContext();
-  } catch {
+  const ctx = getAudioContext();
+  if (!ctx) {
     stopMusic();
     return;
   }

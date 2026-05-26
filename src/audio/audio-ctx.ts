@@ -3,14 +3,13 @@
 
 let audioCtx: AudioContext | null = null;
 
-export function getAudioContext(): AudioContext {
+export function getAudioContext(): AudioContext | null {
   if (!audioCtx) {
     try {
       audioCtx = new AudioContext();
     } catch {
       // AudioContext not available (sandboxed env, no browser support)
-      // Callers handle null via their own try-catch or null checks
-      throw new Error("AudioContext not available");
+      return null;
     }
   }
   if (audioCtx.state === "suspended") {

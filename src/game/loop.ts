@@ -329,20 +329,29 @@ export class Game {
   }
 
   private onPhaseTransition(newPhase: GamePhase): void {
-    if (!this.audioEnabled) return;
     switch (newPhase) {
       case GamePhase.Playing:
-        playMusic();
+        if (this.audioEnabled) playMusic();
         break;
       case GamePhase.Paused:
-        stopMusic();
+        if (this.audioEnabled) stopMusic();
         break;
       case GamePhase.GameOver:
-        playSFX("gameover");
-        stopMusic();
+        if (!this.isAttractMode) {
+          saveHighScore({
+            score: this.state.mode === GameMode.Sprint ? this.state.modeTimer : this.state.score,
+            level: this.state.level,
+            lines: this.state.lines,
+            mode: this.state.mode,
+          });
+        }
+        if (this.audioEnabled) {
+          playSFX("gameover");
+          stopMusic();
+        }
         break;
       case GamePhase.Victory:
-        stopMusic();
+        if (this.audioEnabled) stopMusic();
         break;
     }
   }

@@ -22,7 +22,7 @@ export const NEXT_QUEUE_SIZE = 5; // TDG §8: show 4–6 next pieces (expanded f
 export const LINE_CLEAR_ANIM_DURATION = 300; // ms — line clear flash animation duration
 
 // Piece colors (strings for Canvas fillStyle)
-export const PIECE_COLORS: Record<TetriminoType, string> = {
+export const PIECE_COLORS = {
   [TetriminoType.I]: "#00f0f0",
   [TetriminoType.O]: "#f0f000",
   [TetriminoType.T]: "#a000f0",
@@ -30,7 +30,7 @@ export const PIECE_COLORS: Record<TetriminoType, string> = {
   [TetriminoType.Z]: "#f00000",
   [TetriminoType.J]: "#0000f0",
   [TetriminoType.L]: "#f0a000",
-};
+} as const satisfies Record<TetriminoType, string>;
 
 // Ghost piece opacity
 export const GHOST_OPACITY = 0.3;
@@ -39,10 +39,7 @@ export const GHOST_OPACITY = 0.3;
 // Each piece is defined as a 4x4 grid for all 4 rotation states.
 // Row 0 is the top of the bounding box.
 
-export const PIECE_SHAPES: Record<
-  TetriminoType,
-  boolean[][][]
-> = {
+export const PIECE_SHAPES = {
   [TetriminoType.I]: [
     // 0
     [
@@ -250,7 +247,7 @@ export const PIECE_SHAPES: Record<
       [false, false, false, false],
     ],
   ],
-};
+} as const;
 
 // SRS Wall Kick Data
 // Offsets are (x, y) where positive x = right, positive y = down (Canvas coords).
@@ -394,23 +391,23 @@ export function getWallKicks(
 }
 
 // Scoring table: index = lines cleared (0-4), value = base points
-export const LINE_CLEAR_SCORES = [0, 100, 300, 500, 800];
+export const LINE_CLEAR_SCORES = [0, 100, 300, 500, 800] as const;
 
 // T-spin scores (× (level + 1))
-export const TSPIN_SCORES: Record<string, number> = {
+export const TSPIN_SCORES: Record<string, number> = Object.freeze({
   "0": 400, // T-spin with no lines
   "1": 800, // T-spin single
   "2": 1200, // T-spin double
   "3": 1600, // T-spin triple
-};
+});
 
-export const TSPIN_MINI_SCORES: Record<string, number> = {
+export const TSPIN_MINI_SCORES: Record<string, number> = Object.freeze({
   "0": 100, // T-spin Mini with no lines (TDG §7: 100 × (level + 1))
   "1": 200, // T-spin Mini single (TDG §7: 200 × (level + 1))
   // Mini can clear at most 1 line geometrically; no "double" entry
-};
+});
 
-export const PERFECT_CLEAR_SCORES = [0, 800, 1200, 1800, 2000]; // TDG §7 by line count
+export const PERFECT_CLEAR_SCORES = [0, 800, 1200, 1800, 2000] as const; // TDG §7 by line count
 export const PERFECT_CLEAR_B2B_TETRIS = 3200; // TDG §7 B2B Tetris Perfect Clear
 
 // Back-to-back multiplier
@@ -430,7 +427,7 @@ export const ULTRA_DANGER_THRESHOLD = 30000;
 
 // Gravity speed curve: index = level, value = ms per drop
 // Based on TDG speed curve (NES-inspired timing)
-export const GRAVITY_SPEED_CURVE: number[] = [
+export const GRAVITY_SPEED_CURVE = [
   1000, // Level 0
   793, // Level 1
   618, // Level 2
@@ -447,14 +444,14 @@ export const GRAVITY_SPEED_CURVE: number[] = [
   11, // Level 13
   7, // Level 14
   5, // Level 15+
-];
+] as const;
 
 export const MARATHON_MAX_LEVEL = 15;
 export const ULTRA_DURATION_MS = 3 * 60 * 1000;
 export const SPRINT_LINE_TARGET = 40;
 
 // TDG §11 Variable Goal System
-export const EFFECTIVE_LINE_COUNTS: Record<string, number> = {
+export const EFFECTIVE_LINE_COUNTS: Record<string, number> = Object.freeze({
   single: 1,
   double: 3,
   triple: 5,
@@ -465,12 +462,12 @@ export const EFFECTIVE_LINE_COUNTS: Record<string, number> = {
   tspin_triple: 16,
   mini_zero: 1,
   mini_single: 2,
-};
+});
 
 // Cumulative effective lines required to reach level N (index = target level)
-export const LEVEL_GOAL_CUMULATIVE: number[] = [
+export const LEVEL_GOAL_CUMULATIVE = [
   0, 5, 15, 30, 50, 75, 105, 140, 180, 225, 275, 330, 390, 455, 525, 600,
-];
+] as const;
 
 // Star-field background
 export const STAR_COUNT = 65;

@@ -119,16 +119,6 @@ export function clearEffects(): void {
  *  Reset on clearEffects so the key doesn't leak across game sessions. */
 let lastParticleRowKey = "";
 
-/** Set the last-spawned particle row key. canvas.ts calls this after spawning. */
-export function setParticleRowKey(key: string): void {
-  lastParticleRowKey = key;
-}
-
-/** Read the last row key (used by canvas.ts to avoid duplicate spawning). */
-export function getParticleRowKey(): string {
-  return lastParticleRowKey;
-}
-
 // ── Particle spawning from update phase ──────────────────────────────────
 
 /** Layout values set by the render phase each frame, used by update-phase particle spawning.

@@ -39,7 +39,7 @@ export function tryRotateCW(
   board: Board
 ): { piece: Piece; kicked: boolean } | null {
   if (piece.type === TetriminoType.O) {
-    return { piece: { ...piece, rotation: piece.rotation }, kicked: false };
+    return { piece, kicked: false };
   }
 
   const newRotation = srsCW(piece.rotation);
@@ -72,7 +72,7 @@ export function tryRotateCCW(
   board: Board
 ): { piece: Piece; kicked: boolean } | null {
   if (piece.type === TetriminoType.O) {
-    return { piece: { ...piece, rotation: piece.rotation }, kicked: false };
+    return { piece, kicked: false };
   }
 
   const newRotation = srsCCW(piece.rotation);

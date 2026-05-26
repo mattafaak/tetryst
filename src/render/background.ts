@@ -132,11 +132,9 @@ export function renderBackground(
   // Overlay twinkle on top of the cached base layer (per-frame, smooth oscillation)
   const t = now;
   for (const s of stars) {
-    const twinkle = 0.55 + 0.45 * Math.sin(t * STAR_TWINKLE_SPEED + s.phase);
-    const alpha = s.baseAlpha * twinkle;
-    // Only draw if twinkle brightens significantly above the base average
-    if (alpha > s.baseAlpha * 1.1) {
-      ctx.globalAlpha = alpha - s.baseAlpha;
+    const twinkle = Math.sin(t * STAR_TWINKLE_SPEED + s.phase);
+    if (twinkle > 0.3) {
+      ctx.globalAlpha = s.baseAlpha * twinkle * 0.5;
       ctx.fillStyle = "#fff";
       ctx.fillRect(Math.round(s.x), Math.round(s.y), Math.ceil(s.size), Math.ceil(s.size));
     }

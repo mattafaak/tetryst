@@ -21,6 +21,7 @@ function playTone(
 ): void {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -55,6 +56,7 @@ function playSweep(
 ): void {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -84,6 +86,7 @@ function playChord(
 ): void {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return;
     for (const freq of frequencies) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -105,12 +108,8 @@ function playChord(
 }
 
 export function playSFX(name: SFXName): void {
-  let ctx: AudioContext;
-  try {
-    ctx = getAudioContext();
-  } catch {
-    return; // Audio unavailable — degrade gracefully
-  }
+  const ctx = getAudioContext();
+  if (!ctx) return; // Audio unavailable — degrade gracefully
   const now = ctx.currentTime;
 
   switch (name) {

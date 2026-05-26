@@ -257,6 +257,64 @@ Created: 2026-05-25
 | 21.16 | **Remove unused test-only production exports** — Several production functions are exported only for test consumption: `isB2BEligible` (scoring.ts), `getGravityDelay` (gravity.ts), and all 6 ai-brain.ts functions. If tests import them directly, the exports are necessary — verify each. For any that are truly unused, remove the export. For those used by tests, consider whether to keep the export or move the test to use the public API. | Unnecessary exports removed; all existing imports updated; all tests pass | - | cc:完了 |
 | 21.17 | **Cache DPR value to avoid per-frame devicePixelRatio reads** — `recalcCellSize` reads `window.devicePixelRatio` on resize (already optimized per 8.2), but `renderFrame` calls `this.ctx.canvas.width / (window.devicePixelRatio || 1)` for every render. Cache the DPR value at game start and update it on resize events. This eliminates a layout-read-triggering property access per frame. | devicePixelRatio cached; updated on resize; all tests pass | 8.2 | cc:完了 |
 
+## Phase 22: Deep audit cleanup — bugs, memory leaks, type safety, perf
+
+**Overview**: Comprehensive cleanup synthesizing findings from 5 parallel deep-research audit agents covering code smells, type safety, testing gaps, game logic edge cases, render/audio details, and unused exports. 24 tasks across 4 priority categories.
+
+### Required — bugs and correctness
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 22.1 | **Fix background.ts star twinkle dead code** — The twinkle overlay condition `alpha > s.baseAlpha * 1.1` simplifies to `twinkle > 1.1`. Since `twinkle = 0.55 + 0.45 × sin(...)` maxes at 1.0, the condition is **never true**. Stars never twinkle. Fix: change to `twinkle > 1.0` or restructure brightness modulation so it actually produces visible twinkle above the base cache layer. | Stars visibly twinkle above the base layer; condition is physically reachable; all tests pass | - | cc:TODO |
+| 22.2 | **Fix audio-ctx.ts throws instead of returning null** — Phase 17.4 added try-catch around `new AudioContext()` but the catch re-throws `new Error("AudioContext not available")`. Callers expect null to degrade gracefully. Fix: remove the throw and return null. Update return type to `AudioContext \| null` and all callers to handle null. | `getAudioContext()` returns `null` on failure; all callers handle null gracefully; all tests pass | - | cc:TODO |
+| 22.3 | **Fix O-piece wasteful rotation copy** — `tryRotateCW`/`tryRotateCCW` (pieces.ts:42,75) return `{ ...piece, rotation: piece.rotation }` — spreading the entire piece object only to set rotation to its current value. Fix: return `{ piece, kicked: false }` directly (the caller treats the return value as read-only). | O-piece rotation returns the same piece reference without wasteful copy; all tests pass | - | cc:TODO |
+| 22.4 | **Fix line-clear animation multiplier not derived from LINE_CLEAR_ANIM_DURATION** — `drawLineClearAnimation` (canvas.ts:273) uses hardcoded `0.03` multiplier for `Math.sin(state.lineClearTimer * 0.03)`. If `LINE_CLEAR_ANIM_DURATION` (300ms) were changed, the flash animation speed wouldn't adjust. Fix: derive the multiplier from the constant so flash cycles stay proportional. | Line-clear animation speed tracks `LINE_CLEAR_ANIM_DURATION`; changing the constant adjusts flash cycle count; all tests pass | - | cc:TODO |
+| 22.5 | **Fix background star drift frame-rate dependence** — `renderBackground` updates star positions at `step = 1/60` regardless of actual frame delta time (background.ts:100). At 30fps stars drift at half speed; at 120fps at double speed. Fix: use time-based position accumulator (drift as function of wall-clock time). | Star drift speed is consistent across all frame rates; all tests pass | - | cc:TODO |
+| 22.6 | **Fix soft drop extends lock delay indefinitely** — `handleSoftDrop` (actions.ts:131) resets lock timer to 0 without incrementing the `resets` counter. Per TDG, only horizontal moves and rotations should reset the lock timer. Fix: remove the lock timer reset from `handleSoftDrop`. | Soft drop no longer resets lock delay timer; 15-reset limit correctly bounds lock extension; all tests pass | - | cc:TODO |
+| 22.7 | **Fix inconsistent lock-out handling between gravity and hard-drop paths** — Gravity path (loop.ts:433-441) locks piece to board first, then checks `isLockOut`. Hard-drop path (actions.ts:152-159) checks `isLockOut` before `lockPiece`, skipping the board write. Standardize: lock piece before detecting lock-out in both paths. | Both lock paths handle lock-out identically (piece locked before detection); all tests pass | - | cc:TODO |
+| 22.8 | **Fix missing popup for T-Spin 0-line clear** — `executeLock` (lock.ts:88-98) has no popup for `tSpinResult.isTSpin && linesCleared === 0`. The no-clear T-spin path scores points and updates B2B but gives no visual feedback. Fix: add "T-SPIN" popup in the no-clear branch. | T-Spin no-clear shows "T-SPIN" popup; no regression in normal T-Spin popups; all tests pass | - | cc:TODO |
+| 22.9 | **Fix music.ts BiquadFilter leak** — `playNoise` (music.ts:332) creates a `BiquadFilter` node never tracked in any cleanup array. When `cleanup()` runs, the filter remains connected in the audio graph. Fix: add `activeFilters` array; push and disconnect filters in `cleanup()`. | BiquadFilter nodes disconnected on cleanup; no orphaned filter nodes; all tests pass | - | cc:TODO |
+
+### Required — memory leaks
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 22.10 | **Fix music.ts audio node accumulation across song cycles** — `activeOscs`/`activeGains`/`activeSources` grow by ~440 nodes per song cycle (~73s), only cleared on `stopMusic()`. After 5 minutes (~4 cycles): ~1,760 unreleased nodes. Fix: after each `scheduleSong` in `playSongCycle`, filter out already-stopped nodes from tracking arrays. | Audio node tracking arrays stay bounded during extended play; all tests pass | 22.9 | cc:TODO |
+| 22.11 | **Fix sfx.ts gain node accumulation** — Every SFX call creates `OscillatorNode`/`GainNode` pairs connected to `ctx.destination`. Oscillators self-stop but gain nodes remain in audio graph indefinitely. Fix: schedule `gain.disconnect()` at `startTime + duration + 0.01`, or track nodes in a module-level array with periodic cleanup. | Gain nodes disconnected after their SFX finishes; no accumulation across many SFX calls; all tests pass | - | cc:TODO |
+
+### Required — type safety and hardening
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 22.12 | **Freeze 9 mutable exported constants** — `PIECE_COLORS`, `PIECE_SHAPES`, `LINE_CLEAR_SCORES`, `TSPIN_SCORES`, `TSPIN_MINI_SCORES`, `PERFECT_CLEAR_SCORES`, `GRAVITY_SPEED_CURVE`, `EFFECTIVE_LINE_COUNTS`, `LEVEL_GOAL_CUMULATIVE` are all mutable at the top level. Fix: add `as const` or `readonly` annotations. `SPAWN_POSITION`/`I_SPAWN_POSITION` already frozen; match that pattern. | All mutable exported data objects are `readonly`/`as const`; no TypeScript errors; all tests pass | - | cc:TODO |
+| 22.13 | **Remove 4 dead exports** — `setParticleRowKey`/`getParticleRowKey` (effects.ts) — never imported anywhere. `clearScoresCache` (high-scores.ts) — test-only. `MELODY_DATA` (music.ts) — test-only alias. Fix: remove `export` keyword or delete the definitions. Update test imports if needed. | 4 exports removed; no remaining imports reference them; build passes; all tests pass | - | cc:TODO |
+| 22.14 | **Replace 4 non-null assertions with safe patterns** — `state.activePiece!` in gravity.ts:42, `boardCacheCanvas!` in canvas.ts:143, `_menuCacheCanvas!` in canvas.ts:452 and 463. Fix: use optional chaining (`?.`) or explicit null guards with fallback paths. | Zero non-null assertions in production .ts files; all tests pass | - | cc:TODO |
+
+### Recommended — performance (hot path)
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 22.15 | **Cache fmtScore results to avoid per-frame toLocaleString** — `fmtScore` (canvas.ts:45-47) calls `n.toLocaleString("en-US")` every frame in drawHUD. Fix: cache the last formatted value keyed on score; re-format only when the score changes. | `toLocaleString` called at most once per score change, not per frame; all tests pass | - | cc:TODO |
+| 22.16 | **Extract wouldCollide from per-frame closure** — `applyGravity` (gravity.ts:41-54) defines `function wouldCollide(y)` as a closure, allocating a new function object ~60×/s. Fix: extract to a module-level function taking explicit `(piece, board, y)` parameters. | `wouldCollide` is a module-level function; no closure allocation per frame; all tests pass | - | cc:TODO |
+| 22.17 | **Consolidate dual performance.now() clock** — `renderEffects` (effects.ts:73) reads `performance.now()` independently of the game loop's dt. After tab-background pause, effects' dt jumps to full pause duration (uncapped), teleporting particles and expiring flash instantly. Fix: accept a `dt` parameter from the game loop instead of reading its own clock. | `renderEffects` uses the game loop's dt; particle timing consistent with game loop capping; all tests pass | - | cc:TODO |
+
+### Recommended — code quality
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 22.18 | **Extract shared font constant** — canvas.ts uses ~18 distinct font strings (~50 call sites). Fix: define named font constants (e.g., `FONT_TITLE`, `FONT_HUD_LABEL`, `FONT_MODE_SELECTOR`) at the top of the file. | All font strings extracted to named constants; no hardcoded font strings in canvas.ts; all tests pass | - | cc:TODO |
+| 22.19 | **Extract duplicated high scores rendering** — Three functions (`renderMenuContent`:370-395, `drawGameOver`:546-561, `drawVictory`:622-637) contain near-identical high score list rendering. Fix: extract a shared `drawHighScores(ctx, cx, baseY, mode, scores)` helper. | High score rendering uses a single shared helper; all 3 callers use it; no visual change; all tests pass | - | cc:TODO |
+| 22.20 | **Add PIECE_SHAPES/PIECE_COLORS/WALL_KICK data integrity validation tests** — No test validates: 7 pieces × 4 rotations × correct dimensions, all 7 color keys, kick tables with 5 entries per transition. Fix: add `constants.test.ts` with structural integrity checks. | ≥6 data integrity validation tests; all pass | - | cc:TODO |
+| 22.21 | **Add focused render path tests** — render.test.ts only has smoke tests. Fix: use `vi.spyOn(ctx, "fillText")` to verify ghost piece rendering, HUD values, game-over statistics per mode, and victory headline per mode. | ≥6 targeted render tests with fillText/strokeRect verification; all pass | - | cc:TODO |
+
+### Optional — low priority
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 22.22 | **Add particle count cap** — `spawnClearParticles` pushes 20 particles per cleared row with no upper limit. Fix: cap at `MAX_PARTICLES` (e.g., 500) and discard oldest when exceeded. | Particles capped at MAX_PARTICLES; no unbounded array growth; all tests pass | - | cc:TODO |
+| 22.23 | **Fix popup timer freeze during pause** — Popup timers not ticked during pause, extending display time by pause duration. Fix: tick popups in pause handler or snapshot remaining duration on entry. Cosmetic only. | Popup timers do not accumulate pause duration; all tests pass | - | cc:TODO |
+| 22.24 | **Handle zero-dimension window in background.ts** — If `renderBackground` called with `w=0`/`h=0` (rapid resize), `ensureStars` creates all stars at `(0,0)` and sets `initialized = true`. Not corrected until next resize. Fix: guard against zero/negative dimensions. | Stars correctly re-initialized after zero-dimension resize frame; all tests pass | - | cc:TODO |
+
 ## Archive
 
 (none)

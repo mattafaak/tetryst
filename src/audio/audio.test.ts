@@ -60,7 +60,7 @@ describe("audio-ctx", () => {
   it("returns an AudioContext instance", () => {
     const ctx = getAudioContext();
     expect(ctx).toBeDefined();
-    expect(ctx.state).toBe("running");
+    expect(ctx!.state).toBe("running");
   });
 
   it("returns the same instance on repeated calls", () => {
@@ -69,13 +69,13 @@ describe("audio-ctx", () => {
     expect(a).toBe(b);
   });
 
-  it("throws when AudioContext cannot be constructed", async () => {
+  it("returns null when AudioContext cannot be constructed", async () => {
     vi.resetModules();
     vi.stubGlobal("AudioContext", vi.fn(function () {
       throw new DOMException("AudioContext not supported");
     }));
     const { getAudioContext: getCtx } = await import("./audio-ctx.ts");
-    expect(() => getCtx()).toThrow("AudioContext not available");
+    expect(getCtx()).toBeNull();
   });
 });
 
