@@ -359,6 +359,14 @@ export class Game {
         }
         break;
       case GamePhase.Victory:
+        if (!this.isAttractMode) {
+          saveHighScore({
+            score: this.state.mode === GameMode.Sprint ? this.state.modeTimer : this.state.score,
+            level: this.state.level,
+            lines: this.state.lines,
+            mode: this.state.mode,
+          });
+        }
         if (this.audioEnabled) stopMusic();
         break;
     }
@@ -372,12 +380,6 @@ export class Game {
     if (state.mode !== GameMode.Ultra) return state;
     const next = Math.max(0, state.modeTimer - dt);
     if (next <= 0) {
-      saveHighScore({
-        score: state.score,
-        level: state.level,
-        lines: state.lines,
-        mode: state.mode,
-      });
       return { ...state, modeTimer: 0, phase: GamePhase.Victory };
     }
     return { ...state, modeTimer: next };
@@ -410,12 +412,6 @@ export class Game {
     if (state.mode === GameMode.Ultra) {
       nextTimer = Math.max(0, state.modeTimer - dt);
       if (nextTimer <= 0) {
-        saveHighScore({
-          score: state.score,
-          level: state.level,
-          lines: state.lines,
-          mode: state.mode,
-        });
         return { ...state, activePiece: null, popups: nextPopups, modeTimer: 0, phase: GamePhase.Victory };
       }
     } else if (state.mode === GameMode.Sprint) {
@@ -429,15 +425,6 @@ export class Game {
 
   private triggerVictory(): void {
     if (this.state.phase === GamePhase.Victory) return;
-    const scoreToSave = this.state.mode === GameMode.Sprint
-      ? this.state.modeTimer
-      : this.state.score;
-    saveHighScore({
-      score: scoreToSave,
-      level: this.state.level,
-      lines: this.state.lines,
-      mode: this.state.mode,
-    });
     this.state = { ...this.state, phase: GamePhase.Victory };
   }
 
