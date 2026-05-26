@@ -1,6 +1,6 @@
 import { type GameState } from "./types.ts";
 import { updateLowestY } from "./lock-delay.ts";
-import { PIECE_SHAPES, GRAVITY_SPEED_CURVE } from "./constants.ts";
+import { PIECE_SHAPES, GRAVITY_SPEED_CURVE, BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
 
 /**
  * Return the gravity delay in milliseconds for the given level.
@@ -46,7 +46,7 @@ export function applyGravity(
         if (!shape[r][c]) continue;
         const bx = p.pos.x + c;
         const by = y + r;
-        if (bx < 0 || bx >= 10 || by >= 40) return true;
+        if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT) return true;
         if (by >= 0 && state.board[by][bx] !== null) return true;
       }
     }

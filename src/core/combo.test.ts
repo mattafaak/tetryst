@@ -16,7 +16,7 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     level: 0,
     lines: 0,
     effectiveLines: 0,
-    combo: -1,
+    combo: 0,
     backToBack: false,
     phase: GamePhase.Playing,
     gravityTimer: 0,
@@ -25,7 +25,6 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     bag: [],
     lineClearTimer: 0,
     clearedRowIndices: [],
-    lastClearWasB2B: false,
     mode: GameMode.Marathon,
     modeTimer: 0,
     popups: [],
@@ -34,24 +33,24 @@ function createTestState(overrides?: Partial<GameState>): GameState {
 }
 
 describe("combo", () => {
-  it("first clear starts combo at 0 (combo was -1 on init)", () => {
-    const state = createTestState({ combo: -1, level: 0 });
-    const result = updateCombo(state, 1);
-    expect(result.state.combo).toBe(0);
-    expect(result.bonusScore).toBe(COMBO_BASE * 0 * 1);
-  });
-
-  it("subsequent clears increment combo", () => {
+  it("first clear increments combo from 0 to 1", () => {
     const state = createTestState({ combo: 0, level: 0 });
-    const result = updateCombo(state, 2);
+    const result = updateCombo(state, 1);
     expect(result.state.combo).toBe(1);
     expect(result.bonusScore).toBe(COMBO_BASE * 1 * 1);
   });
 
-  it("combo resets to -1 on non-clearing piece", () => {
+  it("subsequent clears increment combo", () => {
+    const state = createTestState({ combo: 1, level: 0 });
+    const result = updateCombo(state, 2);
+    expect(result.state.combo).toBe(2);
+    expect(result.bonusScore).toBe(COMBO_BASE * 2 * 1);
+  });
+
+  it("combo resets to 0 on non-clearing piece", () => {
     const state = createTestState({ combo: 3, level: 0 });
     const result = updateCombo(state, 0);
-    expect(result.state.combo).toBe(-1);
+    expect(result.state.combo).toBe(0);
     expect(result.bonusScore).toBe(0);
   });
 
@@ -64,35 +63,35 @@ describe("combo", () => {
 });
 
 describe("combo edge cases", () => {
-  it("linesCleared=0 when combo is already -1 stays -1", () => {
-    const state = createTestState({ combo: -1, level: 1 });
+  it("linesCleared=0 when combo is already 0 stays 0", () => {
+    const state = createTestState({ combo: 0, level: 1 });
     const result = updateCombo(state, 0);
-    expect(result.state.combo).toBe(-1);
+    expect(result.state.combo).toBe(0);
     expect(result.bonusScore).toBe(0);
   });
 
   it("triple combo increments across three consecutive clears", () => {
-    let state = createTestState({ combo: -1, level: 0 });
+    let state = createTestState({ combo: 0, level: 0 });
 
     const r1 = updateCombo(state, 1);
-    expect(r1.state.combo).toBe(0);
-    expect(r1.bonusScore).toBe(50 * 0 * 1);
+    expect(r1.state.combo).toBe(1);
+    expect(r1.bonusScore).toBe(50 * 1 * 1);
     state = r1.state;
 
     const r2 = updateCombo(state, 1);
-    expect(r2.state.combo).toBe(1);
-    expect(r2.bonusScore).toBe(50 * 1 * 1);
+    expect(r2.state.combo).toBe(2);
+    expect(r2.bonusScore).toBe(50 * 2 * 1);
     state = r2.state;
 
     const r3 = updateCombo(state, 1);
-    expect(r3.state.combo).toBe(2);
-    expect(r3.bonusScore).toBe(50 * 2 * 1);
+    expect(r3.state.combo).toBe(3);
+    expect(r3.bonusScore).toBe(50 * 3 * 1);
   });
 
   it("combo resets on linesCleared=0 even after deep chain", () => {
     const state = createTestState({ combo: 10, level: 0 });
     const result = updateCombo(state, 0);
-    expect(result.state.combo).toBe(-1);
+    expect(result.state.combo).toBe(0);
     expect(result.bonusScore).toBe(0);
   });
 

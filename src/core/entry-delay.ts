@@ -1,15 +1,6 @@
 import { type GameState, GamePhase } from "./types.ts";
 import { ENTRY_DELAY } from "./constants.ts";
 
-export function onPieceLocked(state: GameState): GameState {
-  return {
-    ...state,
-    phase: GamePhase.EntryDelay,
-    entryDelayTimer: 0,
-    activePiece: null,
-  };
-}
-
 export function updateEntryDelay(
   state: GameState,
   dt: number

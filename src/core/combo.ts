@@ -15,7 +15,7 @@ export function updateCombo(
   }
 
   return {
-    state: { ...state, combo: -1 },
+    state: { ...state, combo: 0 },
     bonusScore: 0,
   };
 }

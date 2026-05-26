@@ -135,7 +135,7 @@ describe("edge: combo chain stress", () => {
     let state = baseState({ combo: 100 });
     // 0 lines cleared should reset combo
     state = updateCombo(state, 0).state;
-    expect(state.combo).toBe(-1);
+    expect(state.combo).toBe(0);
   });
 });
 

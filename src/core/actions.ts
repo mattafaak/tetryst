@@ -8,7 +8,7 @@ import { checkCollision, lockPiece, isLockOut } from "./board.ts";
 import { addHardDropScore } from "./scoring.ts";
 import { executeLock } from "./lock.ts";
 import { holdPiece } from "./state.ts";
-import { updateLowestY } from "./lock-delay.ts";
+import { resetLockState, updateLowestY } from "./lock-delay.ts";
 import { MAX_LOCK_RESETS } from "./constants.ts";
 import { pushPopup } from "../render/popups.ts";
 
@@ -18,7 +18,7 @@ export function processAction(
 ): GameState {
   switch (action.type) {
     case "Start":
-      return handleStart(state);
+      return state; // handled by game loop before processAction
     case "Pause":
       return handlePause(state);
     case "MoveLeft":
@@ -39,13 +39,6 @@ export function processAction(
     case "ShowHighScores":
       return state;
   }
-}
-
-function handleStart(state: GameState): GameState {
-  if (state.phase === GamePhase.Menu || state.phase === GamePhase.GameOver) {
-    return { ...state, phase: GamePhase.Playing };
-  }
-  return state;
 }
 
 function handlePause(state: GameState): GameState {
@@ -153,7 +146,7 @@ function handleHardDrop(state: GameState): GameState {
       ...state,
       activePiece: null,
       phase: GamePhase.GameOver,
-      lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+      lockState: resetLockState(),
     };
   }
 
@@ -164,7 +157,7 @@ function handleHardDrop(state: GameState): GameState {
     activePiece: null,
     score: state.score + addHardDropScore(state, rows),
     ghostY: dropped.pos.y,
-    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+    lockState: resetLockState(),
   };
 
   // Shared scoring/lock logic — handles T-spin, line clear, combo, B2B, phase

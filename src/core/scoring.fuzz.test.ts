@@ -388,11 +388,11 @@ describe("scoring fuzz: calculateLevelFromEffective", () => {
 // ── Combo chain ─────────────────────────────────────────────────────────
 
 describe("scoring fuzz: combo chain", () => {
-  it("combo starts at -1 (no bonus on first clear)", () => {
-    const state = baseState({ combo: -1 });
+  it("combo starts at 0 (bonus on first clear is 50)", () => {
+    const state = baseState({ combo: 0 });
     const result = updateCombo(state, 1);
-    expect(result.state.combo).toBe(0);
-    expect(result.bonusScore).toBe(0);
+    expect(result.state.combo).toBe(1);
+    expect(result.bonusScore).toBe(50);
   });
 
   it("second consecutive clear awards 50 × 1 × (level+1)", () => {
@@ -403,20 +403,23 @@ describe("scoring fuzz: combo chain", () => {
   });
 
   it("combo counter increments correctly across chain", () => {
-    let state = baseState({ combo: -1, level: 0 });
+    let state = baseState({ combo: 0, level: 0 });
     for (let i = 0; i < 5; i++) {
       const result = updateCombo(state, 1);
       state = result.state;
-      const expectedComboScore = i === 0 ? 0 : i * 50;
+      // First clear: newCombo = 0 + 1 = 1, bonus = 50 * 1 * 1 = 50
+      // After: state.combo = 1
+      // Second clear: newCombo = 1 + 1 = 2, bonus = 50 * 2 * 1 = 100
+      const expectedComboScore = (i + 1) * 50;
       expect(result.bonusScore).toBe(expectedComboScore);
-      expect(result.state.combo).toBe(i);
+      expect(result.state.combo).toBe(i + 1);
     }
   });
 
-  it("combo resets to -1 when no lines cleared", () => {
+  it("combo resets to 0 when no lines cleared", () => {
     const state = baseState({ combo: 5 });
     const result = updateCombo(state, 0);
-    expect(result.state.combo).toBe(-1);
+    expect(result.state.combo).toBe(0);
     expect(result.bonusScore).toBe(0);
   });
 

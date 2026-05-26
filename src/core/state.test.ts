@@ -20,7 +20,7 @@ describe("state", () => {
       expect(state.level).toBe(0);
       expect(state.lines).toBe(0);
       expect(state.effectiveLines).toBe(0);
-      expect(state.combo).toBe(-1);
+      expect(state.combo).toBe(0);
       expect(state.backToBack).toBe(false);
       expect(state.phase).toBe(GamePhase.Menu);
       expect(state.gravityTimer).toBe(0);
@@ -28,7 +28,6 @@ describe("state", () => {
       expect(state.entryDelayTimer).toBe(0);
       expect(state.bag).toEqual([]);
       expect(state.lineClearTimer).toBe(0);
-      expect(state.lastClearWasB2B).toBe(false);
     });
   });
 
@@ -45,14 +44,13 @@ describe("state", () => {
       expect(newState.level).toBe(0);
       expect(newState.lines).toBe(0);
       expect(newState.effectiveLines).toBe(0);
-      expect(newState.combo).toBe(-1);
+      expect(newState.combo).toBe(0);
       expect(newState.heldPiece).toBeNull();
       expect(newState.hasSwappedThisTurn).toBe(false);
       expect(newState.backToBack).toBe(false);
       expect(newState.gravityTimer).toBe(0);
       expect(newState.entryDelayTimer).toBe(0);
       expect(newState.lineClearTimer).toBe(0);
-      expect(newState.lastClearWasB2B).toBe(false);
     });
 
     it("bag has 7+ pieces after start (total across bag, queue, and active)", () => {
@@ -76,7 +74,6 @@ describe("state", () => {
         lines: 200,
         combo: 15,
         backToBack: true,
-        lastClearWasB2B: true,
         heldPiece: TetriminoType.I,
       };
       const newState = startGame(state);
@@ -84,9 +81,8 @@ describe("state", () => {
       expect(newState.level).toBe(0);
       expect(newState.lines).toBe(0);
       expect(newState.effectiveLines).toBe(0);
-      expect(newState.combo).toBe(-1);
+      expect(newState.combo).toBe(0);
       expect(newState.backToBack).toBe(false);
-      expect(newState.lastClearWasB2B).toBe(false);
       expect(newState.heldPiece).toBeNull();
       expect(newState.gravityTimer).toBe(0);
       expect(newState.entryDelayTimer).toBe(0);

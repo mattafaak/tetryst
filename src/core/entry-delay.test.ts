@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { onPieceLocked, updateEntryDelay } from "./entry-delay.ts";
+import { updateEntryDelay } from "./entry-delay.ts";
 import { ENTRY_DELAY } from "./constants.ts";
 import { GamePhase, TetriminoType, RotationState , GameMode } from "./types.ts";
 import type { GameState } from "./types.ts";
@@ -20,7 +20,7 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     level: 0,
     lines: 0,
     effectiveLines: 0,
-    combo: -1,
+    combo: 0,
     backToBack: false,
     phase: GamePhase.Playing,
     gravityTimer: 0,
@@ -29,7 +29,6 @@ function createTestState(overrides?: Partial<GameState>): GameState {
     bag: [],
     lineClearTimer: 0,
     clearedRowIndices: [],
-    lastClearWasB2B: false,
     mode: GameMode.Marathon,
     modeTimer: 0,
     popups: [],
@@ -38,16 +37,6 @@ function createTestState(overrides?: Partial<GameState>): GameState {
 }
 
 describe("entry-delay", () => {
-  describe("onPieceLocked", () => {
-    it("sets phase to EntryDelay and clears activePiece", () => {
-      const state = createTestState({ phase: GamePhase.Playing });
-      const newState = onPieceLocked(state);
-      expect(newState.phase).toBe(GamePhase.EntryDelay);
-      expect(newState.activePiece).toBeNull();
-      expect(newState.entryDelayTimer).toBe(0);
-    });
-  });
-
   describe("updateEntryDelay", () => {
     it("no-op when not in EntryDelay phase", () => {
       const state = createTestState({ phase: GamePhase.Playing });

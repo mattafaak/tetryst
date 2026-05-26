@@ -18,7 +18,7 @@ import {
 } from "../core/constants.ts";
 import { loadHighScores } from "../core/high-scores.ts";
 import { renderBackground } from "./background.ts";
-import { renderEffects, spawnClearParticles } from "./effects.ts";
+import { renderEffects, spawnClearParticles, setParticleRowKey, getParticleRowKey } from "./effects.ts";
 
 // ── Design tokens ──────────────────────────────────────────────────────
 const TEXT       = "#e2e2e2";
@@ -263,10 +263,9 @@ function drawLineClearAnimation(
   }
 }
 
-/** Track which cleared-row set we last spawned particles for, so we only
- *  spawn once per line-clear event (not every animation frame). */
-let lastParticleRows: string = "";
-
+/** Spawn particles once per line-clear event (not every animation frame).
+ *  Row-key tracking is in effects.ts and reset on clearEffects() so it
+ *  doesn't leak across game sessions. */
 function spawnClearParticlesOnce(
   rows: number[],
   boardX: number,
@@ -274,8 +273,8 @@ function spawnClearParticlesOnce(
   cellSize: number,
 ): void {
   const key = rows.join(",");
-  if (key === lastParticleRows) return;
-  lastParticleRows = key;
+  if (key === getParticleRowKey()) return;
+  setParticleRowKey(key);
   spawnClearParticles(rows, boardX, boardY, cellSize);
 }
 

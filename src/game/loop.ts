@@ -88,7 +88,7 @@ export class Game {
     const logicalHeight = height / dpr;
     const byWidth = Math.floor((logicalWidth * 0.5) / 10);
     const byHeight = Math.floor((logicalHeight * 0.9) / 20);
-    this.cellSize = Math.min(byWidth, byHeight, 36);
+    this.cellSize = Math.max(1, Math.min(byWidth, byHeight, 36));
   };
 
   private handleInput(action: InputAction): void {
@@ -259,25 +259,30 @@ export class Game {
   }
 
   private loop = (now: number): void => {
-    let dt = now - this.lastTime;
-    this.lastTime = now;
+    try {
+      let dt = now - this.lastTime;
+      this.lastTime = now;
 
-    if (dt > MAX_DT) dt = MAX_DT;
-    if (dt < 0) dt = 0;
+      if (dt > MAX_DT) dt = MAX_DT;
+      if (dt < 0) dt = 0;
+      if (isNaN(dt)) dt = 0;
 
-    this.update(dt);
-    renderFrame(
-      this.ctx,
-      this.state,
-      this.cellSize,
-      this.isAttractMode,
-      this.selectedMode,
-      this.selectedStartLevel,
-      this.audioEnabled,
-      this.pauseMenuSelection,
-      this.showHighScores,
-      this.highScoreMode,
-    );
+      this.update(dt);
+      renderFrame(
+        this.ctx,
+        this.state,
+        this.cellSize,
+        this.isAttractMode,
+        this.selectedMode,
+        this.selectedStartLevel,
+        this.audioEnabled,
+        this.pauseMenuSelection,
+        this.showHighScores,
+        this.highScoreMode,
+      );
+    } catch (err) {
+      console.error("Game loop error:", err);
+    }
 
     this.animFrameId = requestAnimationFrame(this.loop);
   };
@@ -349,11 +354,22 @@ export class Game {
     }
   }
 
-  /** Apply Ultra countdown in non-Playing phases so timer stays continuous. */
+  /** Apply Ultra countdown in non-Playing phases so timer stays continuous.
+   *  Returns Victory-phase state when time expires so the caller's assignment
+   *  propagates the phase correctly (fix 12.1: side-effect triggerVictory was
+   *  overwritten by the returned spread from the original state parameter). */
   private applyUltraTimer(state: GameState, dt: number): GameState {
     if (state.mode !== GameMode.Ultra) return state;
     const next = Math.max(0, state.modeTimer - dt);
-    if (next <= 0) this.triggerVictory();
+    if (next <= 0) {
+      saveHighScore({
+        score: state.score,
+        level: state.level,
+        lines: state.lines,
+        mode: state.mode,
+      });
+      return { ...state, modeTimer: 0, phase: GamePhase.Victory };
+    }
     return { ...state, modeTimer: next };
   }
 
@@ -383,7 +399,15 @@ export class Game {
     let nextTimer: number | undefined;
     if (state.mode === GameMode.Ultra) {
       nextTimer = Math.max(0, state.modeTimer - dt);
-      if (nextTimer <= 0) this.triggerVictory();
+      if (nextTimer <= 0) {
+        saveHighScore({
+          score: state.score,
+          level: state.level,
+          lines: state.lines,
+          mode: state.mode,
+        });
+        return { ...state, popups: nextPopups, modeTimer: 0, phase: GamePhase.Victory };
+      }
     } else if (state.mode === GameMode.Sprint) {
       nextTimer = state.modeTimer + dt;
     }
@@ -394,6 +418,7 @@ export class Game {
   }
 
   private triggerVictory(): void {
+    if (this.state.phase === GamePhase.Victory) return;
     const scoreToSave = this.state.mode === GameMode.Sprint
       ? this.state.modeTimer
       : this.state.score;
@@ -509,7 +534,7 @@ export class Game {
   private restartAttractGame(): void {
     this.aiController?.reset();
     clearEffects();
-    this.state = startGame(createInitialState());
+    this.state = startGame(createInitialState(this.selectedMode));
     this.prevPhase = GamePhase.Playing;
   }
 

@@ -53,7 +53,6 @@ function baseState(overrides?: Partial<GameState>): GameState {
     bag: [],
     lineClearTimer: 0,
     clearedRowIndices: [],
-    lastClearWasB2B: false,
     mode: GameMode.Marathon,
     modeTimer: 0,
     popups: [],

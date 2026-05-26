@@ -160,7 +160,7 @@ export function evaluateClear(
 
   if (isPerfectClear) {
     // B2B Tetris PC has its own fixed total (TDG §7 — not 2000×1.5)
-    if (currentEligible && isB2BActive && linesCleared === 4 && !tSpinResult.isTSpin) {
+    if (currentEligible && isB2BActive && linesCleared === 4) {
       score = PERFECT_CLEAR_B2B_TETRIS * multiplier;
       isB2B = true;
     } else {

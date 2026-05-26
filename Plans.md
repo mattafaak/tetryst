@@ -105,6 +105,35 @@ Created: 2026-05-25
 | 11.5 | **Pause on window blur** — Add `document.addEventListener("visibilitychange", ...)` to auto-pause when tab loses focus. | Tab switch auto-pauses; game resumes on return; all tests pass | - | cc:完了 |
 | 11.6 | **180° rotation** — (deferred) | deferred | - | deferred |
 
+## Phase 12: Critical bug fixes [tdd:required]
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 12.1 | **Fix Ultra victory path overwrite** — `triggerVictory()` in `tickPlayingState` and `applyUltraTimer` both fire but the return value spreads from the original `state` parameter (which has the old phase), and the caller assigns that return to `this.state`, overwriting Victory back to Playing. `saveHighScore` is called every frame. Fix: move victory detection to the caller after state reassignment, or have the timer functions return a victory flag. | Ultra timer expiry correctly transitions to Victory phase; `saveHighScore` called exactly once; all tests pass | - | cc:完了 |
+| 12.1b | **Fix combo off-by-one (TDG §7)** — `state.combo` initializes to `-1` (state.ts:25). First clear: `newCombo = -1 + 1 = 0`, bonus = `50 × 0 × level = 0`. TDG says first clear should award `50 × 1 × (level+1)`. Change init to `0` and update all dependents (combo popup threshold, combo tests, lock.ts popup guard). | First clear awards non-zero combo bonus; combo popup appears on 2nd clear (value ≥ 1); 670+ tests pass | - | cc:完了 |
+| 12.2 | **Add exception safety to game loop** — Any throw in `update()` or `renderFrame()` kills `requestAnimationFrame`, permanently freezing the game. Wrap the loop body in try/catch, log the error, and continue. | Game loop survives any exception in update/render; error is logged to console; all tests pass | - | cc:完了 |
+
+## Phase 13: Hardening [tdd:required]
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 13.1 | **Fix NaN dt propagation** — `NaN` passes both `dt > MAX_DT` and `dt < 0` checks (NaN comparisons always false). Add `if (isNaN(dt)) dt = 0;` after the existing guards. | NaN dt is caught and zeroed; normal timing unaffected; all tests pass | - | cc:完了 |
+| 13.2 | **Fix lowestY giving free lock reset** — `lowestY` initializes to `-1` (lock-delay.ts:41), so the first gravity drop always resets the resets counter (any piece Y > -1). Initialize to the piece's spawn Y instead. | Each game gets exactly 15 lock-delay resets; first gravity drop does not consume a free reset; all tests pass | - | cc:完了 |
+| 13.3 | **Fix B2B Tetris Perfect Clear T-spin exclusion** — The `!tSpinResult.isTSpin` guard (scoring.ts:163) prevents 3200 base score for T-spin Tetris Perfect Clears. Remove guard so the 3200 bonus applies regardless of T-spin status when 4 lines + B2B + PC conditions are met. | T-spin Tetris Perfect Clear correctly awards 3200 × (level+1); non-PC B2B logic unchanged; all tests pass | - | cc:完了 |
+| 13.4 | **Fix attract restart mode consistency** — `restartAttractGame()` calls `createInitialState()` (no argument, defaults to Marathon). Change to `createInitialState(this.selectedMode)` so restarts respect the selected mode. | Attract mode restarts in the mode the player selected; all tests pass | - | cc:完了 |
+| 13.5 | **Fix audio node accumulation** — `activeOscs`/`activeGains` accumulate 176+ nodes per song cycle with no cleanup. In `cleanup()`, clear and null the arrays after stopping nodes. Ensure `stopMusic()` resets accumulated node arrays between song cycles. | Audio node arrays do not grow between song cycles; no audible artifacts; all tests pass | - | cc:完了 |
+| 13.6 | **Fix `lastClearWasB2B` dead field** — Remove the unused field from `GameState` type and all initialization sites. It's never read, only declared. | `lastClearWasB2B` removed from type and all constructors; build passes without errors | - | cc:完了 |
+| 13.7 | **Fix `onPieceLocked` dead code** — Remove the unused function from `entry-delay.ts`. It's defined and exported but never called. | `onPieceLocked` removed; no build errors; all tests pass | - | cc:完了 |
+| 13.8 | **Fix `handleStart` dead code** — Remove the unreachable function from `actions.ts`. The game loop handles Start for Menu/GameOver/Victory/Paused phases before `processAction` is called, so this function is never reached. | `handleStart` removed; all tests pass | - | cc:完了 |
+| 13.9 | **Fix hardcoded dimensions in gravity.ts** — Replace literal `10` and `40` with imported `BOARD_WIDTH` and `BOARD_HEIGHT`. | gravity.ts uses symbolic constants; all tests pass | - | cc:完了 |
+| 13.10 | **Fix block-out path missing gravityTimer reset** — Add `gravityTimer: 0` to the block-out return in `state.ts`. | Block-out state includes `gravityTimer: 0`; all tests pass | - | cc:完了 |
+| 13.11 | **Fix hard drop lock state consistency** — Replace manual literal in `actions.ts:156` with `resetLockState()` call to match the gravity-lock path. | Hard drop lock-out uses the shared `resetLockState()` function; all tests pass | - | cc:完了 |
+| 13.12 | **Fix O-piece rotation state** — `tryRotateCW`/`tryRotateCCW` short-circuit for O-piece without updating rotation. While functionally harmless (all shapes identical), add a rotation state update for consistency with other pieces. | O-piece rotation updates `piece.rotation`; all tests pass | - | cc:完了 |
+| 13.13 | **Fix createFirstBag defensive check** — Add a guard in `randomizer.ts:66-68` so `bag[-1]` is never accessed if `findIndex` returns -1. | `createFirstBag` handles edge case of missing valid first piece; all tests pass | - | cc:完了 |
+| 13.14 | **Fix particle row-key cross-game leak** — Module-level `lastParticleRows` in canvas.ts is never reset between games. Make it part of the effects module with `clearEffects()`. | `lastParticleRows` reset on `clearEffects()`; particles work across multiple game sessions; all tests pass | - | cc:完了 |
+| 13.15 | **Enforce minimum cellSize** — `recalcCellSize` can produce 0 in tiny windows, making board invisible and risking division-by-zero. Clamp to minimum of 1. | `cellSize` never drops below 1; all tests pass | - | cc:完了 |
+| 13.16 | **Re-enable 180° rotation** — Implement the previously deferred SRS 180° rotation support. Add kick table for 180° rotations, wire into rotation handlers. | 180° rotation works for all piece types with SRS kick tests; all existing tests pass | - | deferred |
+
 ## Backlog
 (none pending)
 

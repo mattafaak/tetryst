@@ -22,7 +22,7 @@ export function createInitialState(mode: GameMode = GameMode.Marathon): GameStat
     level: 0,
     lines: 0,
     effectiveLines: 0,
-    combo: -1,
+    combo: 0,
     backToBack: false,
     phase: GamePhase.Menu,
     gravityTimer: 0,
@@ -31,7 +31,6 @@ export function createInitialState(mode: GameMode = GameMode.Marathon): GameStat
     bag: [],
     lineClearTimer: 0,
     clearedRowIndices: [],
-    lastClearWasB2B: false,
     mode,
     modeTimer: mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
     popups: [],
@@ -69,7 +68,7 @@ export function startGame(state: GameState, startLevel: number = 0): GameState {
     level: startLevel,
     lines: 0,
     effectiveLines: 0,
-    combo: -1,
+    combo: 0,
     backToBack: false,
     hasSwappedThisTurn: false,
     heldPiece: null,
@@ -78,7 +77,6 @@ export function startGame(state: GameState, startLevel: number = 0): GameState {
     entryDelayTimer: 0,
     lineClearTimer: 0,
     clearedRowIndices: [],
-    lastClearWasB2B: false,
     modeTimer: state.mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
     popups: [],
   };
@@ -117,7 +115,7 @@ export function holdPiece(state: GameState): GameState {
     ...baseState,
     activePiece: swappedPiece,
     ghostY: getGhostY(baseState.board, swappedPiece),
-    lockState: resetLockState(),
+    lockState: { ...resetLockState(), lowestY: swappedPiece.pos.y },
   };
 }
 
@@ -162,6 +160,7 @@ function spawnFromQueue(state: GameState): GameState {
       nextQueue: newQueue,
       bag: currentBag,
       lockState: resetLockState(),
+      gravityTimer: 0,
     };
   }
 
@@ -172,7 +171,7 @@ function spawnFromQueue(state: GameState): GameState {
     ghostY: getGhostY(state.board, piece),
     nextQueue: newQueue,
     bag: currentBag,
-    lockState: resetLockState(),
+    lockState: { ...resetLockState(), lowestY: piece.pos.y },
     gravityTimer: 0,
   };
 }

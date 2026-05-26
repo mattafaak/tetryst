@@ -101,7 +101,6 @@ export interface GameState {
   bag: TetriminoType[];
   lineClearTimer: number;
   clearedRowIndices: number[];
-  lastClearWasB2B: boolean;
   mode: GameMode;
   modeTimer: number;
   popups: PopupItem[];

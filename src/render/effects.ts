@@ -112,4 +112,19 @@ export function clearEffects(): void {
   particles = [];
   flash = null;
   lastEffectsTime = 0;
+  lastParticleRowKey = "";
+}
+
+/** Module-level particle row-key tracking to prevent duplicate spawning per frame.
+ *  Reset on clearEffects so the key doesn't leak across game sessions. */
+let lastParticleRowKey = "";
+
+/** Set the last-spawned particle row key. canvas.ts calls this after spawning. */
+export function setParticleRowKey(key: string): void {
+  lastParticleRowKey = key;
+}
+
+/** Read the last row key (used by canvas.ts to avoid duplicate spawning). */
+export function getParticleRowKey(): string {
+  return lastParticleRowKey;
 }

@@ -64,6 +64,7 @@ export function createFirstBag(): TetriminoType[] {
     return bag;
   }
   const swapIdx = bag.findIndex((p) => VALID_FIRST_PIECES.includes(p));
+  if (swapIdx < 0) return bag; // should never happen: 4/7 pieces are always valid
   const result = [...bag];
   result[0] = bag[swapIdx];
   result[swapIdx] = bag[0];
