@@ -109,26 +109,16 @@ describe("edge: lock delay boundaries", () => {
 
 describe("edge: combo chain stress", () => {
   it("combo chain from 0 to 255 works correctly", () => {
-    let state = baseState({ combo: -1, level: 0 });
-    let totalComboScore = 0;
+    let state = baseState({ combo: 0, level: 0 });
 
-    for (let expectedCombo = 0; expectedCombo <= 254; expectedCombo++) {
+    for (let i = 0; i < 255; i++) {
       const result = updateCombo(state, 1);
       state = result.state;
-      expect(state.combo).toBe(expectedCombo);
-
-      // Bonus = COMBO_BASE * (expectedCombo + 1) because updateCombo uses newCombo
-      // Actually: newCombo = state.combo + 1 (previous state combo)
-      // Wait, first call: combo=-1, linesCleared=1 => newCombo=0
-      // Expected combo after first call = 0
-      // Bonus = COMBO_BASE * 0 = 0
-      // Second call: combo=0, LC=1 => newCombo=1. Bonus = 50 * 1 = 50
-      const expectedBonus = expectedCombo === 0 ? 0 : COMBO_BASE * expectedCombo;
-      expect(result.bonusScore).toBe(expectedBonus);
-      totalComboScore += result.bonusScore;
+      // After i clears: state.combo = i + 1, bonus = 50 × (i+1) × (level+1)
+      expect(state.combo).toBe(i + 1);
+      expect(result.bonusScore).toBe(COMBO_BASE * (i + 1));
     }
-    // State should be at combo=254 after 255 consecutive clears
-    expect(state.combo).toBe(254);
+    expect(state.combo).toBe(255);
   });
 
   it("combo resets on non-clear", () => {

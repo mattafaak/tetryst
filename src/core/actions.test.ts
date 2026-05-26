@@ -4,6 +4,7 @@ import { GamePhase, TetriminoType, RotationState , GameMode } from "./types.ts";
 import type { GameState } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
 import { checkModeVictory } from "./mode-rules.ts";
+import { shouldLock } from "./lock-delay.ts";
 
 function emptyBoard() {
   return Array.from({ length: BOARD_HEIGHT }, () =>
@@ -317,6 +318,29 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
     expect(next.lockState.onGround).toBe(false);
     expect(next.lockState.timer).toBe(300);   // NOT reset — resets exhausted
     expect(next.lockState.resets).toBe(15);   // unchanged
+  });
+
+  it("lock delay exhaustion after 15 resets triggers immediate lock (TDG §7)", () => {
+    const board = emptyBoard();
+    board[BOARD_HEIGHT - 1][5] = TetriminoType.Z;
+    board[BOARD_HEIGHT - 1][6] = TetriminoType.Z;
+    const state = baseState({
+      board,
+      activePiece: {
+        type: TetriminoType.I,
+        pos: { x: 3, y: BOARD_HEIGHT - 5 },
+        rotation: RotationState.R,
+      },
+      lockState: { timer: 400, resets: 14, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+    });
+
+    // 15th move resets timer, hitting MAX_LOCK_RESETS
+    const after = processAction(state, { type: "MoveRight" });
+    expect(after.lockState.resets).toBe(15);
+    expect(after.lockState.timer).toBe(0); // last reset consumed
+
+    // shouldLock returns true at 0dt when resets >= MAX_LOCK_RESETS
+    expect(shouldLock(after, 0).shouldLock).toBe(true);
   });
 
   it("rotation while airborne detects ground contact and sets onGround=true", () => {

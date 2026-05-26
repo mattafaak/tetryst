@@ -738,7 +738,7 @@ function drawHUD(
   if (state.combo >= 1) {
     ctx.font = "bold 12px monospace";
     ctx.fillStyle = ACCENT;
-    ctx.fillText(`${state.combo + 1}× COMBO`, hudX, state.backToBack ? hudY + 220 : hudY + 204);
+    ctx.fillText(`${state.combo}× COMBO`, hudX, state.backToBack ? hudY + 220 : hudY + 204);
   }
 
   // Hold piece

@@ -355,7 +355,7 @@ describe("detectTSpin - edge cases", () => {
     expect(result.isMini).toBe(false);
   });
 
-  it("flush against wall: OOB side corners count as occupied", () => {
+  it("flush against left wall: OOB side corners count as occupied (ZERO rot)", () => {
     const board = emptyBoard();
     // Piece at x=-1: TL(-1,18) and BL(-1,20) are OOB
     const piece = makeTSPiece(RotationState.ZERO, -1, 18);
@@ -364,6 +364,44 @@ describe("detectTSpin - edge cases", () => {
     const result = detectTSpin(board, piece);
     expect(result.isTSpin).toBe(true);
     expect(result.isMini).toBe(false);
+  });
+
+  it("flush against right wall: OOB right corners count as occupied (ZERO rot)", () => {
+    const board = emptyBoard();
+    // T-piece at x=8, ZERO: TR(10,y) and BR(10,y+2) are OOB (x >= BOARD_WIDTH=10)
+    // ZERO: back = TL(8,18), TR(10,18). TR is OOB → occupied.
+    // Fill TL (back) → 3 corners occupied (TL + OOB TR + OOB BR)
+    // Both back corners occupied → full T-spin
+    const piece = makeTSPiece(RotationState.ZERO, 8, 18);
+    board[18][8] = TetriminoType.Z; // TL - back
+    const result = detectTSpin(board, piece);
+    expect(result.isTSpin).toBe(true);
+    expect(result.isMini).toBe(false);
+  });
+
+  it("flush against right wall with R rotation: both back corners OOB → full T-spin", () => {
+    const board = emptyBoard();
+    // T-piece at x=8, R: TR(10,18) and BR(10,20) are OOB
+    // R: back = TR(1), BR(3). Both OOB → both back occupied
+    // Fill TL (front) → 3 corners occupied → full T-spin
+    const piece = makeTSPiece(RotationState.R, 8, 18);
+    board[18][8] = TetriminoType.Z; // TL - front (3rd corner)
+    const result = detectTSpin(board, piece);
+    expect(result.isTSpin).toBe(true);
+    expect(result.isMini).toBe(false);
+  });
+
+  it("flush against right wall with L rotation: front corners OOB → T-spin Mini", () => {
+    const board = emptyBoard();
+    // T-piece at x=8, L: TR(10,18) and BR(10,20) are OOB
+    // L: back = TL(0), BL(2). Front = TR(1), BR(3).
+    // OOB corners are both front (TR, BR). Fill TL (back) → 3 occupied.
+    // Only 1 back occupied (TL), BL is not → T-spin Mini
+    const piece = makeTSPiece(RotationState.L, 8, 18);
+    board[18][8] = TetriminoType.Z; // TL - back
+    const result = detectTSpin(board, piece);
+    expect(result.isTSpin).toBe(true);
+    expect(result.isMini).toBe(true);
   });
 
   it.each([
