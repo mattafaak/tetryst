@@ -116,6 +116,7 @@ export function holdPiece(state: GameState): GameState {
     activePiece: swappedPiece,
     ghostY: getGhostY(baseState.board, swappedPiece),
     lockState: { ...resetLockState(), lowestY: swappedPiece.pos.y },
+    gravityTimer: 0,
   };
 }
 

@@ -182,6 +182,22 @@ Created: 2026-05-25
 | 17.10 | **Fix double resize handler and cleanup on page unload** — Both main.ts:15 and loop.ts:55 attach `resize` handlers, causing redundant layout reads per resize event. Also, main.ts's listener is never removed. Fix: remove main.ts resize handler (loop.ts already handles it), and consolidate all unload cleanup (17.5) into a single `pagehide` handler that also cleans up the main.ts listener. | Single resize handler; page unload cleans up all listeners; all tests pass | 17.5 | cc:完了 |
 (none pending)
 
+## Phase 18: Critical bug fixes [tdd:required]
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 18.1 | **Fix Ultra timer expiry during Playing keeps activePiece** — `tickPlayingState` returns `{ ...state, modeTimer: 0, phase: GamePhase.Victory }` but the spread preserves `activePiece`. `updatePlaying` continues calling `applyGravity` and `checkLock` on the Victory state, which can move/lock the piece and play SFX after the game should be over. Fix: add `activePiece: null` in the Victory return of `tickPlayingState`, OR add an early return in `updatePlaying` when `tickPlayingState` triggers Victory. | Ultra timer expiry during Playing sets activePiece=null; no gravity/lock processing after Victory; all tests pass | - | cc:完了 |
+| 18.2 | **Fix holdPiece swap path missing gravityTimer reset** — The swap path (state.ts:107-119) spreads `baseState` which includes the old `gravityTimer` value. First-hold path and `spawnFromQueue` both reset gravityTimer to 0 but swap does not. If gravityTimer is near threshold when swapping, the newly swapped piece could drop immediately. Fix: add `gravityTimer: 0` to the swap return object. | holdPiece swap returns gravityTimer=0 matching other spawn paths; all tests pass | - | cc:完了 |
+
+## Phase 19: Cleanup and test coverage
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 19.1 | **Remove dead eslint-disable comment** — `src/test-utils/test-utils.ts:114` has `/* eslint-disable @typescript-eslint/no-unused-vars */` but no ESLint is installed or configured in the project. Remove the dead comment. | eslint-disable comment removed; build passes; all tests pass | - | cc:完了 |
+| 19.2 | **Remove 6 dead exports in test-utils.ts** — `asciiBoard`, `boardToAscii`, `fillRows`, `randomBoard`, `randomPiece`, and `validSpawnXs` are defined and exported but never imported anywhere. Remove them along with their associated imports. Note: test files like `lock.test.ts` and `integration.test.ts` define their own local `fillRows` — those are unaffected. | 6 exports removed; no remaining imports reference them; build passes; all tests pass | - | cc:完了 |
+| 19.3 | **Remove 7 source exports never used outside their file** — `AIControllerConfig` (ai-controller.ts), `WALL_KICKS_JLSTZ`/`WALL_KICKS_I` (constants.ts), `HighScore` (high-scores.ts), `LockResult` (lock.ts), `LastLockResult` (types.ts), `InputCallback` (keyboard.ts) are exported but only referenced within their own file. Remove `export` keyword. | 7 `export` keywords removed; build passes; all tests pass | - | cc:完了 |
+| 19.4 | **Add unit tests for main.ts error-handling paths** — `main.ts` has three untested branches: (a) null canvas element renders error message, (b) null 2D context renders error message, (c) `pagehide` handler calls `game.stop()`. Add unit tests by stubbing `document.getElementById` and `HTMLCanvasElement.getContext`, verifying the error path renders the correct DOM content and the cleanup path fires. Note: E2E tests cover the happy path only. | ≥3 tests covering null canvas, null context, and pagehide; all pass | - | cc:完了 |
+
 ## Archive
 
 (none)

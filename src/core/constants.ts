@@ -258,7 +258,7 @@ export const PIECE_SHAPES: Record<
 
 // JLSTZ wall kick offsets: 5 tests per rotation transition
 // Key format: "fromRotation-toRotation"
-export const WALL_KICKS_JLSTZ: Record<string, Position[]> = {
+const WALL_KICKS_JLSTZ: Record<string, Position[]> = {
   "0->1": [
     { x: 0, y: 0 },
     { x: -1, y: 0 },
@@ -318,7 +318,7 @@ export const WALL_KICKS_JLSTZ: Record<string, Position[]> = {
 };
 
 // I-piece has its own wall kick table with different values
-export const WALL_KICKS_I: Record<string, Position[]> = {
+const WALL_KICKS_I: Record<string, Position[]> = {
   "0->1": [
     { x: 0, y: 0 },
     { x: -2, y: 0 },

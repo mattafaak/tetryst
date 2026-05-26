@@ -1,4 +1,4 @@
-export interface HighScore {
+interface HighScore {
   score: number;
   level: number;
   lines: number;

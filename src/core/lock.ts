@@ -5,7 +5,7 @@ import { updateCombo } from "./combo.ts";
 import { MARATHON_MAX_LEVEL } from "./constants.ts";
 import { checkModeVictory } from "./mode-rules.ts";
 
-export interface LockResult {
+interface LockResult {
   state: GameState;
   linesCleared: number;
   isPerfectClear: boolean;

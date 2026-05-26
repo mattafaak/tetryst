@@ -436,7 +436,7 @@ export class Game {
           lines: state.lines,
           mode: state.mode,
         });
-        return { ...state, popups: nextPopups, modeTimer: 0, phase: GamePhase.Victory };
+        return { ...state, activePiece: null, popups: nextPopups, modeTimer: 0, phase: GamePhase.Victory };
       }
     } else if (state.mode === GameMode.Sprint) {
       nextTimer = state.modeTimer + dt;

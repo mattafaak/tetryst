@@ -9,7 +9,7 @@ enum ControllerPhase {
   DROPPING,
 }
 
-export interface AIControllerConfig {
+interface AIControllerConfig {
   actionInterval: number;
   useHold: boolean;
 }

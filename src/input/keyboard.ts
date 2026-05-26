@@ -30,7 +30,7 @@ const NON_DAS_ACTIONS: Record<string, InputAction> = {
   KeyH: { type: "ShowHighScores" },
 };
 
-export type InputCallback = (action: InputAction) => void;
+type InputCallback = (action: InputAction) => void;
 
 export class KeyboardHandler {
   private keys: Map<string, KeyState> = new Map();
