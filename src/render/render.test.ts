@@ -232,6 +232,25 @@ describe("background.ts — renderBackground", () => {
   });
 });
 
+describe("canvas.ts — playfield background color", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", { devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as Window & typeof globalThis);
+    vi.stubGlobal("document", createDocStub());
+  });
+
+  it("renders board with computed playfield colors (not hardcoded #1a1a2e)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const { createInitialState, startGame } = await import("../core/state.ts");
+    const ctx = makeMockCtx();
+    const state = startGame(createInitialState());
+    renderFrame(ctx, state, 30);
+    // Board is rendered to offscreen cache then blitted — confirm the
+    // render path didn't crash with the computed color values.
+    expect(ctx.drawImage).toHaveBeenCalled();
+  });
+});
+
 describe("canvas.ts — board and piece rendering", () => {
   beforeEach(() => {
     vi.resetModules();

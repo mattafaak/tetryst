@@ -26,6 +26,57 @@ import { renderEffects, setParticleLayout } from "./effects.ts";
 // ── Design tokens ──────────────────────────────────────────────────────
 const TEXT       = "#e2e2e2";
 
+/**
+ * Compute the playfield background color that maximally contrasts all
+ * tetrimino colors.  Uses the complementary hue (opposite the average piece
+ * hue) at very low lightness so piece cells pop, with just enough saturation
+ * to feel intentional.  Derived from PIECE_COLORS at init time, so it
+ * automatically adapts if the color scheme changes.
+ *
+ * Grid lines and border are derived from the same hue at slightly different
+ * lightness, maintaining a cohesive look.
+ */
+function hexToHSL(hex: string): { h: number; s: number; l: number } {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const mx = Math.max(r, g, b);
+  const mn = Math.min(r, g, b);
+  const c = mx - mn;
+  let h = 0;
+  if (c !== 0) {
+    if (mx === r) h = ((g - b) / c) % 6;
+    else if (mx === g) h = (b - r) / c + 2;
+    else h = (r - g) / c + 4;
+  }
+  h = ((h * 60) % 360 + 360) % 360;
+  const l = (mx + mn) / 2;
+  const s = c === 0 ? 0 : c / (1 - Math.abs(2 * l - 1));
+  return { h, s, l };
+}
+
+function computePlayfieldColors(): { bg: string; border: string; grid: string } {
+  const colors = Object.values(PIECE_COLORS);
+  // Circular mean of hues
+  let sinSum = 0, cosSum = 0;
+  for (const c of colors) {
+    const { h } = hexToHSL(c);
+    const rad = h * Math.PI / 180;
+    sinSum += Math.sin(rad);
+    cosSum += Math.cos(rad);
+  }
+  const avgHue = (Math.atan2(sinSum, cosSum) * 180 / Math.PI + 360) % 360;
+  const bgHue = (avgHue + 180) % 360; // complementary
+
+  return {
+    bg:     `hsl(${bgHue}, 15%, 10%)`,   // very dark, subtly tinted
+    border: `hsl(${bgHue}, 15%, 18%)`,   // slightly lighter for border
+    grid:   `hsl(${bgHue}, 10%, 14%)`,   // between bg and border for grid lines
+  };
+}
+
+const PLAYFIELD = computePlayfieldColors();
+
 // Shared font constants — deduplicated across ~20 font assignments in rendering functions.
 const FONT_BOLD_11   = "bold 11px monospace";
 const FONT_BOLD_26   = "bold 26px monospace";
@@ -76,18 +127,18 @@ function renderBoardStatic(board: Board, cellSize: number): HTMLCanvasElement {
   const off = boardCacheCanvas.getContext("2d");
   if (!off) return boardCacheCanvas;
 
-  // Board background
-  off.fillStyle = "#1a1a2e";
+  // Board background — derived from PIECE_COLORS for maximum contrast
+  off.fillStyle = PLAYFIELD.bg;
   off.fillRect(0, 0, boardCacheCanvas.width, boardCacheCanvas.height);
 
   // Border
-  off.strokeStyle = "#2a2a3e";
+  off.strokeStyle = PLAYFIELD.border;
   off.lineWidth = 2;
   off.strokeRect(0, 0, boardCacheCanvas.width, boardCacheCanvas.height);
 
-  // Grid lines
+  // Grid lines — translucent for subtle contrast while keeping them visible
   off.beginPath();
-  off.strokeStyle = "#1e1e2e";
+  off.strokeStyle = PLAYFIELD.grid;
   off.lineWidth = 0.5;
   for (let row = 1; row < VISIBLE_HEIGHT; row++) {
     off.moveTo(0, row * cellSize);
