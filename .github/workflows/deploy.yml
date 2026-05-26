@@ -30,7 +30,8 @@ jobs:
           git config user.email github-actions@github.com
           git fetch origin gh-pages 2>/dev/null || true
           git checkout --orphan gh-pages-tmp
-          git rm -rf . 2>/dev/null || true
+          # Physically remove all non-dot files (safely skipping .git)
+          rm -rf * .gitignore .gitattributes 2>/dev/null || true
           cp -r dist/* .
           touch .nojekyll
           git add .
