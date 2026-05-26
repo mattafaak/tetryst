@@ -72,7 +72,7 @@ export function spawnClearParticles(
 
 // ── Render ───────────────────────────────────────────────────────────────
 
-export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, canvasH: number, dt: number): void {
+export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, canvasH: number, dt: number, suppressEffects = false): void {
   // Particles
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
@@ -84,15 +84,17 @@ export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, ca
       particles.splice(i, 1);
       continue;
     }
-    const alpha = 1 - p.life / p.maxLife;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(p.x, p.y, p.size, p.size);
+    if (!suppressEffects) {
+      const alpha = 1 - p.life / p.maxLife;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
   }
   ctx.globalAlpha = 1;
 
-  // Screen flash
-  if (!flash) return;
+  // Screen flash — suppressed when an overlay dims the canvas (avoids brightness flicker)
+  if (!flash || suppressEffects) return;
   flash.timer += dt;
   const progress = flash.timer / flash.duration;
   if (progress >= 1) {

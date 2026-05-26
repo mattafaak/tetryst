@@ -271,8 +271,9 @@ export function renderFrame(
     drawHUD(ctx, boardX + boardPixelWidth + 20, boardY, state, cellSize, audioEnabled ?? true);
   }
 
-  // Visual effects (particles, screen flash)
-  renderEffects(ctx, canvasWidth, canvasHeight, dt ?? 16);
+  // Visual effects (particles, screen flash) — suppressed when an overlay is
+  // active so flash doesn't brighten the dim layer and cause visible flicker
+  renderEffects(ctx, canvasWidth, canvasHeight, dt ?? 16, overlayActive);
 
   ctx.restore();
 }
