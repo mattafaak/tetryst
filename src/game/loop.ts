@@ -248,7 +248,7 @@ export class Game {
           }
         }
         // Clear transient field so it doesn't pollute future frames
-        this.state.lastLockResult = undefined;
+        this.state = { ...this.state, lastLockResult: undefined };
       }
     }
   }
@@ -461,8 +461,7 @@ export class Game {
       return;
     }
 
-    this.state.board = lockPiece(this.state.board, lockedPiece);
-    this.state.activePiece = null;
+    this.state = { ...this.state, board: lockPiece(this.state.board, lockedPiece), activePiece: null };
 
     const result = executeLock(this.state, lockedPiece);
     this.state = result.state;
@@ -504,15 +503,16 @@ export class Game {
   }
 
   private updateLineClear(dt: number): void {
-    this.state = tickPopups(this.state, dt);
-    this.state.lineClearTimer += dt;
+    let s = tickPopups(this.state, dt);
+    const nextTimer = s.lineClearTimer + dt;
     // Spawn particles on entry (dedup handled inside effects.ts)
-    if (this.state.clearedRowIndices.length > 0) {
-      spawnParticlesForRows(this.state.clearedRowIndices);
+    if (s.clearedRowIndices.length > 0) {
+      spawnParticlesForRows(s.clearedRowIndices);
     }
-    if (this.state.lineClearTimer >= LINE_CLEAR_ANIM_DURATION) {
-      this.state.phase = GamePhase.EntryDelay;
-      this.state.entryDelayTimer = 0;
+    if (nextTimer >= LINE_CLEAR_ANIM_DURATION) {
+      this.state = { ...s, lineClearTimer: nextTimer, phase: GamePhase.EntryDelay, entryDelayTimer: 0 };
+    } else {
+      this.state = { ...s, lineClearTimer: nextTimer };
     }
   }
 
