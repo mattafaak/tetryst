@@ -656,6 +656,54 @@ describe("canvas.ts — HUD rendering", () => {
   });
 });
 
+describe("canvas.ts — setParticleLayout called in renderFrame", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", {
+      devicePixelRatio: 1,
+      innerWidth: 800,
+      innerHeight: 600,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as Window & typeof globalThis);
+    vi.stubGlobal("document", createDocStub());
+  });
+
+  it("calls setParticleLayout with computed boardX, boardY, and cellSize", async () => {
+    // Mock the effects module so we can spy on setParticleLayout
+    vi.doMock("./effects.ts", async () => {
+      const actual = await vi.importActual<typeof import("./effects.ts")>("./effects.ts");
+      return {
+        ...actual,
+        setParticleLayout: vi.fn(),
+        renderEffects: vi.fn(),
+      };
+    });
+
+    const { renderFrame } = await import("./canvas.ts");
+    const effectsMod = await import("./effects.ts");
+    const { createInitialState, startGame } = await import("../core/state.ts");
+
+    const ctx = makeMockCtx();
+    // canvas is 800×600 (logical), cellSize=30
+    // boardPixelWidth = 10 * 30 = 300, boardPixelHeight = 20 * 30 = 600
+    // boardX = floor((800 - 300) / 2) = 250
+    // boardY = floor((600 - 600) / 2) = 0
+    const cellSize = 30;
+    const expectedBoardX = Math.floor((800 - 10 * cellSize) / 2); // 250
+    const expectedBoardY = Math.floor((600 - 20 * cellSize) / 2); // 0
+
+    const state = startGame(createInitialState());
+    renderFrame(ctx, state, cellSize);
+
+    expect(effectsMod.setParticleLayout).toHaveBeenCalledWith(
+      expectedBoardX,
+      expectedBoardY,
+      cellSize,
+    );
+  });
+});
+
 /**
  * Create a minimal document stub with createElement that returns a mock canvas.
  */
