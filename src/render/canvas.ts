@@ -480,20 +480,25 @@ function drawMenuOverlay(
   audioEnabled: boolean,
 ): void {
   const cacheKey = `${selectedMode}:${selectedStartLevel}:${audioEnabled}:${getScoresGeneration()}`;
+  // Create at physical pixel dimensions so text renders at full DPR resolution
+  const physicalW = Math.round(canvasWidth * _dpr);
+  const physicalH = Math.round(canvasHeight * _dpr);
 
-  // Ensure cache canvas matches current dimensions
-  if (!_menuCacheCanvas || _menuCacheCanvas.width !== canvasWidth || _menuCacheCanvas.height !== canvasHeight) {
+  // Ensure cache canvas matches current physical dimensions
+  if (!_menuCacheCanvas || _menuCacheCanvas.width !== physicalW || _menuCacheCanvas.height !== physicalH) {
     try {
       if (typeof OffscreenCanvas !== "undefined") {
-        _menuCacheCanvas = new OffscreenCanvas(canvasWidth, canvasHeight) as unknown as HTMLCanvasElement;
+        _menuCacheCanvas = new OffscreenCanvas(physicalW, physicalH) as unknown as HTMLCanvasElement;
       } else if (typeof document !== "undefined" && typeof document.createElement === "function") {
         _menuCacheCanvas = document.createElement("canvas");
-        _menuCacheCanvas.width = canvasWidth;
-        _menuCacheCanvas.height = canvasHeight;
+        _menuCacheCanvas.width = physicalW;
+        _menuCacheCanvas.height = physicalH;
       } else {
         _menuCacheCanvas = null;
       }
       _menuCacheCtx = _menuCacheCanvas?.getContext("2d") ?? null;
+      // Apply DPR scale once as the base state — renderMenuContent uses CSS coordinates
+      if (_menuCacheCtx && _dpr !== 1) _menuCacheCtx.scale(_dpr, _dpr);
     } catch {
       _menuCacheCanvas = null;
       _menuCacheCtx = null;
@@ -502,19 +507,19 @@ function drawMenuOverlay(
   }
 
   if (_menuCacheCanvas && _menuCacheCtx && _menuCacheKey === cacheKey) {
-    // Cache hit — blit cached overlay
-    ctx.drawImage(_menuCacheCanvas, 0, 0);
+    // Cache hit — blit physical-resolution cache to logical CSS area
+    ctx.drawImage(_menuCacheCanvas, 0, 0, canvasWidth, canvasHeight);
     return;
   }
 
-  // Cache miss — render to cache canvas
+  // Cache miss — clear old content then render fresh
   if (_menuCacheCanvas && _menuCacheCtx) {
     _menuCacheCtx.save();
+    _menuCacheCtx.clearRect(0, 0, canvasWidth, canvasHeight);
     renderMenuContent(_menuCacheCtx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
     _menuCacheCtx.restore();
     _menuCacheKey = cacheKey;
-    // Blit to main canvas
-    ctx.drawImage(_menuCacheCanvas, 0, 0);
+    ctx.drawImage(_menuCacheCanvas, 0, 0, canvasWidth, canvasHeight);
   } else {
     // No cache available — render directly
     renderMenuContent(ctx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
@@ -715,6 +720,10 @@ function drawHUD(
   cellSize: number,
   audioEnabled: boolean,
 ): void {
+  // Dark panel behind HUD to prevent animated star-field from bleeding through text edges
+  ctx.fillStyle = "rgba(10, 10, 10, 0.60)";
+  ctx.fillRect(hudX - 8, hudY, 150, VISIBLE_HEIGHT * cellSize);
+
   ctx.textAlign = "left";
 
   // Mode name

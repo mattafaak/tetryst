@@ -36,6 +36,7 @@ describe("canvas.ts — renderFrame", () => {
           scale: vi.fn(),
           translate: vi.fn(),
           fillRect: vi.fn(),
+          clearRect: vi.fn(),
           strokeRect: vi.fn(),
           beginPath: vi.fn(),
           moveTo: vi.fn(),
