@@ -174,6 +174,7 @@ export function renderFrame(
   selectedStartLevel?: number,
   audioEnabled?: boolean,
   pauseMenuSelection?: number,
+  dt?: number,
 ): void {
   // Refresh DPR cache when canvas dimensions change (window resize)
   const { width, height } = ctx.canvas;
@@ -254,7 +255,7 @@ export function renderFrame(
   }
 
   // Visual effects (particles, screen flash)
-  renderEffects(ctx, canvasWidth, canvasHeight);
+  renderEffects(ctx, canvasWidth, canvasHeight, dt ?? 16);
 
   ctx.restore();
 }

@@ -72,13 +72,7 @@ export function spawnClearParticles(
 
 // ── Render ───────────────────────────────────────────────────────────────
 
-let lastEffectsTime = 0;
-
-export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, canvasH: number): void {
-  const now = performance.now();
-  const dt = lastEffectsTime === 0 ? 16 : now - lastEffectsTime;
-  lastEffectsTime = now;
-
+export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, canvasH: number, dt: number): void {
   // Particles
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
@@ -116,7 +110,6 @@ export function renderEffects(ctx: CanvasRenderingContext2D, canvasW: number, ca
 export function clearEffects(): void {
   particles = [];
   flash = null;
-  lastEffectsTime = 0;
   lastParticleRowKey = "";
 }
 

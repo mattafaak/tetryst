@@ -272,6 +272,7 @@ export class Game {
         this.selectedStartLevel,
         this.audioEnabled,
         this.pauseMenuSelection,
+        dt,
       );
     } catch (err) {
       console.error("Game loop error:", err);
