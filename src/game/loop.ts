@@ -35,6 +35,9 @@ export class Game {
   private attractNeedsReset: boolean = false;
   private selectedMode: GameMode = GameMode.Marathon;
   private selectedStartLevel: number = 0;
+  private pauseMenuSelection = 0;
+  private showHighScores = false;
+  private highScoreMode: GameMode = GameMode.Marathon;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
@@ -89,6 +92,34 @@ export class Game {
     }
 
     if (this.state.phase === GamePhase.Menu) {
+      // High score screen is active — handle its navigation
+      if (this.showHighScores) {
+        if (action.type === "ShowHighScores") {
+          this.showHighScores = false;
+          return;
+        }
+        if (action.type === "MoveLeft") {
+          const idx = GAME_MODES.indexOf(this.highScoreMode);
+          this.highScoreMode = GAME_MODES[(idx - 1 + GAME_MODES.length) % GAME_MODES.length];
+          return;
+        }
+        if (action.type === "MoveRight") {
+          const idx = GAME_MODES.indexOf(this.highScoreMode);
+          this.highScoreMode = GAME_MODES[(idx + 1) % GAME_MODES.length];
+          return;
+        }
+        // Any other key dismisses high scores
+        this.showHighScores = false;
+        return;
+      }
+
+      // Handle toggle to high score screen
+      if (action.type === "ShowHighScores") {
+        this.showHighScores = true;
+        this.highScoreMode = this.selectedMode;
+        return;
+      }
+
       if (action.type === "Start") {
         this.menuIsStatic = false;
         this.state = startGame(
@@ -127,8 +158,42 @@ export class Game {
       return;
     }
 
-    // During pause the only valid actions are Pause (to resume) and Mute (above)
-    if (this.state.phase === GamePhase.Paused && action.type !== "Pause") {
+    // During pause: navigation + selection, or resume
+    if (this.state.phase === GamePhase.Paused) {
+      if (action.type === "Pause") {
+        this.pauseMenuSelection = 0;
+        const newState = processAction(this.state, action);
+        if (newState !== this.state) this.state = newState;
+        return;
+      }
+      if (action.type === "RotateCW" || action.type === "MoveLeft") {
+        this.pauseMenuSelection = (this.pauseMenuSelection - 1 + 3) % 3;
+        return;
+      }
+      if (action.type === "SoftDrop" || action.type === "MoveRight") {
+        this.pauseMenuSelection = (this.pauseMenuSelection + 1) % 3;
+        return;
+      }
+      if (action.type === "Start") {
+        if (this.pauseMenuSelection === 0) {
+          // Resume
+          this.pauseMenuSelection = 0;
+          this.state = { ...this.state, phase: GamePhase.Playing };
+        } else if (this.pauseMenuSelection === 1) {
+          // Restart
+          this.pauseMenuSelection = 0;
+          this.state = startGame(createInitialState(this.selectedMode), this.selectedStartLevel);
+          this.prevPhase = GamePhase.Playing;
+        } else {
+          // Quit to Menu
+          this.pauseMenuSelection = 0;
+          this.state = createInitialState(this.selectedMode);
+          this.menuIsStatic = true;
+          this.prevPhase = GamePhase.Menu;
+        }
+        return;
+      }
+      // All other actions ignored during pause
       return;
     }
 
@@ -189,6 +254,9 @@ export class Game {
       this.selectedMode,
       this.selectedStartLevel,
       this.audioEnabled,
+      this.pauseMenuSelection,
+      this.showHighScores,
+      this.highScoreMode,
     );
 
     this.animFrameId = requestAnimationFrame(this.loop);

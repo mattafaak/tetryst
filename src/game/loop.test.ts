@@ -398,4 +398,184 @@ describe("Game integration", () => {
       expect(g.audioEnabled).toBe(!wasEnabled);
     });
   });
+
+  describe("pause menu", () => {
+    function startAndPause(): unknown {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      // Exit attract mode and start a game
+      pressKey("ArrowRight"); releaseKey("ArrowRight");
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      // Pause
+      pressKey("KeyP"); releaseKey("KeyP");
+      advanceFrames(5);
+
+      const g = game as unknown as {
+        state: { phase: GamePhase; score: number };
+        pauseMenuSelection: number;
+      };
+      expect(g.state.phase).toBe(GamePhase.Paused);
+      return g;
+    }
+
+    it("shows pause menu with selection at Resume (0)", () => {
+      const g = startAndPause() as { pauseMenuSelection: number };
+      expect(g.pauseMenuSelection).toBe(0);
+    });
+
+    it("ArrowDown navigates to next option", () => {
+      const g = startAndPause() as { pauseMenuSelection: number };
+      expect(g.pauseMenuSelection).toBe(0);
+
+      pressKey("ArrowDown"); releaseKey("ArrowDown");
+      expect(g.pauseMenuSelection).toBe(1); // Restart
+
+      pressKey("ArrowDown"); releaseKey("ArrowDown");
+      expect(g.pauseMenuSelection).toBe(2); // Quit to Menu
+    });
+
+    it("ArrowUp navigates to previous option (wrapping)", () => {
+      const g = startAndPause() as { pauseMenuSelection: number };
+
+      pressKey("ArrowUp"); releaseKey("ArrowUp");
+      expect(g.pauseMenuSelection).toBe(2); // wraps from 0 → 2
+    });
+
+    it("Enter on Resume resumes gameplay", () => {
+      startAndPause();
+
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(5);
+
+      const g = game as unknown as { state: { phase: GamePhase } };
+      expect(g.state.phase).toBe(GamePhase.Playing);
+    });
+
+    it("Enter on Restart starts a new game with zero score", () => {
+      const g = startAndPause() as { state: { score: number; phase: GamePhase }; pauseMenuSelection: number };
+
+      // Force some score before restart
+      g.state = { ...g.state, score: 5000 };
+
+      pressKey("ArrowDown"); releaseKey("ArrowDown"); // → Restart
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      expect(g.state.score).toBe(0);
+      expect(g.state.phase).toBe(GamePhase.Playing);
+    });
+
+    it("Enter on Quit to Menu returns to menu", () => {
+      startAndPause();
+
+      pressKey("ArrowDown"); releaseKey("ArrowDown");
+      pressKey("ArrowDown"); releaseKey("ArrowDown"); // → Quit to Menu
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(5);
+
+      const g = game as unknown as { state: { phase: GamePhase } };
+      expect(g.state.phase).toBe(GamePhase.Menu);
+    });
+
+    it("selection resets to 0 on re-pause", () => {
+      const g = startAndPause() as { pauseMenuSelection: number };
+
+      pressKey("ArrowDown"); releaseKey("ArrowDown"); // → Restart
+      expect(g.pauseMenuSelection).toBe(1);
+
+      pressKey("KeyP"); releaseKey("KeyP"); // resume
+      advanceFrames(5);
+      pressKey("KeyP"); releaseKey("KeyP"); // re-pause
+      advanceFrames(5);
+
+      expect(g.pauseMenuSelection).toBe(0);
+    });
+  });
+
+  describe("high score screen", () => {
+    function enterMenu(): unknown {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      // Exit attract mode via Mute (no side effects on mode/level)
+      pressKey("KeyM"); releaseKey("KeyM");
+      advanceFrames(5);
+
+      const g = game as unknown as {
+        state: { phase: GamePhase };
+        showHighScores: boolean;
+        highScoreMode: GameMode;
+        selectedMode: GameMode;
+      };
+      expect(g.state.phase).toBe(GamePhase.Menu);
+      return g;
+    }
+
+    it("pressing H from menu shows high scores", () => {
+      const g = enterMenu() as { showHighScores: boolean };
+      expect(g.showHighScores).toBe(false);
+
+      pressKey("KeyH"); releaseKey("KeyH");
+      expect(g.showHighScores).toBe(true);
+    });
+
+    it("pressing H again dismisses high scores", () => {
+      const g = enterMenu() as { showHighScores: boolean };
+
+      pressKey("KeyH"); releaseKey("KeyH");
+      expect(g.showHighScores).toBe(true);
+
+      pressKey("KeyH"); releaseKey("KeyH");
+      expect(g.showHighScores).toBe(false);
+    });
+
+    it("ArrowRight cycles high score mode without changing selected mode", () => {
+      const g = enterMenu() as {
+        showHighScores: boolean;
+        highScoreMode: GameMode;
+        selectedMode: GameMode;
+      };
+
+      pressKey("KeyH"); releaseKey("KeyH");
+      expect(g.highScoreMode).toBe(GameMode.Marathon);
+
+      pressKey("ArrowRight"); releaseKey("ArrowRight");
+      expect(g.highScoreMode).toBe(GameMode.Sprint);
+      expect(g.selectedMode).toBe(GameMode.Marathon); // unchanged
+    });
+
+    it("ArrowLeft cycles high score mode backward", () => {
+      const g = enterMenu() as {
+        showHighScores: boolean;
+        highScoreMode: GameMode;
+      };
+
+      pressKey("KeyH"); releaseKey("KeyH");
+
+      pressKey("ArrowRight"); releaseKey("ArrowRight"); // → Sprint
+      expect(g.highScoreMode).toBe(GameMode.Sprint);
+
+      pressKey("ArrowLeft"); releaseKey("ArrowLeft"); // ← Marathon
+      expect(g.highScoreMode).toBe(GameMode.Marathon);
+
+      pressKey("ArrowLeft"); releaseKey("ArrowLeft"); // ← Ultra
+      expect(g.highScoreMode).toBe(GameMode.Ultra);
+    });
+
+    it("pressing any other key dismisses high scores", () => {
+      const g = enterMenu() as { showHighScores: boolean };
+
+      pressKey("KeyH"); releaseKey("KeyH");
+      expect(g.showHighScores).toBe(true);
+
+      pressKey("ArrowDown"); releaseKey("ArrowDown");
+      expect(g.showHighScores).toBe(false);
+    });
+  });
 });

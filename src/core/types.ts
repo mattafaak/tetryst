@@ -117,4 +117,5 @@ export type InputAction =
   | { type: "Hold" }
   | { type: "Pause" }
   | { type: "Start" }
-  | { type: "Mute" };
+  | { type: "Mute" }
+  | { type: "ShowHighScores" };

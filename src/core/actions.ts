@@ -36,6 +36,7 @@ export function processAction(
     case "Hold":
       return handleHold(state);
     case "Mute":
+    case "ShowHighScores":
       return state;
   }
 }

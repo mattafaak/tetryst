@@ -84,6 +84,16 @@ Created: 2026-05-25
 | 9.2 | **Fix missing victory check on no-line-clear lock path** — `executeLock` only checks `checkModeVictory` when lines are cleared. T-spin no-clears can raise Marathon level to max, but victory is never triggered on that path. Fix: add victory check in the else branch. | Marathon victory via T-spin no-clear level cap works correctly; all tests pass | 5.2 | cc:完了 |
 | 9.3 | **Fix latent crash in getGhostY inline collision** — The inlined collision check accesses `board[by][bx]` without a `by >= 0` guard. If a piece's Y goes negative (extreme kick), this throws TypeError. Fix: add guard matching `checkCollision`'s contract. | getGhostY handles negative Y coordinates safely; all tests pass | 8.3 | cc:完了 |
 
+## Phase 10: Pause menu + high score screen
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 10.1 | **Add ShowHighScores input infrastructure** — Add `{ type: "ShowHighScores" }` to `InputAction`, map `KeyH` in keyboard.ts, no-op handler in actions.ts | H key fires ShowHighScores; processAction accepts it | - | cc:完了 |
+| 10.2 | **Implement pause menu** — Replace bare `drawPause` overlay with a 3-option menu (Resume/Restart/Quit to Menu). Track selection in Game class. ↑↓ navigates, Enter selects. | Pause shows selectable options; Restart/Quit work; all tests pass | 10.1 | cc:完了 |
+| 10.3 | **Implement high score screen** — New `drawHighScores` overlay accessible from menu via H key. Shows top 10 scores per mode with mode tabs (←→ to switch). Any key dismisses. | H toggles high scores from menu; ←→ cycles mode; any key dismisses | 10.1 | cc:完了 |
+| 10.4 | **High score screen mode switching** — Track `highScoreMode` separately from `selectedMode` so browsing scores doesn't change the player's selected game mode. | ←→ on high score screen cycles display without changing menu mode selection | 10.3 | cc:完了 |
+| 10.5 | **Tests** — 12 new tests: pause navigation, resume/restart/quit, selection wrap, high score toggle and mode cycling | 12 tests pass (670 total); all existing tests pass | 10.2, 10.4 | cc:完了 |
+
 ## Backlog
 
 - **6.1 Canvas rendering screenshot tests** — Playwright screenshot capture for menu, gameplay, game-over, victory, pause screens

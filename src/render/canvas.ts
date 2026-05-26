@@ -90,6 +90,9 @@ export function renderFrame(
   selectedMode?: GameMode,
   selectedStartLevel?: number,
   audioEnabled?: boolean,
+  pauseMenuSelection?: number,
+  showHighScores?: boolean,
+  highScoreMode?: GameMode,
 ): void {
   const dpr = window.devicePixelRatio || 1;
   const canvasWidth = ctx.canvas.width / dpr;
@@ -144,10 +147,12 @@ export function renderFrame(
   // Draw overlays
   if (isAttractMode) {
     drawAttractOverlay(ctx, canvasWidth, canvasHeight);
+  } else if (state.phase === GamePhase.Menu && showHighScores) {
+    drawHighScores(ctx, canvasWidth, canvasHeight, highScoreMode ?? GameMode.Marathon);
   } else if (state.phase === GamePhase.Menu) {
     drawMenu(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0, audioEnabled ?? true);
   } else if (state.phase === GamePhase.Paused) {
-    drawPause(ctx, canvasWidth, canvasHeight);
+    drawPauseMenu(ctx, canvasWidth, canvasHeight, pauseMenuSelection ?? 0);
   } else if (state.phase === GamePhase.GameOver) {
     drawGameOver(ctx, canvasWidth, canvasHeight, state);
   } else if (state.phase === GamePhase.Victory) {
@@ -391,10 +396,13 @@ function drawAttractOverlay(
   );
 }
 
-function drawPause(
+const PAUSE_OPTIONS = ["Resume", "Restart", "Quit to Menu"];
+
+function drawPauseMenu(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   canvasHeight: number,
+  selection: number,
 ): void {
   const cx = canvasWidth / 2;
   const cy = canvasHeight / 2;
@@ -405,12 +413,89 @@ function drawPause(
   ctx.letterSpacing = "6px";
   ctx.font = "bold 40px monospace";
   ctx.fillStyle = TEXT;
-  ctx.fillText("PAUSED", cx, cy - 4);
+  ctx.fillText("PAUSED", cx, cy - 64);
   ctx.letterSpacing = "0px";
 
-  ctx.font = "13px monospace";
+  // Menu options
+  ctx.font = "bold 20px monospace";
+  PAUSE_OPTIONS.forEach((opt, i) => {
+    const y = cy - 8 + i * 32;
+    if (i === selection) {
+      ctx.fillStyle = ACCENT;
+      ctx.fillText(`→  ${opt}`, cx, y);
+    } else {
+      ctx.fillStyle = TEXT;
+      ctx.fillText(opt, cx, y);
+    }
+  });
+
+  // Hint
+  ctx.font = "12px monospace";
   ctx.fillStyle = TEXT_DIM;
-  ctx.fillText("press P to resume", cx, cy + 28);
+  ctx.fillText("↑ ↓ navigate  ·  Enter select  ·  P resume", cx, cy + 86);
+}
+
+function drawHighScores(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  mode: GameMode,
+): void {
+  const cx = canvasWidth / 2;
+  const cy = canvasHeight / 2;
+
+  overlayBg(ctx, canvasWidth, canvasHeight, 0.85);
+  ctx.textAlign = "center";
+
+  ctx.letterSpacing = "6px";
+  ctx.font = "bold 40px monospace";
+  ctx.fillStyle = TEXT;
+  ctx.fillText("HIGH  SCORES", cx, cy - 130);
+  ctx.letterSpacing = "0px";
+
+  // Mode tabs
+  ctx.font = "bold 14px monospace";
+  const modes = [GameMode.Marathon, GameMode.Sprint, GameMode.Ultra];
+  const tabW = 130;
+  const tabStartX = cx - (modes.length * tabW) / 2;
+  modes.forEach((m, i) => {
+    const tx = tabStartX + i * tabW;
+    ctx.fillStyle = m === mode ? ACCENT : TEXT_FAINT;
+    ctx.fillText(m === mode ? `‹  ${m}  ›` : m, tx, cy - 98);
+  });
+
+  // Scores
+  const scores = loadHighScores(mode).slice(0, 10);
+  if (scores.length === 0) {
+    ctx.font = "16px monospace";
+    ctx.fillStyle = TEXT_DIM;
+    ctx.fillText("No scores yet!", cx, cy - 44);
+  } else {
+    // Header
+    ctx.font = "bold 11px monospace";
+    ctx.fillStyle = AMBER;
+    const colScore = mode === GameMode.Sprint ? "TIME" : "SCORE";
+    ctx.fillText(`#    ${colScore}         LVL   LINES  DATE`, cx, cy - 58);
+
+    // Rows
+    ctx.font = "13px monospace";
+    scores.forEach((s, i) => {
+      const y = cy - 38 + i * 18;
+      const primary = mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
+      const dateStr = s.date ? s.date.slice(0, 10) : "";
+      ctx.fillStyle = i < 3 ? TEXT : TEXT_DIM;
+      ctx.fillText(
+        `${i + 1}.  ${primary.padEnd(12)}  Lv ${s.level + 1}  ${s.lines.toString().padEnd(5)} ${dateStr}`,
+        cx,
+        y,
+      );
+    });
+  }
+
+  // Footer
+  ctx.font = "12px monospace";
+  ctx.fillStyle = TEXT_DIM;
+  ctx.fillText("← → mode  ·  H close  ·  any key to return", cx, cy + 98);
 }
 
 function drawGameOver(
