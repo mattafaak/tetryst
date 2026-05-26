@@ -4,7 +4,6 @@ import { applyGravity } from "../core/gravity.ts";
 import { shouldLock as checkLock, resetLockState } from "../core/lock-delay.ts";
 import { lockPiece, isLockOut } from "../core/board.ts";
 import { updateEntryDelay } from "../core/entry-delay.ts";
-import { checkModeVictory } from "../core/mode-rules.ts";
 import { executeLock } from "../core/lock.ts";
 import { createInitialState, startGame, spawnNextPiece } from "../core/state.ts";
 import { renderFrame } from "../render/canvas.ts";
