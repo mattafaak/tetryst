@@ -128,3 +128,4 @@ export type InputAction =
   | { type: "Pause" }
   | { type: "Start" }
   | { type: "Mute" }
+  | { type: "KeyBindings" }

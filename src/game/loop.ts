@@ -8,6 +8,8 @@ import { executeLock } from "../core/lock.ts";
 import { createInitialState, startGame, spawnNextPiece } from "../core/state.ts";
 import { renderFrame } from "../render/canvas.ts";
 import { KeyboardHandler } from "../input/keyboard.ts";
+import { loadBindings, saveBindings, resetBindings } from "../core/key-bindings.ts";
+import { ACTION_LABELS } from "../render/key-bindings-ui.ts";
 import { playSFX } from "../audio/sfx.ts";
 import { playMusic, stopMusic } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
@@ -35,10 +37,14 @@ export class Game {
   private selectedMode: GameMode = GameMode.Marathon;
   private selectedStartLevel: number = 0;
   private pauseMenuSelection = 0;
+  private bindings: Record<string, InputAction> = loadBindings();
+  private isKeyBindingScreen = false;
+  private bindingsSelectedIdx = 0;
+  private bindingsWaitingForKey = false;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
-    this.keyboard = new KeyboardHandler();
+    this.keyboard = new KeyboardHandler(this.bindings);
     this.state = createInitialState();
   }
 
@@ -79,6 +85,32 @@ export class Game {
     }
   };
 
+  /** Called by the KeyboardHandler's rawKeyHandler during "press any key" rebind capture. */
+  private onBindingKeyCapture = (code: string): void => {
+    if (code === "Escape") {
+      this.bindingsWaitingForKey = false;
+      this.keyboard.setRawKeyHandler(null);
+      return;
+    }
+    const selectedAction = ACTION_LABELS[this.bindingsSelectedIdx].action;
+    // Remove any existing binding for this code
+    const updated: Record<string, InputAction> = {};
+    for (const [c, a] of Object.entries(this.bindings)) {
+      // Remove the old key that was bound to this action, and the captured
+      // code if it was bound to something else (prevents duplicates).
+      if (c !== code && a.type !== selectedAction) {
+        updated[c] = a;
+      }
+    }
+    // Assign the new binding
+    updated[code] = { type: selectedAction } as InputAction;
+    this.bindings = updated;
+    saveBindings(this.bindings);
+    this.keyboard.setBindings(this.bindings);
+    this.bindingsWaitingForKey = false;
+    this.keyboard.setRawKeyHandler(null);
+  };
+
   private recalcCellSize = (): void => {
     const dpr = window.devicePixelRatio || 1;
     const { width, height } = this.ctx.canvas;
@@ -93,6 +125,44 @@ export class Game {
     // Menu / attract mode — attract AI game plays in background while player
     // browses modes. Only Enter exits attract and starts a real game.
     if (this.state.phase === GamePhase.Menu || this.isAttractMode) {
+      // ---- Key binding screen ----
+      if (this.isKeyBindingScreen) {
+        if (action.type === "RotateCW" || action.type === "MoveLeft") {
+          this.bindingsSelectedIdx = (this.bindingsSelectedIdx - 1 + ACTION_LABELS.length + 1) % (ACTION_LABELS.length + 1);
+          return;
+        }
+        if (action.type === "SoftDrop" || action.type === "MoveRight") {
+          this.bindingsSelectedIdx = (this.bindingsSelectedIdx + 1) % (ACTION_LABELS.length + 1);
+          return;
+        }
+        if (action.type === "Start") {
+          if (this.bindingsSelectedIdx >= ACTION_LABELS.length) {
+            // "Restore Defaults" row
+            this.bindings = resetBindings();
+            this.keyboard.setBindings(this.bindings);
+            this.bindingsSelectedIdx = 0;
+          } else {
+            // Enter starts the rebind capture
+            this.bindingsWaitingForKey = true;
+            this.keyboard.setRawKeyHandler(this.onBindingKeyCapture);
+          }
+          return;
+        }
+        if (action.type === "Pause") {
+          // Escape: exit waiting mode or exit bindings screen
+          if (this.bindingsWaitingForKey) {
+            this.bindingsWaitingForKey = false;
+            this.keyboard.setRawKeyHandler(null);
+          } else {
+            this.isKeyBindingScreen = false;
+          }
+          return;
+        }
+        // All other actions ignored during key bindings screen
+        return;
+      }
+
+      // ---- Normal menu ----
       if (action.type === "Start") {
         this.exitAttractMode();
         clearEffects();
@@ -118,6 +188,12 @@ export class Game {
       }
       if (action.type === "RotateCCW" || action.type === "SoftDrop") {
         this.selectedStartLevel = (this.selectedStartLevel - 1 + MARATHON_MAX_LEVEL) % MARATHON_MAX_LEVEL;
+        return;
+      }
+      if (action.type === "KeyBindings") {
+        this.isKeyBindingScreen = true;
+        this.bindingsSelectedIdx = 0;
+        this.bindingsWaitingForKey = false;
         return;
       }
       if (action.type === "Mute") {
@@ -273,6 +349,10 @@ export class Game {
         this.audioEnabled,
         this.pauseMenuSelection,
         dt,
+        this.bindings,
+        this.isKeyBindingScreen,
+        this.bindingsSelectedIdx,
+        this.bindingsWaitingForKey,
       );
     } catch (err) {
       console.error("Game loop error:", err);

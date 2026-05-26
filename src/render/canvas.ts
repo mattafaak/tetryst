@@ -20,8 +20,11 @@ import {
   LINE_CLEAR_ANIM_DURATION,
 } from "../core/constants.ts";
 import { loadHighScores, getScoresGeneration } from "../core/high-scores.ts";
+import { getBindingsGeneration } from "../core/key-bindings.ts";
 import { renderBackground } from "./background.ts";
 import { renderEffects, setParticleLayout } from "./effects.ts";
+import { type InputAction } from "../core/types.ts";
+import { drawKeyBindingsScreen, buildControlsHint } from "./key-bindings-ui.ts";
 
 // ── Design tokens ──────────────────────────────────────────────────────
 const TEXT       = "#e2e2e2";
@@ -192,6 +195,10 @@ export function renderFrame(
   audioEnabled?: boolean,
   pauseMenuSelection?: number,
   dt?: number,
+  bindings?: Record<string, InputAction>,
+  isKeyBindingScreen?: boolean,
+  bindingsSelectedIdx?: number,
+  bindingsWaitingForKey?: boolean,
 ): void {
   // Refresh DPR cache when canvas dimensions change (window resize)
   const { width, height } = ctx.canvas;
@@ -256,8 +263,10 @@ export function renderFrame(
 
   // Draw overlays — unified menu overlay renders whenever attract mode is active
   // or the game is in menu phase (covers attract AI game + mode selection)
-  if (state.phase === GamePhase.Menu || isAttractMode) {
-    drawMenuOverlay(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0, audioEnabled ?? true);
+  if (isKeyBindingScreen) {
+    drawKeyBindingsScreen(ctx, canvasWidth, canvasHeight, bindings ?? {}, bindingsSelectedIdx ?? 0, bindingsWaitingForKey ?? false);
+  } else if (state.phase === GamePhase.Menu || isAttractMode) {
+    drawMenuOverlay(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0, audioEnabled ?? true, bindings ?? {});
   } else if (state.phase === GamePhase.Paused) {
     drawPauseMenu(ctx, canvasWidth, canvasHeight, pauseMenuSelection ?? 0);
   } else if (state.phase === GamePhase.GameOver) {
@@ -408,6 +417,7 @@ function renderMenuContent(
   selectedMode: GameMode,
   selectedStartLevel: number,
   audioEnabled: boolean,
+  bindings: Record<string, InputAction>,
 ): void {
   const cx = canvasWidth / 2;
   const cy = canvasHeight / 2;
@@ -472,10 +482,7 @@ function renderMenuContent(
 
   ctx.font = FONT_13;
   ctx.fillStyle = TEXT_DIM;
-  const hint = isMarathon
-    ? "← → mode  ·  ↑ ↓ level  ·  Z / X rotate  ·  Space drop  ·  C hold  ·  M mute"
-    : "← → mode  ·  Z / X rotate  ·  Space drop  ·  C hold  ·  M mute";
-  ctx.fillText(hint, cx, canvasHeight - barH / 2 + 5);
+  ctx.fillText(buildControlsHint(bindings, isMarathon), cx, canvasHeight - barH / 2 + 5);
 }
 
 function drawMenuOverlay(
@@ -485,8 +492,9 @@ function drawMenuOverlay(
   selectedMode: GameMode,
   selectedStartLevel: number,
   audioEnabled: boolean,
+  bindings: Record<string, InputAction>,
 ): void {
-  const cacheKey = `${selectedMode}:${selectedStartLevel}:${audioEnabled}:${getScoresGeneration()}`;
+  const cacheKey = `${selectedMode}:${selectedStartLevel}:${audioEnabled}:${getScoresGeneration()}:${getBindingsGeneration()}`;
   // Create at physical pixel dimensions so text renders at full DPR resolution
   const physicalW = Math.round(canvasWidth * _dpr);
   const physicalH = Math.round(canvasHeight * _dpr);
@@ -523,13 +531,13 @@ function drawMenuOverlay(
   if (_menuCacheCanvas && _menuCacheCtx) {
     _menuCacheCtx.save();
     _menuCacheCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-    renderMenuContent(_menuCacheCtx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
+    renderMenuContent(_menuCacheCtx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled, bindings);
     _menuCacheCtx.restore();
     _menuCacheKey = cacheKey;
     ctx.drawImage(_menuCacheCanvas, 0, 0, canvasWidth, canvasHeight);
   } else {
     // No cache available — render directly
-    renderMenuContent(ctx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled);
+    renderMenuContent(ctx, canvasWidth, canvasHeight, selectedMode, selectedStartLevel, audioEnabled, bindings);
   }
 }
 

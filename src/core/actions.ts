@@ -38,6 +38,8 @@ export function processAction(
       return handleHold(state);
     case "Mute":
       return state;
+    case "KeyBindings":
+      return state;
   }
 }
 

@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vite
 import { KeyboardHandler } from "./keyboard.ts";
 import type { InputAction } from "../core/types.ts";
 import { DAS_DELAY, ARR_RATE } from "../core/constants.ts";
+import { DEFAULT_BINDINGS } from "../core/key-bindings.ts";
 
 // ── Mock window ──────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ describe("KeyboardHandler", () => {
 
   beforeEach(() => {
     actions = [];
-    handler = new KeyboardHandler();
+    handler = new KeyboardHandler(DEFAULT_BINDINGS);
     handler.setCallback((action: InputAction) => {
       actions.push(action);
     });
@@ -104,6 +105,19 @@ describe("KeyboardHandler", () => {
       const event = { code: "ArrowLeft", preventDefault: vi.fn(), type: "keydown" };
       for (const listener of keyDownListeners) listener(event);
       expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it("does not fire for unknown keys", () => {
+      handler.attach();
+      pressKey("F1");
+      expect(actions).toHaveLength(0);
+    });
+
+    it("preventDefault is not called for unknown keys", () => {
+      handler.attach();
+      const event = { code: "F1", preventDefault: vi.fn(), type: "keydown" };
+      for (const listener of keyDownListeners) listener(event);
+      expect(event.preventDefault).not.toHaveBeenCalled();
     });
   });
 
@@ -279,6 +293,237 @@ describe("KeyboardHandler", () => {
 
       handler.update(1);
       expect(actions).toHaveLength(2);
+    });
+  });
+
+  describe("binding lifecycle integration", () => {
+    it("setBindings replaces active bindings at runtime", () => {
+      handler.attach();
+      // Initial: ArrowLeft fires MoveLeft
+      pressKey("ArrowLeft");
+      expect(actions[0]).toEqual({ type: "MoveLeft" });
+      actions.length = 0;
+
+      // Remap: ArrowLeft now fires MoveRight
+      handler.setBindings({ ArrowLeft: { type: "MoveRight" } });
+      pressKey("ArrowLeft");
+      expect(actions[0]).toEqual({ type: "MoveRight" });
+    });
+
+    it("a key removed from bindings no longer fires", () => {
+      handler.attach();
+      pressKey("ArrowLeft");
+      expect(actions).toHaveLength(1);
+      actions.length = 0;
+
+      // Remove ArrowLeft from bindings
+      handler.setBindings({});
+      pressKey("ArrowLeft");
+      expect(actions).toHaveLength(0);
+    });
+
+    it("bindings persist across detach/attach cycle when updated externally", () => {
+      const dynamicBindings: Record<string, InputAction> = {
+        KeyR: { type: "RotateCW" },
+      };
+      handler = new KeyboardHandler(dynamicBindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+
+      handler.attach();
+      pressKey("KeyR");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "RotateCW" });
+      actions.length = 0;
+
+      // Detach and re-attach
+      handler.detach();
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("KeyR");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "RotateCW" });
+    });
+
+    it("remap: old key stops firing, new key fires the action", () => {
+      // Start with default-like bindings where ArrowUp → RotateCW
+      const bindings: Record<string, InputAction> = {
+        ArrowUp: { type: "RotateCW" },
+      };
+      handler = new KeyboardHandler(bindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowUp");
+      expect(actions[0]).toEqual({ type: "RotateCW" });
+      actions.length = 0;
+
+      // Remap: ArrowUp is removed, KeyR takes over
+      handler.setBindings({ KeyR: { type: "RotateCW" } });
+
+      // Old key does nothing
+      pressKey("ArrowUp");
+      expect(actions).toHaveLength(0);
+
+      // New key fires RotateCW
+      pressKey("KeyR");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "RotateCW" });
+    });
+
+    it("remap from DAS to non-DAS stops auto-repeat", () => {
+      const bindings: Record<string, InputAction> = {
+        ArrowLeft: { type: "MoveLeft" },
+      };
+      handler = new KeyboardHandler(bindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      // Remap ArrowLeft to non-DAS (Hold)
+      handler.setBindings({ ArrowLeft: { type: "Hold" } });
+      pressKey("ArrowLeft");
+      expect(actions[0]).toEqual({ type: "Hold" });
+      actions.length = 0;
+
+      // Should not repeat after DAS delay
+      handler.update(DAS_DELAY + ARR_RATE * 5);
+      expect(actions).toHaveLength(0);
+    });
+  });
+
+  describe("rawKeyHandler", () => {
+    it("captures raw key codes when set", () => {
+      handler.attach();
+      const captured: string[] = [];
+      handler.setRawKeyHandler((code: string) => { captured.push(code); });
+
+      pressKey("KeyA");
+      pressKey("Enter");
+      expect(captured).toEqual(["KeyA", "Enter"]);
+    });
+
+    it("bypasses normal mapping when raw key handler is active", () => {
+      handler.attach();
+      handler.setRawKeyHandler(() => {});
+
+      pressKey("ArrowLeft");
+      expect(actions).toHaveLength(0);
+    });
+
+    it("setting rawKeyHandler to null restores normal mapping", () => {
+      handler.attach();
+      handler.setRawKeyHandler(() => {});
+      handler.setRawKeyHandler(null);
+
+      pressKey("ArrowLeft");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "MoveLeft" });
+    });
+
+    it("raw handler combined with setBindings: capture then apply", () => {
+      // Simulate the full onBindingKeyCapture flow:
+      // 1. Set raw handler
+      // 2. Capture a key code via the handler
+      // 3. Update bindings
+      // 4. Restore normal mapping
+      handler.attach();
+      const captured: string[] = [];
+      handler.setRawKeyHandler((code: string) => {
+        captured.push(code);
+        // Simulate the key capture action
+        handler.setBindings({ KeyR: { type: "RotateCW" } });
+        handler.setRawKeyHandler(null);
+      });
+
+      // Press the key to capture
+      pressKey("KeyR");
+      expect(captured).toEqual(["KeyR"]);
+
+      // Raw handler is null now, KeyR should fire RotateCW through normal mapping
+      pressKey("KeyR");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "RotateCW" });
+    });
+  });
+
+  describe("dynamic bindings", () => {
+    it("fires action from custom binding", () => {
+      const customBindings: Record<string, InputAction> = {
+        KeyR: { type: "RotateCW" },
+      };
+      handler = new KeyboardHandler(customBindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("KeyR");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "RotateCW" });
+    });
+
+    it("does not fire for a key removed from bindings", () => {
+      // Create bindings without ArrowUp
+      const customBindings: Record<string, InputAction> = {
+        ...DEFAULT_BINDINGS,
+      };
+      delete customBindings["ArrowUp"];
+      handler = new KeyboardHandler(customBindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowUp");
+      expect(actions).toHaveLength(0);
+    });
+
+    it("a key remapped to a DAS action auto-repeats", () => {
+      // Remap KeyR to MoveLeft (a DAS action)
+      const customBindings: Record<string, InputAction> = {
+        KeyR: { type: "MoveLeft" },
+      };
+      handler = new KeyboardHandler(customBindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("KeyR");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "MoveLeft" });
+
+      // Charge DAS — should repeat
+      handler.update(DAS_DELAY);
+      expect(actions.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("a key remapped from DAS to non-DAS fires only once", () => {
+      // Remap ArrowLeft (previously DAS) to Hold (non-DAS)
+      const customBindings: Record<string, InputAction> = {
+        ...DEFAULT_BINDINGS,
+        ArrowLeft: { type: "Hold" },
+      };
+      handler = new KeyboardHandler(customBindings);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowLeft");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "Hold" });
+
+      // Should not repeat
+      handler.update(DAS_DELAY * 10);
+      expect(actions).toHaveLength(1);
     });
   });
 });

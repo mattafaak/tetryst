@@ -9,41 +9,37 @@ interface KeyState {
   dasCharged: boolean;
 }
 
-const DAS_ACTIONS: Record<string, InputAction> = {
-  ArrowLeft: { type: "MoveLeft" },
-  ArrowRight: { type: "MoveRight" },
-  ArrowDown: { type: "SoftDrop" },
-};
+/** Action types that get DAS/ARR auto-repeat processing. */
+const DAS_ACTION_TYPES = new Set(["MoveLeft", "MoveRight", "SoftDrop"]);
 
-const NON_DAS_ACTIONS: Record<string, InputAction> = {
-  ArrowUp: { type: "RotateCW" },
-  KeyZ: { type: "RotateCW" },
-  KeyX: { type: "RotateCCW" },
-  Space: { type: "HardDrop" },
-  KeyC: { type: "Hold" },
-  ShiftLeft: { type: "Hold" },
-  ShiftRight: { type: "Hold" },
-  KeyP: { type: "Pause" },
-  Escape: { type: "Pause" },
-  Enter: { type: "Start" },
-  KeyM: { type: "Mute" },
-};
+function isDasAction(action: InputAction): boolean {
+  return DAS_ACTION_TYPES.has(action.type);
+}
 
 type InputCallback = (action: InputAction) => void;
 
 export class KeyboardHandler {
+  private bindings: Record<string, InputAction>;
   private keys: Map<string, KeyState> = new Map();
   private callback: InputCallback | null = null;
+  private rawKeyHandler: ((code: string) => void) | null = null;
   private boundKeyDown: (e: KeyboardEvent) => void;
   private boundKeyUp: (e: KeyboardEvent) => void;
 
-  constructor() {
+  constructor(bindings: Record<string, InputAction>) {
+    this.bindings = bindings;
     this.boundKeyDown = this.onKeyDown.bind(this);
     this.boundKeyUp = this.onKeyUp.bind(this);
   }
 
   setCallback(cb: InputCallback): void {
     this.callback = cb;
+  }
+
+  /** When set, every keydown event bypasses normal mapping and fires this
+   *  handler with the raw event.code instead. Set to null to restore. */
+  setRawKeyHandler(handler: ((code: string) => void) | null): void {
+    this.rawKeyHandler = handler;
   }
 
   attach(): void {
@@ -58,18 +54,17 @@ export class KeyboardHandler {
   }
 
   update(dt: number): void {
-    for (const [code, state] of this.keys) {
+    for (const [, state] of this.keys) {
       if (!state.pressed) continue;
 
-      // Only process DAS/ARR for movement and soft-drop keys
-      if (!(code in DAS_ACTIONS)) continue;
+      // Only DAS actions auto-repeat
+      if (!isDasAction(state.action)) continue;
 
       if (!state.dasCharged) {
         state.dasTimer += dt;
         if (state.dasTimer >= DAS_DELAY) {
           state.dasCharged = true;
           state.arrTimer = 0;
-          // Fire first repeat immediately after DAS charges
           this.fire(state.action);
         }
       } else {
@@ -83,42 +78,32 @@ export class KeyboardHandler {
   }
 
   private onKeyDown(e: KeyboardEvent): void {
-    // Prevent default for game keys
-    if (this.isGameKey(e.code)) {
+    // When a raw key handler is active, bypass normal mapping entirely.
+    // All keys go to the handler, and we prevent default so game keys don't
+    // scroll the page during rebinding.
+    if (this.rawKeyHandler) {
       e.preventDefault();
-    }
-
-    // Handle non-DAS actions (fire once on press)
-    const nonDasAction = NON_DAS_ACTIONS[e.code];
-    if (nonDasAction) {
-      if (!this.keys.get(e.code)?.pressed) {
-        this.keys.set(e.code, {
-          action: nonDasAction,
-          pressed: true,
-          dasTimer: 0,
-          arrTimer: 0,
-          dasCharged: false,
-        });
-        this.fire(nonDasAction);
-      }
+      this.rawKeyHandler(e.code);
       return;
     }
 
-    // Handle DAS actions
-    const dasAction = DAS_ACTIONS[e.code];
-    if (dasAction) {
-      if (!this.keys.get(e.code)?.pressed) {
-        this.keys.set(e.code, {
-          action: dasAction,
-          pressed: true,
-          dasTimer: 0,
-          arrTimer: 0,
-          dasCharged: false,
-        });
-        // Fire initial action immediately
-        this.fire(dasAction);
-      }
-    }
+    const action = this.bindings[e.code];
+    if (!action) return;
+
+    e.preventDefault();
+
+    // Fire on first press only (ignore held-key auto-repeat from OS)
+    if (this.keys.get(e.code)?.pressed) return;
+
+    this.keys.set(e.code, {
+      action,
+      pressed: true,
+      dasTimer: 0,
+      arrTimer: 0,
+      dasCharged: false,
+    });
+
+    this.fire(action);
   }
 
   private onKeyUp(e: KeyboardEvent): void {
@@ -138,13 +123,17 @@ export class KeyboardHandler {
   }
 
   private isGameKey(code: string): boolean {
-    return (
-      code in DAS_ACTIONS ||
-      code in NON_DAS_ACTIONS
-    );
+    return code in this.bindings;
   }
 
   reset(): void {
+    this.keys.clear();
+  }
+
+  /** Replace the active bindings at runtime (e.g., after user rebinds).
+   *  Clears all tracked key state since old mappings are no longer valid. */
+  setBindings(bindings: Record<string, InputAction>): void {
+    this.bindings = bindings;
     this.keys.clear();
   }
 }
