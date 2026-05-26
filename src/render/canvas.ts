@@ -207,8 +207,14 @@ export function renderFrame(
   ctx.save();
   ctx.scale(dpr, dpr);
 
-  // Background (dark fill + subtle star field)
-  renderBackground(ctx, canvasWidth, canvasHeight);
+  // Freeze star-field animation when any overlay is active to prevent
+  // 15fps cache jumps + twinkle mismatch from flickering through the dim layer
+  const overlayActive =
+    state.phase === GamePhase.Menu || !!isAttractMode ||
+    state.phase === GamePhase.Paused ||
+    state.phase === GamePhase.GameOver ||
+    state.phase === GamePhase.Victory;
+  renderBackground(ctx, canvasWidth, canvasHeight, overlayActive);
 
   // Calculate board position (centered)
   const boardPixelWidth = BOARD_WIDTH * cellSize;

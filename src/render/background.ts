@@ -87,6 +87,7 @@ export function renderBackground(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
+  freeze = false,
 ): void {
   // Bail early on zero-dimension canvas (e.g., during tab switch or initial load)
   if (w <= 0 || h <= 0) return;
@@ -103,23 +104,27 @@ export function renderBackground(
   ensureStars(w, h);
   ensureCache(w, h);
 
-  // Drift stars at frame-rate-independent speed
   const now = performance.now();
+  // Always advance lastDriftTime so unfreezing doesn't cause a position jump
   const dt = lastDriftTime === 0 ? 16 : now - lastDriftTime;
   lastDriftTime = now;
-  const step = dt / 1000;
-  for (const s of stars) {
-    s.y += s.speed * step;
-    if (s.y > h) {
-      s.y = -2;
-      s.x = Math.random() * w;
-    }
-  }
 
-  // Throttled re-render to cache canvas
-  if (now - lastCacheTime > CACHE_INTERVAL) {
-    renderCache(w, h);
-    lastCacheTime = now;
+  if (!freeze) {
+    // Drift stars at frame-rate-independent speed
+    const step = dt / 1000;
+    for (const s of stars) {
+      s.y += s.speed * step;
+      if (s.y > h) {
+        s.y = -2;
+        s.x = Math.random() * w;
+      }
+    }
+
+    // Throttled re-render to cache canvas
+    if (now - lastCacheTime > CACHE_INTERVAL) {
+      renderCache(w, h);
+      lastCacheTime = now;
+    }
   }
 
   // Draw cached star field
@@ -129,24 +134,27 @@ export function renderBackground(
     // Fallback: render directly
     ctx.fillStyle = "#0a0a0a";
     ctx.fillRect(0, 0, w, h);
-    for (const s of stars) {
-      ctx.globalAlpha = s.baseAlpha;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(Math.round(s.x), Math.round(s.y), Math.ceil(s.size), Math.ceil(s.size));
+    if (!freeze) {
+      for (const s of stars) {
+        ctx.globalAlpha = s.baseAlpha;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(Math.round(s.x), Math.round(s.y), Math.ceil(s.size), Math.ceil(s.size));
+      }
     }
     ctx.globalAlpha = 1;
     return;
   }
 
-  // Overlay twinkle on top of the cached base layer (per-frame, smooth oscillation)
-  const t = now;
-  for (const s of stars) {
-    const twinkle = Math.sin(t * STAR_TWINKLE_SPEED + s.phase);
-    if (twinkle > 0.3) {
-      ctx.globalAlpha = s.baseAlpha * twinkle * 0.5;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(Math.round(s.x), Math.round(s.y), Math.ceil(s.size), Math.ceil(s.size));
+  if (!freeze) {
+    // Overlay twinkle on top of the cached base layer (per-frame, smooth oscillation)
+    for (const s of stars) {
+      const twinkle = Math.sin(now * STAR_TWINKLE_SPEED + s.phase);
+      if (twinkle > 0.3) {
+        ctx.globalAlpha = s.baseAlpha * twinkle * 0.5;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(Math.round(s.x), Math.round(s.y), Math.ceil(s.size), Math.ceil(s.size));
+      }
     }
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
 }
