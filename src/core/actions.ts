@@ -122,6 +122,7 @@ function handleSoftDrop(state: GameState): GameState {
   const belowMoved = movePiece(moved, 0, 1);
   const nowOnGround = checkCollision(state.board, belowMoved);
   newState.lockState = { ...state.lockState, onGround: nowOnGround, timer: 0 };
+  newState.gravityTimer = 0;
 
   return updateLowestY(newState, moved.pos.y);
 }

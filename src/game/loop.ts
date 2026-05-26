@@ -249,12 +249,44 @@ export class Game {
         }
       }
       this.state = newState;
-    }
 
-    // Hard-drop locks the piece immediately and bypasses lockActivePiece, so
-    // checkModeVictory is never reached via the normal gravity-lock path.
-    if (action.type === "HardDrop" && checkModeVictory(this.state)) {
-      this.triggerVictory();
+      // Hard-drop locks bypass lockActivePiece, so handle flash and SFX here
+      // using the transient lastLockResult set by executeLock.
+      if (action.type === "HardDrop") {
+        const r = this.state.lastLockResult;
+        if (r) {
+          if (this.audioEnabled) {
+            if (r.linesCleared > 0) {
+              if (r.linesCleared === 4) {
+                playSFX("tetris");
+              } else if (r.isTSpin) {
+                playSFX("tspin");
+              } else {
+                playSFX("clear");
+              }
+            }
+            if (r.needsLevelupSFX) playSFX("levelup");
+            if (r.needsTSpinSFX) playSFX("tspin");
+          }
+
+          // Screen flash for major events
+          if (r.linesCleared === 4) {
+            triggerFlash("#ffffff", 160);
+          } else if (r.isTSpin && r.linesCleared >= 2) {
+            triggerFlash("#ffb300", 160);
+          }
+          if (r.isPerfectClear) {
+            triggerFlash("#ffffff", 200);
+          }
+
+          // executeLock already checked victory; use its result
+          if (r.victoryTriggered) {
+            this.triggerVictory();
+          }
+        }
+        // Clear transient field so it doesn't pollute future frames
+        this.state.lastLockResult = undefined;
+      }
     }
   }
 

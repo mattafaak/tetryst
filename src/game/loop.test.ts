@@ -6,8 +6,12 @@
  * to play through complete games.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { playSFX } from "../audio/sfx.ts";
+import { triggerFlash } from "../render/effects.ts";
 import { Game } from "./loop.ts";
-import { GamePhase, GameMode } from "../core/types.ts";
+import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
+import type { GameState } from "../core/types.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT } from "../core/constants.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -15,6 +19,7 @@ import { GamePhase, GameMode } from "../core/types.ts";
 vi.mock("../render/canvas.ts", () => ({ renderFrame: vi.fn() }));
 vi.mock("../audio/sfx.ts", () => ({ playSFX: vi.fn() }));
 vi.mock("../audio/music.ts", () => ({ playMusic: vi.fn(), stopMusic: vi.fn() }));
+vi.mock("../render/effects.ts", () => ({ triggerFlash: vi.fn(), clearEffects: vi.fn() }));
 
 // Mock saveHighScore to avoid localStorage
 const saveHighScoreMock = vi.fn();
@@ -576,6 +581,108 @@ describe("Game integration", () => {
 
       pressKey("ArrowDown"); releaseKey("ArrowDown");
       expect(g.showHighScores).toBe(false);
+    });
+  });
+
+  describe("hard drop effects (Phase 14.1 + 14.4)", () => {
+    function startPlayingGame(): { state: GameState } {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+
+      // Exit attract mode and start a real game
+      pressKey("ArrowRight"); releaseKey("ArrowRight");
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState };
+      expect(g.state.phase).toBe(GamePhase.Playing);
+      return g;
+    }
+
+    it("triggers Tetris flash and tetris SFX when hard drop clears 4 lines", () => {
+      const g = startPlayingGame();
+
+      // Set up board: 4 full rows at the bottom
+      const board = Array.from({ length: BOARD_HEIGHT }, () =>
+        Array<string | null>(BOARD_WIDTH).fill(null),
+      );
+      for (let i = 0; i < 4; i++) {
+        board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+      }
+
+      g.state = {
+        ...g.state,
+        board,
+        activePiece: {
+          type: TetriminoType.I,
+          pos: { x: 3, y: BOARD_HEIGHT - 6 },
+          rotation: RotationState.ZERO,
+        },
+        ghostY: BOARD_HEIGHT - 6,
+      };
+
+      // Clear mock call counts from setup
+      vi.clearAllMocks();
+
+      pressKey("Space");
+
+      expect(playSFX).toHaveBeenCalledWith("lock");
+      expect(playSFX).toHaveBeenCalledWith("tetris");
+      expect(triggerFlash).toHaveBeenCalledWith("#ffffff", 160);
+    });
+
+    it("clears lastLockResult after hard drop handling", () => {
+      const g = startPlayingGame();
+
+      const board = Array.from({ length: BOARD_HEIGHT }, () =>
+        Array<string | null>(BOARD_WIDTH).fill(null),
+      );
+      for (let i = 0; i < 4; i++) {
+        board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+      }
+
+      g.state = {
+        ...g.state,
+        board,
+        activePiece: {
+          type: TetriminoType.I,
+          pos: { x: 3, y: BOARD_HEIGHT - 6 },
+          rotation: RotationState.ZERO,
+        },
+        ghostY: BOARD_HEIGHT - 6,
+      };
+
+      pressKey("Space");
+
+      // Transient field must be cleared so it doesn't pollute future frames
+      expect((g.state as { lastLockResult?: unknown }).lastLockResult).toBeUndefined();
+    });
+
+    it("does not trigger flash for a non-clearing hard drop", () => {
+      const g = startPlayingGame();
+
+      // Empty board — piece drops but clears no lines
+      const board = Array.from({ length: BOARD_HEIGHT }, () =>
+        Array<string | null>(BOARD_WIDTH).fill(null),
+      );
+
+      g.state = {
+        ...g.state,
+        board,
+        activePiece: {
+          type: TetriminoType.I,
+          pos: { x: 3, y: 0 },
+          rotation: RotationState.ZERO,
+        },
+      };
+
+      vi.clearAllMocks();
+      pressKey("Space");
+
+      expect(playSFX).toHaveBeenCalledWith("lock");
+      expect(triggerFlash).not.toHaveBeenCalled();
     });
   });
 });

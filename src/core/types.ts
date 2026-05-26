@@ -81,6 +81,16 @@ export interface NextQueueItem {
   type: TetriminoType;
 }
 
+export interface LastLockResult {
+  linesCleared: number;
+  isPerfectClear: boolean;
+  isTSpin: boolean;
+  isTSpinMini: boolean;
+  needsLevelupSFX: boolean;
+  needsTSpinSFX: boolean;
+  victoryTriggered: boolean;
+}
+
 export interface GameState {
   board: Board;
   activePiece: Piece | null;
@@ -104,6 +114,7 @@ export interface GameState {
   mode: GameMode;
   modeTimer: number;
   popups: PopupItem[];
+  lastLockResult?: LastLockResult;
 }
 
 export type InputAction =

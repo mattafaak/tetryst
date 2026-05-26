@@ -210,6 +210,15 @@ describe("handleSoftDrop", () => {
     const next = processAction(state, { type: "SoftDrop" });
     expect(next).toBe(state);
   });
+
+  it("resets gravityTimer to 0 on soft drop (Phase 14.3)", () => {
+    const state = baseState({
+      gravityTimer: 200, // arbitrary non-zero value
+      activePiece: makePiece(20),
+    });
+    const next = processAction(state, { type: "SoftDrop" });
+    expect(next.gravityTimer).toBe(0);
+  });
 });
 
 describe("handleHardDrop", () => {
@@ -248,6 +257,65 @@ describe("handleHardDrop", () => {
     const next = processAction(state, { type: "HardDrop" });
     expect(next.phase).toBe(GamePhase.GameOver);
     expect(next.activePiece).toBeNull();
+  });
+
+  it("clears clearedRowIndices when hard drop does not clear lines (Phase 14.2)", () => {
+    // Regression: executeLock retained stale clearedRowIndices in the zero-clear path
+    const board = emptyBoard();
+    const s = baseState({
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      clearedRowIndices: [1, 2, 3], // stale data that should be cleared
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    expect(next.clearedRowIndices).toEqual([]);
+  });
+
+  it("sets lastLockResult after non-clearing hard drop (Phase 14.1)", () => {
+    const board = emptyBoard();
+    const s = baseState({
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    expect(next.lastLockResult).toBeDefined();
+    expect(next.lastLockResult!.linesCleared).toBe(0);
+    expect(next.lastLockResult!.isPerfectClear).toBe(false);
+    expect(next.lastLockResult!.isTSpin).toBe(false);
+    expect(next.lastLockResult!.victoryTriggered).toBe(false);
+  });
+
+  it("sets lastLockResult with linesCleared=4 on Tetris (Phase 14.1)", () => {
+    const board = emptyBoard();
+    for (let i = 0; i < 4; i++) {
+      board[BOARD_HEIGHT - 1 - i] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    }
+    const s = baseState({
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      ghostY: BOARD_HEIGHT - 6,
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    expect(next.lastLockResult).toBeDefined();
+    expect(next.lastLockResult!.linesCleared).toBe(4);
+    expect(next.lastLockResult!.isPerfectClear).toBe(false);
+  });
+
+  it("sets lastLockResult with victoryTriggered for Sprint mode (Phase 14.1)", () => {
+    const board = emptyBoard();
+    board[BOARD_HEIGHT - 1] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    board[BOARD_HEIGHT - 2] = Array(BOARD_WIDTH).fill(TetriminoType.Z);
+    const s = baseState({
+      mode: GameMode.Sprint,
+      level: 0,
+      lines: 38,
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO },
+      ghostY: BOARD_HEIGHT - 6,
+    });
+    const next = processAction(s, { type: "HardDrop" });
+    expect(next.lastLockResult).toBeDefined();
+    expect(next.lastLockResult!.victoryTriggered).toBe(true);
   });
 });
 

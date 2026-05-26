@@ -116,6 +116,7 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
     s.lineClearTimer = 0;
   } else {
     // No lines cleared
+    s.clearedRowIndices = [];
     const comboResult = updateCombo(s, 0);
     s = comboResult.state;
 
@@ -149,6 +150,16 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
     s.phase = GamePhase.EntryDelay;
     s.entryDelayTimer = 0;
   }
+
+  s.lastLockResult = {
+    linesCleared,
+    isPerfectClear: isPC,
+    isTSpin: tSpinResult.isTSpin,
+    isTSpinMini: tSpinResult.isMini,
+    needsLevelupSFX,
+    needsTSpinSFX,
+    victoryTriggered,
+  };
 
   return {
     state: s,
