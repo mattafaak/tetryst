@@ -316,7 +316,7 @@ function drawMenu(
   ctx.fillStyle = ACCENT;
   ctx.fillText(`‹  ${selectedMode}  ›`, cx, cy - 18);
 
-  // Level selector (Marathon only)
+  // Level selector (Marathon only) or mode description (Sprint/Ultra)
   if (selectedMode === GameMode.Marathon) {
     ctx.font = "bold 11px monospace";
     ctx.fillStyle = TEXT_FAINT;
@@ -325,9 +325,17 @@ function drawMenu(
     ctx.font = "bold 26px monospace";
     ctx.fillStyle = AMBER;
     ctx.fillText(`↑  ${selectedStartLevel + 1}  ↓`, cx, cy + 50);
+  } else if (selectedMode === GameMode.Sprint) {
+    ctx.font = "13px monospace";
+    ctx.fillStyle = TEXT_DIM;
+    ctx.fillText("Clear 40 lines as fast as you can", cx, cy + 26);
+  } else {
+    ctx.font = "13px monospace";
+    ctx.fillStyle = TEXT_DIM;
+    ctx.fillText("Score as many points as you can in 2 min", cx, cy + 26);
   }
 
-  const promptY = selectedMode === GameMode.Marathon ? cy + 96 : cy + 30;
+  const promptY = cy + 96;
 
   ctx.font = "bold 15px monospace";
   ctx.fillStyle = AMBER;
@@ -416,17 +424,12 @@ function drawPauseMenu(
   ctx.fillText("PAUSED", cx, cy - 64);
   ctx.letterSpacing = "0px";
 
-  // Menu options
+  // Menu options — color indicates selection; no prefix to avoid font-metric shifting
   ctx.font = "bold 20px monospace";
   PAUSE_OPTIONS.forEach((opt, i) => {
     const y = cy - 8 + i * 32;
-    if (i === selection) {
-      ctx.fillStyle = ACCENT;
-      ctx.fillText(`→  ${opt}`, cx, y);
-    } else {
-      ctx.fillStyle = TEXT;
-      ctx.fillText(opt, cx, y);
-    }
+    ctx.fillStyle = i === selection ? ACCENT : TEXT;
+    ctx.fillText(opt, cx, y);
   });
 
   // Hint
@@ -459,7 +462,7 @@ function drawHighScores(
   const tabW = 130;
   const tabStartX = cx - (modes.length * tabW) / 2;
   modes.forEach((m, i) => {
-    const tx = tabStartX + i * tabW;
+    const tx = tabStartX + i * tabW + tabW / 2;
     ctx.fillStyle = m === mode ? ACCENT : TEXT_FAINT;
     ctx.fillText(m === mode ? `‹  ${m}  ›` : m, tx, cy - 98);
   });
@@ -471,11 +474,15 @@ function drawHighScores(
     ctx.fillStyle = TEXT_DIM;
     ctx.fillText("No scores yet!", cx, cy - 44);
   } else {
-    // Header
+    // Header — fixed-width columns matching data rows below
     ctx.font = "bold 11px monospace";
     ctx.fillStyle = AMBER;
-    const colScore = mode === GameMode.Sprint ? "TIME" : "SCORE";
-    ctx.fillText(`#    ${colScore}         LVL   LINES  DATE`, cx, cy - 58);
+    const scoreLabel = mode === GameMode.Sprint ? "TIME" : "SCORE";
+    const hRank = "#    ";
+    const hScore = scoreLabel.padEnd(12);
+    const hLevel = "LVL ".padEnd(5);
+    const hLines = "LINES ".padEnd(7);
+    ctx.fillText(`${hRank}${hScore} ${hLevel}${hLines}DATE`, cx, cy - 58);
 
     // Rows
     ctx.font = "13px monospace";
@@ -483,9 +490,10 @@ function drawHighScores(
       const y = cy - 38 + i * 18;
       const primary = mode === GameMode.Sprint ? formatMs(s.score) : fmtScore(s.score);
       const dateStr = s.date ? s.date.slice(0, 10) : "";
+      const rank = `${i + 1}.${i < 9 ? "  " : " "}`;
       ctx.fillStyle = i < 3 ? TEXT : TEXT_DIM;
       ctx.fillText(
-        `${i + 1}.  ${primary.padEnd(12)}  Lv ${s.level + 1}  ${s.lines.toString().padEnd(5)} ${dateStr}`,
+        `${rank}${primary.padEnd(12)} ${`Lv ${s.level + 1}`.padEnd(5)}${`${s.lines}`.padEnd(7)}${dateStr}`,
         cx,
         y,
       );
