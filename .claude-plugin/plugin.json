@@ -1,0 +1,8 @@
+{
+  "name": "tetryst",
+  "version": "0.0.0",
+  "description": "A Tetris-like game built with TypeScript, Vite, and Vitest",
+  "skills": [
+    "./skills/"
+  ]
+}
