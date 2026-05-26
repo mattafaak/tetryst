@@ -40,7 +40,7 @@ jobs:
             repos/${{ github.repository }}/deployments \
             -f ref='${{ github.sha }}' \
             -f environment='github-pages' \
-            -f auto_merge=false \
+            -F auto_merge=false \
             -f description='Deploy to GitHub Pages' \
             --jq '.id')
           gh api \
