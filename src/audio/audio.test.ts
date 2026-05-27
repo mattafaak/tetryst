@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAudioContext, resetAudioContext } from "./audio-ctx.ts";
 import { playSFX } from "./sfx.ts";
 import { playMusic, stopMusic, freqOf, bassFreqOf, buildSchedule, BPM, BEAT_DURATION, MELODY_DATA } from "./music.ts";
+import { createPulseOsc } from "./apu.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -412,5 +413,63 @@ describe("music behavioral — scheduling", () => {
   it("total melody duration is ≤ 176 beats", () => {
     const total = MELODY_DATA.reduce((sum, e) => sum + e.duration, 0);
     expect(total).toBeLessThanOrEqual(176);
+  });
+});
+
+describe("apu — createPulseOsc", () => {
+  function makeApuCtx(captureImag?: { ref: Float32Array | null }) {
+    const mockOsc = {
+      type: "" as string,
+      frequency: { value: 0, setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+      setPeriodicWave: vi.fn(),
+    };
+    const apuCtx = {
+      createPeriodicWave: vi.fn((real: Float32Array, imag: Float32Array) => {
+        if (captureImag) captureImag.ref = imag;
+        return { _real: real, _imag: imag };
+      }),
+      createOscillator: vi.fn(() => mockOsc),
+    };
+    return { apuCtx, mockOsc };
+  }
+
+  it("sets PeriodicWave on oscillator — not a built-in oscillator type", () => {
+    const { apuCtx, mockOsc } = makeApuCtx();
+
+    const osc = createPulseOsc(apuCtx as unknown as AudioContext, 0.25);
+
+    expect(apuCtx.createPeriodicWave).toHaveBeenCalled();
+    expect(mockOsc.setPeriodicWave).toHaveBeenCalled();
+    // When PeriodicWave is set, type is "custom" — never one of the 4 built-in strings
+    expect(osc.type).not.toBe("square");
+    expect(osc.type).not.toBe("sine");
+    expect(osc.type).not.toBe("triangle");
+    expect(osc.type).not.toBe("sawtooth");
+  });
+
+  it("Fourier coeff imag[1] ≈ 2/π for duty=0.25 (NES 25% pulse character)", () => {
+    const captured = { ref: null as Float32Array | null };
+    const { apuCtx } = makeApuCtx(captured);
+
+    createPulseOsc(apuCtx as unknown as AudioContext, 0.25);
+
+    expect(captured.ref).not.toBeNull();
+    expect(captured.ref![0]).toBe(0); // no DC offset
+    expect(captured.ref![1]).toBeCloseTo(2 / Math.PI, 4); // ≈ 0.6366
+    expect(captured.ref![2]).toBeCloseTo(0, 4);            // even harmonic ≈ 0
+  });
+
+  it("imag[1] for duty=0.125 is sin(π/4) scaled — thinner pulse than 25%", () => {
+    const captured = { ref: null as Float32Array | null };
+    const { apuCtx } = makeApuCtx(captured);
+
+    createPulseOsc(apuCtx as unknown as AudioContext, 0.125);
+
+    expect(captured.ref).not.toBeNull();
+    const expected = (2 / Math.PI) * Math.sin(2 * Math.PI * 0.125); // ≈ 0.450
+    expect(captured.ref![1]).toBeCloseTo(expected, 4);
   });
 });
