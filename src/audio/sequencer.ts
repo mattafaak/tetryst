@@ -1,4 +1,4 @@
-import { APUMixer, ChannelNote, NoiseNote, Song, createPulseOsc } from "./apu.ts";
+import { type APUMixer, type ChannelNote, type NoiseNote, type Song, createPulseOsc } from "./apu.ts";
 
 const LOOK_AHEAD = 0.08; // 80ms
 

@@ -797,7 +797,7 @@ describe("sfx — sfx-defs integration", () => {
     expect(oscs[0].setPeriodicWave).toHaveBeenCalled();
     expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime)
       .toHaveBeenCalledWith(150, 0);
-    expect(gains[0].gain.setValueAtTime).toHaveBeenCalledWith(0.12, 0);
+    expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.12, 0);
   });
 });
 
