@@ -428,6 +428,13 @@ describe("apu — createPulseOsc", () => {
     const expected = (2 / Math.PI) * Math.sin(2 * Math.PI * 0.125); // ≈ 0.450
     expect(captured.ref![1]).toBeCloseTo(expected, 4);
   });
+
+  it("PeriodicWave imag array has exactly 9 entries (8 harmonics)", () => {
+    const captured = { ref: null as Float32Array | null };
+    const { apuCtx } = makeApuCtx(captured);
+    createPulseOsc(apuCtx as unknown as AudioContext, 0.25);
+    expect(captured.ref!.length).toBe(9);
+  });
 });
 
 describe("apu — createAPUMixer", () => {
@@ -560,6 +567,16 @@ describe("Sequencer — start/stop", () => {
     totalBeats: 1,
   };
 
+  const THREE_CHANNEL_SONG: Song = {
+    title: "Three channel test",
+    bpm: 120,
+    pulse1: [{ beat: 0, dur: 1, freq: 440 }],
+    pulse2: [{ beat: 0, dur: 1, freq: 330 }],
+    triangle: [{ beat: 0, dur: 1, freq: 110 }],
+    noise: [],
+    totalBeats: 1,
+  };
+
   beforeEach(() => {
     vi.stubGlobal("window", { setTimeout: vi.fn(() => 42), clearTimeout: vi.fn() });
   });
@@ -653,14 +670,66 @@ describe("Sequencer — start/stop", () => {
     };
 
     seq.start(TEMPO_SONG, ctx as unknown as AudioContext);
-    expect(delays[0]).toBeCloseTo(2100, -2); // base tempo
+    // BPM=120, totalBeats=4: songDuration=2.0s → timeout=(2.0-0.2)×1000=1800ms
+    expect(delays[0]).toBeCloseTo(1800, -2); // base tempo
 
     seq.setTempoMultiplier(2.0);
     // Trigger next cycle via the captured callback
     callbacks[0]();
 
-    // With 2× multiplier: beatDur=0.25s → delay=(4×0.25+0.1)×1000=1100ms
-    expect(delays[1]).toBeCloseTo(1100, -2);
+    // With 2× multiplier: songDuration=1.0s → timeout=(1.0-0.2)×1000=800ms
+    expect(delays[1]).toBeCloseTo(800, -2);
+  });
+
+  it("start() creates exactly 3 OscillatorNodes — one per tonal channel regardless of note count", () => {
+    const { ctx, oscs, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(THREE_CHANNEL_SONG, ctx as unknown as AudioContext);
+
+    expect(oscs).toHaveLength(3);
+  });
+
+  it("second cycle schedules pulse1 first note at cycleAudioStart + songDuration", () => {
+    const callbacks: Array<() => void> = [];
+    vi.stubGlobal("window", {
+      setTimeout: vi.fn((cb: () => void) => { callbacks.push(cb); return callbacks.length; }),
+      clearTimeout: vi.fn(),
+    });
+
+    const { ctx, oscs, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    const LOOP_SONG: Song = {
+      title: "Loop test",
+      bpm: 120, // beatDuration = 0.5s
+      pulse1: [{ beat: 0, dur: 1, freq: 440 }],
+      pulse2: [],
+      triangle: [],
+      noise: [],
+      totalBeats: 1, // songDuration = 0.5s
+    };
+
+    seq.start(LOOP_SONG, ctx as unknown as AudioContext);
+
+    // pulse1 osc is the first oscillator created (via createPulseOsc)
+    const pulse1Osc = oscs[0];
+    const freqParam = pulse1Osc.frequency as { setValueAtTime: ReturnType<typeof vi.fn> };
+
+    // First cycle: note scheduled at startTime = 0 + 0.08 = 0.08
+    const firstScheduledTime = freqParam.setValueAtTime.mock.calls.find(
+      (c: unknown[]) => c[0] === 440,
+    )?.[1] as number;
+    expect(firstScheduledTime).toBeCloseTo(0.08, 2);
+
+    // Trigger second cycle
+    callbacks[0]();
+
+    // Second cycle: note at cycleAudioStart + songDuration = 0.08 + 0.5 = 0.58
+    const secondScheduledTime = freqParam.setValueAtTime.mock.calls.filter(
+      (c: unknown[]) => c[0] === 440,
+    )[1]?.[1] as number;
+    expect(secondScheduledTime).toBeCloseTo(0.58, 2);
   });
 });
 
