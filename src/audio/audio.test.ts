@@ -4,6 +4,7 @@ import { playSFX } from "./sfx.ts";
 import { playMusic, stopMusic, freqOf, bassFreqOf, buildSchedule, BPM, BEAT_DURATION, MELODY_DATA } from "./music.ts";
 import { createPulseOsc, createAPUMixer, type Song } from "./apu.ts";
 import { Sequencer } from "./sequencer.ts";
+import { SONG_TYPE_A } from "./songs/type-a.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -706,5 +707,44 @@ describe("Sequencer — start/stop", () => {
 
     // With 2× multiplier: beatDur=0.25s → delay=(4×0.25+0.1)×1000=1100ms
     expect(delays[1]).toBeCloseTo(1100, -2);
+  });
+});
+
+describe("song data — Type A", () => {
+  function computeMaxBeatEnd(song: Song) {
+    let max = 0;
+    for (const n of [...song.pulse1, ...song.pulse2, ...song.triangle]) {
+      max = Math.max(max, n.beat + n.dur);
+    }
+    for (const n of song.noise) {
+      max = Math.max(max, n.beat + n.dur);
+    }
+    return max;
+  }
+
+  it("totalBeats equals max(note.beat + note.dur) across all channels", () => {
+    expect(SONG_TYPE_A.totalBeats).toBeCloseTo(computeMaxBeatEnd(SONG_TYPE_A), 5);
+  });
+
+  it("bpm is 144", () => {
+    expect(SONG_TYPE_A.bpm).toBe(144);
+  });
+
+  it("pulse1 has notes (lead melody)", () => {
+    expect(SONG_TYPE_A.pulse1.length).toBeGreaterThan(0);
+  });
+
+  it("triangle has notes (bass line)", () => {
+    expect(SONG_TYPE_A.triangle.length).toBeGreaterThan(0);
+  });
+
+  it("noise has notes (hi-hat percussion)", () => {
+    expect(SONG_TYPE_A.noise.length).toBeGreaterThan(0);
+  });
+
+  it("all pulse1 notes have valid non-zero frequencies", () => {
+    for (const n of SONG_TYPE_A.pulse1) {
+      expect(n.freq).toBeGreaterThan(0);
+    }
   });
 });
