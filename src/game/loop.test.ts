@@ -306,6 +306,45 @@ describe("Game integration", () => {
       const g = game as unknown as { audioEnabled: boolean };
       expect(g.audioEnabled).toBe(false);
     });
+
+    it("mute set during gameplay is preserved when returning to menu and starting a new game", () => {
+      // This tests the core bug: startAttractMode saves and exitAttractMode restores audioEnabled
+      // Flow: start game (audio on) → mute → quit to menu → start new game → audio still muted
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter"); // start game (exitAttractMode → audio on)
+      advanceFrames(10);
+      const g = game as unknown as { audioEnabled: boolean; state: { phase: GamePhase }; pauseMenuSelection: number };
+      expect(g.audioEnabled).toBe(true); // audio on after starting game
+      pressKey("KeyM"); releaseKey("KeyM"); // mute during game
+      advanceFrames(2);
+      expect(g.audioEnabled).toBe(false); // muted
+      pressKey("KeyP"); releaseKey("KeyP"); // pause
+      advanceFrames(5);
+      pressKey("ArrowDown"); releaseKey("ArrowDown"); // → Restart
+      pressKey("ArrowDown"); releaseKey("ArrowDown"); // → Quit to Menu
+      pressKey("Enter"); releaseKey("Enter"); // quit → startAttractMode (saves false)
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter"); // start new game → exitAttractMode (restores false)
+      advanceFrames(5);
+      expect(g.audioEnabled).toBe(false); // mute preserved
+    });
+
+    it("unmuting in attract mode then starting game keeps audio on", () => {
+      // Flow: fresh game (attract = audio off) → unmute → start game → audio stays on
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      const g = game as unknown as { audioEnabled: boolean };
+      expect(g.audioEnabled).toBe(false); // attract mode has audio off
+      pressKey("KeyM"); releaseKey("KeyM"); // toggle to on
+      advanceFrames(1);
+      expect(g.audioEnabled).toBe(true); // now on
+      pressKey("Enter"); releaseKey("Enter"); // start game → exitAttractMode restores _preAttractAudio
+      advanceFrames(5);
+      expect(g.audioEnabled).toBe(true); // audio still on
+    });
   });
 
   describe("Sprint mode", () => {

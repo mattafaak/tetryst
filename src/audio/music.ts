@@ -354,8 +354,11 @@ function playNoise(
 
 // ── Scheduling ─────────────────────────────────────────────────────────
 
+// Fraction of each note's duration used for sustain (near-legato for folk melody).
+const SUSTAIN_FRACTION = 0.92;
+
 function scheduleSong(events: NoteEvent[], baseTime: number): void {
-  const gap = 0.92; // sustain fraction — near-legato for a flowing folk melody
+  const gap = SUSTAIN_FRACTION;
 
   for (const evt of events) {
     const t = baseTime + evt.startBeat * BEAT_DURATION;

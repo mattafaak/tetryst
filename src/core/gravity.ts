@@ -64,6 +64,11 @@ export function applyGravity(
     onGround = false;
   }
 
+  // Fast path: nothing moved, ground state unchanged — only gravityTimer differs.
+  if (!dropped && onGround === state.lockState.onGround) {
+    return { state: { ...state, gravityTimer: timer }, dropped: false };
+  }
+
   let finalState: GameState = {
     ...state,
     gravityTimer: timer,

@@ -71,6 +71,19 @@ export function loadHighScores(mode: string): HighScore[] {
   }
 }
 
+// Per-mode top-N cache: avoids per-frame .slice() allocations in GameOver/Victory render.
+// Key: `${mode}:${n}:${generation}`. Invalidated on saveHighScore via generation increment.
+const topScoresCache = new Map<string, HighScore[]>();
+
+/** Load the top N scores for a mode, using a cached slice to avoid per-frame allocations. */
+export function loadTopScores(mode: string, n: number): HighScore[] {
+  const key = `${mode}:${n}:${_generation}`;
+  if (topScoresCache.has(key)) return topScoresCache.get(key)!;
+  const sliced = loadHighScores(mode).slice(0, n);
+  topScoresCache.set(key, sliced);
+  return sliced;
+}
+
 export function saveHighScore(
   entry: Omit<HighScore, "date">,
 ): HighScore[] {

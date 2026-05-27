@@ -7,5 +7,11 @@ export default defineConfig(({ command }) => ({
   plugins: command === "build" ? [viteSingleFile()] : [],
   test: {
     include: ["src/**/*.test.ts"],
+    exclude: ["src/**/*.fuzz.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      exclude: ["src/**/*.test.ts", "src/**/*.fuzz.test.ts", "src/test-utils/**"],
+    },
   },
 }));

@@ -20,7 +20,7 @@ import {
   SPRINT_LINE_TARGET,
   LINE_CLEAR_ANIM_DURATION,
 } from "../core/constants.ts";
-import { loadHighScores, getScoresGeneration } from "../core/high-scores.ts";
+import { loadTopScores, getScoresGeneration } from "../core/high-scores.ts";
 import { getBindingsGeneration } from "../core/key-bindings.ts";
 import { renderBackground } from "./background.ts";
 import { renderEffects, setParticleLayout } from "./effects.ts";
@@ -340,6 +340,13 @@ function drawGhost(
 ): void {
   const shape = PIECE_SHAPES[piece.type][piece.rotation];
   const color = PIECE_COLORS[piece.type];
+  const inset = 1;
+  const innerSize = cellSize - inset * 2;
+  const strokeSize = innerSize - 2;
+
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
 
   for (let r = 0; r < shape.length; r++) {
     for (let c = 0; c < shape[r].length; c++) {
@@ -347,22 +354,17 @@ function drawGhost(
         const visibleRow = ghostY + r - BUFFER_HEIGHT;
         const boardCol = piece.pos.x + c;
         if (visibleRow >= 0 && visibleRow < VISIBLE_HEIGHT) {
-          const x = boardCol * cellSize;
-          const y = visibleRow * cellSize;
-          const inset = 1;
-
-          ctx.fillStyle = color;
+          const x = boardCol * cellSize + inset;
+          const y = visibleRow * cellSize + inset;
           ctx.globalAlpha = GHOST_FILL_OPACITY;
-          ctx.fillRect(x + inset, y + inset, cellSize - inset * 2, cellSize - inset * 2);
-          ctx.strokeStyle = color;
+          ctx.fillRect(x, y, innerSize, innerSize);
           ctx.globalAlpha = GHOST_OPACITY;
-          ctx.lineWidth = 2;
-          ctx.strokeRect(x + inset + 1, y + inset + 1, cellSize - inset * 2 - 2, cellSize - inset * 2 - 2);
-          ctx.globalAlpha = 1;
+          ctx.strokeRect(x + 1, y + 1, strokeSize, strokeSize);
         }
       }
     }
   }
+  ctx.globalAlpha = 1;
 }
 
 function drawLineClearAnimation(
@@ -688,7 +690,7 @@ function drawVictory(
 }
 
 function drawBestScores(ctx: CanvasRenderingContext2D, mode: string, cx: number, y: number, style: "menu" | "summary" = "summary"): void {
-  const scores = loadHighScores(mode).slice(0, 5);
+  const scores = loadTopScores(mode, 5);
   if (style === "menu") {
     ctx.font = FONT_BOLD_11;
     ctx.fillStyle = AMBER;
@@ -723,12 +725,19 @@ function drawBestScores(ctx: CanvasRenderingContext2D, mode: string, cx: number,
   }
 }
 
+let _fmtMsLastInput = -1;
+let _fmtMsLastOutput = "0:00.00";
+
 function formatMs(ms: number): string {
+  const centisMs = Math.floor(ms / 10) * 10;
+  if (centisMs === _fmtMsLastInput) return _fmtMsLastOutput;
   const totalSec = Math.floor(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
   const centis = Math.floor((ms % 1000) / 10);
-  return `${min}:${sec.toString().padStart(2, "0")}.${centis.toString().padStart(2, "0")}`;
+  _fmtMsLastInput = centisMs;
+  _fmtMsLastOutput = `${min}:${sec.toString().padStart(2, "0")}.${centis.toString().padStart(2, "0")}`;
+  return _fmtMsLastOutput;
 }
 
 function drawHUD(
@@ -836,13 +845,11 @@ function drawSmallPiece(
   const color = PIECE_COLORS[type];
 
   ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
   for (let r = 0; r < shape.length; r++) {
     for (let c = 0; c < shape[r].length; c++) {
       if (shape[r][c]) {
-        ctx.fillStyle = color;
-        const cx = x + c * size;
-        const cy = y + r * size;
-        ctx.fillRect(cx + 1, cy + 1, size - 2, size - 2);
+        ctx.fillRect(x + c * size + 1, y + r * size + 1, size - 2, size - 2);
       }
     }
   }

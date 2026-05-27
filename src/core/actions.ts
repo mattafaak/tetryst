@@ -44,7 +44,11 @@ export function processAction(
 }
 
 function handlePause(state: GameState): GameState {
-  if (state.phase === GamePhase.Playing) {
+  if (
+    state.phase === GamePhase.Playing ||
+    state.phase === GamePhase.LineClear ||
+    state.phase === GamePhase.EntryDelay
+  ) {
     return { ...state, phase: GamePhase.Paused };
   }
   if (state.phase === GamePhase.Paused) {

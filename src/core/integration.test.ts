@@ -1,20 +1,28 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { createInitialState, startGame } from "./state.ts";
-import { clearLines } from "./board.ts";
+import { clearLines, createBoard, lockPiece } from "./board.ts";
 import { evaluateClear, effectiveLinesFor, calculateLevelFromEffective } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { checkModeVictory } from "./mode-rules.ts";
 import { pushPopup, tickPopups } from "../render/popups.ts";
+import { executeLock } from "./lock.ts";
 import { loadHighScores, saveHighScore } from "./high-scores.ts";
 import {
   GameMode,
   TetriminoType,
+  RotationState,
+  GamePhase,
 } from "./types.ts";
-import type { GameState } from "./types.ts";
+import type { GameState, Piece } from "./types.ts";
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
 } from "./constants.ts";
+
+function lockAndRun(state: GameState, piece: Piece) {
+  const lockedBoard = lockPiece(state.board, piece);
+  return executeLock({ ...state, board: lockedBoard, activePiece: null }, piece);
+}
 
 function mockStorage() {
   const store: Record<string, string> = {};
@@ -114,37 +122,61 @@ describe("integration", () => {
   });
 
   describe("Popups", () => {
-    it("pushes TETRIS! popup on 4-line clear", () => {
-      let state = startGame(createInitialState(GameMode.Marathon));
-      // Simulate 4-line clear condition
-      if (4 === 4) {
-        state = pushPopup(state, "TETRIS!", "#00f0f0");
+    function makePlayingState(): GameState {
+      return {
+        ...createInitialState(GameMode.Marathon),
+        phase: GamePhase.Playing,
+        activePiece: { type: TetriminoType.I, pos: { x: 0, y: 0 }, rotation: RotationState.ZERO },
+        nextQueue: [{ type: TetriminoType.T }, { type: TetriminoType.O }, { type: TetriminoType.S }, { type: TetriminoType.Z }, { type: TetriminoType.J }],
+        bag: [TetriminoType.L],
+      };
+    }
+
+    it("executeLock emits TETRIS! popup on 4-line clear", () => {
+      const board = createBoard();
+      // Fill bottom 4 rows completely; I-piece placed on top of the already-full rows
+      for (let r = BOARD_HEIGHT - 4; r < BOARD_HEIGHT; r++) {
+        for (let c = 0; c < BOARD_WIDTH; c++) board[r][c] = TetriminoType.J;
       }
-      expect(state.popups.some((p) => p.text === "TETRIS!")).toBe(true);
+      const state = { ...makePlayingState(), board };
+      const piece = { type: TetriminoType.I, pos: { x: 0, y: BOARD_HEIGHT - 4 }, rotation: RotationState.ZERO };
+      const result = lockAndRun(state, piece);
+      expect(result.linesCleared).toBe(4);
+      expect(result.popupInfo.some((p) => p.text === "TETRIS!")).toBe(true);
     });
 
-    it("pushes T-SPIN popup for T-spin board geometry", () => {
-      let state = startGame(createInitialState(GameMode.Marathon));
-      const tSpinResult = { isTSpin: true, isMini: false };
-      if (tSpinResult.isTSpin && 1 > 0) {
-        state = pushPopup(state, "T-SPIN SINGLE", "#a000f0");
-      }
-      expect(state.popups.some((p) => p.text === "T-SPIN SINGLE")).toBe(true);
+    it("executeLock emits T-SPIN SINGLE popup on T-spin 1-line clear", () => {
+      // T at ZERO, pos=(3,20). Piece cells: (4,20),(3,21),(4,21),(5,21).
+      // 3×3 bounding box corners: TL=(3,20), TR=(5,20), BL=(3,22), BR=(5,22).
+      // ZERO back=[TL,TR]. Full T-spin: both back + ≥1 front = ≥3 corners, both back occupied.
+      // Setup: TL + TR (both back) + BL (front) = 3 corners → isTSpin=true, isMini=false.
+      // Row 21 filled (minus the 3 T-piece cells) → 1 line clears after T locks.
+      const board = createBoard();
+      for (let c = 0; c < BOARD_WIDTH; c++) board[21][c] = TetriminoType.J;
+      board[21][3] = null; board[21][4] = null; board[21][5] = null;
+      board[20][3] = TetriminoType.I; // TL (back)
+      board[20][5] = TetriminoType.I; // TR (back) — both back occupied
+      board[22][3] = TetriminoType.I; // BL (front) — 3rd corner → full T-spin
+      const state = { ...makePlayingState(), board };
+      const piece = { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO };
+      const result = lockAndRun(state, piece);
+      expect(result.tSpinResult.isTSpin).toBe(true);
+      expect(result.tSpinResult.isMini).toBe(false);
+      expect(result.popupInfo.some((p) => p.text === "T-SPIN SINGLE")).toBe(true);
     });
 
-    it("B2B popup appears on second consecutive Tetris", () => {
-      let state = startGame(createInitialState(GameMode.Marathon));
-      // First Tetris: isB2BActive was false → isB2B becomes true, no B2B bonus
-      state = pushPopup(state, "TETRIS!", "#00f0f0");
-      state = { ...state, backToBack: true };
-      // Second Tetris: isB2BActive was true → B2B bonus applies
-      const scoreResult = evaluateClear(4, { isTSpin: false, isMini: false }, state.level, true, false);
-      if (scoreResult.isB2B) {
-        state = pushPopup(state, "TETRIS!", "#00f0f0");
-        state = pushPopup(state, "BACK-TO-BACK", "#f0a000");
+    it("B2B popup appears on second consecutive Tetris via executeLock", () => {
+      const board = createBoard();
+      for (let r = BOARD_HEIGHT - 4; r < BOARD_HEIGHT; r++) {
+        for (let c = 0; c < BOARD_WIDTH; c++) board[r][c] = TetriminoType.J;
       }
-      expect(state.popups.some((p) => p.text === "TETRIS!")).toBe(true);
-      expect(state.popups.some((p) => p.text === "BACK-TO-BACK")).toBe(true);
+      // Second Tetris: backToBack already true from first
+      const state = { ...makePlayingState(), board, backToBack: true };
+      const piece = { type: TetriminoType.I, pos: { x: 0, y: BOARD_HEIGHT - 4 }, rotation: RotationState.ZERO };
+      const result = lockAndRun(state, piece);
+      expect(result.linesCleared).toBe(4);
+      expect(result.popupInfo.some((p) => p.text === "TETRIS!")).toBe(true);
+      expect(result.popupInfo.some((p) => p.text === "BACK-TO-BACK")).toBe(true);
     });
 
     it("popup expires after 1200ms", () => {

@@ -1,49 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { executeLock } from "./lock.ts";
-import { lockPiece } from "./board.ts";
+import { lockPiece, createBoard } from "./board.ts";
 import { TetriminoType, RotationState, GamePhase, GameMode } from "./types.ts";
 import type { GameState, Cell } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT, SPRINT_LINE_TARGET, MARATHON_MAX_LEVEL } from "./constants.ts";
-import { createBoard } from "./board.ts";
-
-function baseState(overrides?: Partial<GameState>): GameState {
-  return {
-    board: createBoard(),
-    activePiece: null,
-    ghostY: 0,
-    heldPiece: null,
-    hasSwappedThisTurn: false,
-    nextQueue: [],
-    score: 0,
-    level: 0,
-    lines: 0,
-    effectiveLines: 0,
-    combo: 0,
-    backToBack: false,
-    phase: GamePhase.Playing,
-    gravityTimer: 0,
-    lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0 },
-    entryDelayTimer: 0,
-    bag: [],
-    lineClearTimer: 0,
-    clearedRowIndices: [],
-    mode: GameMode.Marathon,
-    modeTimer: 0,
-    popups: [],
-    ...overrides,
-  };
-}
-
-function fillRows(count: number): Cell[][] {
-  const board = createBoard();
-  for (let i = 0; i < count; i++) {
-    const row = board[BOARD_HEIGHT - 1 - i];
-    for (let x = 0; x < BOARD_WIDTH; x++) {
-      row[x] = TetriminoType.I;
-    }
-  }
-  return board;
-}
+import { baseState, fillRows } from "../test-utils/test-utils.ts";
 
 /** Shortcut: lock a piece into a board copy and return the result. */
 function lockAndExecute(
@@ -52,7 +13,12 @@ function lockAndExecute(
   overrides?: Partial<GameState>,
 ) {
   const boardWithPiece = lockPiece(board, piece);
-  const state = baseState({ board: boardWithPiece, ...overrides });
+  const state = baseState({
+    phase: GamePhase.Playing,
+    lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0 },
+    board: boardWithPiece,
+    ...overrides,
+  });
   return executeLock(state, piece);
 }
 
@@ -134,72 +100,21 @@ describe("executeLock", () => {
   });
 
   it("T-Spin Mini shows T-SPIN MINI popup", () => {
+    // T-piece ZERO rotation at (3, 20). Piece cells: (4,20), (3,21), (4,21), (5,21).
+    // 3×3 bounding box corners: TL=(3,20), TR=(5,20), BL=(3,22), BR=(5,22).
+    // For ZERO: back=[TL, TR]. Mini requires 3 corners occupied but NOT both back.
+    // Setup: TL + BL + BR occupied (3 corners), TR absent → NOT both back → isMini.
     const board = createBoard();
-    const row = BOARD_HEIGHT - 1;
-    for (let x = 0; x < BOARD_WIDTH; x++) board[row][x] = TetriminoType.J;
-    // L rotation: stem right, flat left, back = [0, 2] = TL, BL
-    // Occupy TL and TR (3 corners, back=TL is 1 of 2 back corners) → Mini
-    // T at x=3, y=row-2. 3x3 bounding box corners: TL=(3,row-2), TR=(5,row-2), BL=(3,row), BR=(5,row)
-    board[row - 2][3] = TetriminoType.S; // TL (back)
-    board[row - 2][5] = TetriminoType.Z; // TR (not back for L)
-    board[row][3] = TetriminoType.O; // BL (back) → out of bounds? row = BOARD_HEIGHT-1, row+2 = BOARD_HEIGHT+1, out of bounds
-    // Actually for L rotation, back = [0, 2] = TL, BL. With T at y=row-2:
-    // TL = (3, row-2), BL = (3, row). BL is at y=row which is BOARD_HEIGHT-1, so BL = (3, BOARD_HEIGHT-1)
-    // That's in bounds. BR = (5, row) = (5, BOARD_HEIGHT-1), also in bounds.
-    // TR = (5, row-2) = (5, BOARD_HEIGHT-3), in bounds.
-    // Occupy TL (back) + TR (not back) → 2 occupied. Need 3. Add one more.
-    board[row - 2][4] = TetriminoType.Z; // Between TL and TR at x=4 — doesn't help, need corners.
-    // Fill BR: (5, BOARD_HEIGHT-1) is in the filled row. That's occupied!
-    // So TL (back) + TR + BR = 3 occupied. Back corners: TL occupied, BL = (3, BOARD_HEIGHT-1)
-    // Is (3, BOARD_HEIGHT-1) occupied? The row is full of J, so yes!
-    // Both back corners occupied → Full T-Spin, not Mini!
-    //
-    // Need: 3 occupied corners but NOT both back.
-    // For L rotation: back[0]=0=TL, back[1]=2=BL
-    // Occupy TL (back) + TR + BR = 3. BL not occupied → both back NOT occupied ✓
-    // Wait, BL = (3, BOARD_HEIGHT-1). The bottom row is full! So BL IS occupied.
-    // That means both back (TL + BL) are occupied → Full T-Spin, not Mini.
-    //
-    // To get Mini: occupy TL + TR + something else but NOT BL.
-    // Can't avoid BL being occupied since the row is full.
-    //
-    // Alternative: use a different rotation where the back corner doesn't land in the filled row.
-    // R rotation: stem right, flat left, back = [1, 3] = TR, BR
-    // With R rotation, back = TR and BR. Both are at the same y-level as TL and BL.
-    // If bottom row is full, BL = (3, BOARD_HEIGHT-1) is occupied but BL is NOT a back corner for R.
-    // For R: TL=(3, BOARD_HEIGHT-3), TR=(5, BOARD_HEIGHT-3), BL=(3, BOARD_HEIGHT-1), BR=(5, BOARD_HEIGHT-1)
-    // Back = [1, 3] = TR, BR. If BL also occupied but not back → 3 occupied, both back + BL = 3.
-    // Both TR and BR (back) + BL = 3. Both back occupied → Full T-Spin.
-    //
-    // For Mini, need exactly 1 back corner occupied of 3 total.
-    // In ZERO: back = [0, 1] = TL, TR. If BL only is the 3rd → 3 occupied: TL + TR + BL.
-    // Both back (TL, TR) occupied → Full.
-    //
-    // Hmm, this is tricky. For Mini with 1 line clear:
-    // Need 3 occupied corners, but only 1 of them is a back corner.
-    // The bottom row (y=BOARD_HEIGHT-1) is full, so BL and BR there are both occupied.
-    // That means 2 of the 4 corners are always occupied from the full row.
-    // So 3 occupied = at least 2 from bottom row + 1 more from above.
-    // The 2 from the bottom are either BL+BR or... depends on row.
-    //
-    // If I don't fill the full bottom row, can I still get a T-Spin Mini?
-    //
-    // Actually, let me just skip trying to be clever and use a specific known setup.
-    // Place T in ZERO rotation. Back corners = TL, TR. Fill bottom row at 3 cells.
-    // No, that's wrong. Let me just not make this overly complex.
-    //
-    // Known Mini setup: T at (3, 19), ZERO rotation, with specific blocks.
-    // But our board is 40 rows tall.
-    //
-    // Minimal check: if the 3-corner rule happens to fire isMini, label is correct
-    const piece = { type: TetriminoType.T, pos: { x: 3, y: row - 2 }, rotation: RotationState.L };
+    board[20][3] = TetriminoType.I; // TL (one back corner — occupied)
+    board[22][3] = TetriminoType.I; // BL (front corner — occupied)
+    board[22][5] = TetriminoType.I; // BR (front corner — occupied)
+    // TR (5, 20) intentionally left empty → only one back corner occupied → Mini ✓
+    const piece = { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO };
     const result = lockAndExecute(board, piece, { level: 0 });
-    // Only check label if Mini was detected
-    if (result.tSpinResult.isTSpin && result.tSpinResult.isMini) {
-      const miniPopup = result.popupInfo.find((p) => p.text === "T-SPIN MINI");
-      expect(miniPopup).toBeDefined();
-    }
-    // If not a mini, this test is inconclusive but not a failure
+    // Assertion is unconditional: the geometry above guarantees isMini = true
+    expect(result.tSpinResult.isTSpin).toBe(true);
+    expect(result.tSpinResult.isMini).toBe(true);
+    expect(result.popupInfo.some((p) => p.text === "T-SPIN MINI")).toBe(true);
   });
 
   it("Perfect Clear shows PERFECT CLEAR popup", () => {

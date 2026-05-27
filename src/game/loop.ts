@@ -41,6 +41,7 @@ export class Game {
   private isKeyBindingScreen = false;
   private bindingsSelectedIdx = 0;
   private bindingsWaitingForKey = false;
+  private _preAttractAudio: boolean = true;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
@@ -80,7 +81,7 @@ export class Game {
   /** Auto-pause when the tab loses focus so the game loop doesn't accumulate
    *  invisible time (especially important for Ultra mode's countdown). */
   private onVisibilityChange = (): void => {
-    if (typeof document !== "undefined" && document.hidden && this.state.phase === GamePhase.Playing) {
+    if (typeof document !== "undefined" && document.hidden) {
       this.handleInput({ type: "Pause" });
     }
   };
@@ -628,6 +629,7 @@ export class Game {
 
   private startAttractMode(): void {
     this.isAttractMode = true;
+    this._preAttractAudio = this.audioEnabled;
     this.audioEnabled = false;
     this.aiController = createAttractAIController();
     clearEffects();
@@ -637,7 +639,7 @@ export class Game {
 
   private exitAttractMode(): void {
     this.isAttractMode = false;
-    this.audioEnabled = true;
+    this.audioEnabled = this._preAttractAudio;
     this.aiController = null;
   }
 }

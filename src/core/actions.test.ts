@@ -502,3 +502,56 @@ describe("mode-specific level-up", () => {
     expect(next.effectiveLines).toBeGreaterThan(0);
   });
 });
+
+describe("handlePause", () => {
+  it("Pause during LineClear transitions to Paused", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.LineClear };
+    const next = processAction(s, { type: "Pause" });
+    expect(next.phase).toBe(GamePhase.Paused);
+  });
+
+  it("Pause during EntryDelay transitions to Paused", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay };
+    const next = processAction(s, { type: "Pause" });
+    expect(next.phase).toBe(GamePhase.Paused);
+  });
+
+  it("Pause during Playing transitions to Paused (existing behavior unchanged)", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.Playing };
+    const next = processAction(s, { type: "Pause" });
+    expect(next.phase).toBe(GamePhase.Paused);
+  });
+});
+
+describe("processAction dispatch", () => {
+  it("Hold dispatches to holdPiece and updates heldPiece", () => {
+    const s: GameState = {
+      ...baseState(),
+      heldPiece: null,
+      hasSwappedThisTurn: false,
+      nextQueue: [
+        { type: TetriminoType.O },
+        { type: TetriminoType.S },
+        { type: TetriminoType.Z },
+        { type: TetriminoType.J },
+        { type: TetriminoType.L },
+      ],
+      bag: [TetriminoType.T],
+    };
+    const next = processAction(s, { type: "Hold" });
+    expect(next.heldPiece).toBe(TetriminoType.I); // active piece (I) moved to held
+    expect(next.hasSwappedThisTurn).toBe(true);
+  });
+
+  it("Mute is a no-op in processAction (returns same state)", () => {
+    const s: GameState = { ...baseState() };
+    const next = processAction(s, { type: "Mute" });
+    expect(next).toBe(s); // reference equality — no new object created
+  });
+
+  it("KeyBindings is a no-op in processAction (returns same state)", () => {
+    const s: GameState = { ...baseState() };
+    const next = processAction(s, { type: "KeyBindings" });
+    expect(next).toBe(s);
+  });
+});

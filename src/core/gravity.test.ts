@@ -5,12 +5,12 @@ import {
   RotationState,
   type GameState,
   GamePhase,
-  GameMode,
   type Piece,
   type Board,
   type Cell,
 } from "./types.ts";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "./constants.ts";
+import { baseState } from "../test-utils/test-utils.ts";
 
 function emptyBoard(): Board {
   return Array.from({ length: BOARD_HEIGHT }, () =>
@@ -34,30 +34,14 @@ function makeState(
         } as Piece)
       : opts.piece;
 
-  return {
+  return baseState({
+    phase: GamePhase.Playing,
     board: emptyBoard(),
     activePiece: piece,
-    ghostY: 0,
-    heldPiece: null,
-    hasSwappedThisTurn: false,
-    nextQueue: [],
-    score: 0,
     level: opts.level ?? 0,
-    lines: 0,
-    effectiveLines: 0,
-    combo: 0,
-    backToBack: false,
-    phase: GamePhase.Playing,
     gravityTimer: opts.gravityTimer ?? 0,
     lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
-    entryDelayTimer: 0,
-    bag: [],
-    lineClearTimer: 0,
-    clearedRowIndices: [],
-    mode: GameMode.Marathon,
-    modeTimer: 0,
-    popups: [],
-  };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -216,5 +200,18 @@ describe("applyGravity", () => {
     expect(result.dropped).toBe(true);
     expect(result.state.activePiece!.pos.y).toBe(BOARD_HEIGHT - 2);
     expect(result.state.lockState.onGround).toBe(true);
+  });
+
+  it("returns same activePiece and lockState references when piece did not move and onGround unchanged", () => {
+    // When dt < gravity delay and onGround hasn't changed, no new piece/lockState objects
+    const state = makeState({ gravityTimer: 0 });
+    const result = applyGravity(state, 10); // 10ms << 1000ms delay at level 0
+    expect(result.dropped).toBe(false);
+    // activePiece reference must be preserved (no new object created)
+    expect(result.state.activePiece).toBe(state.activePiece);
+    // lockState reference must be preserved
+    expect(result.state.lockState).toBe(state.lockState);
+    // Only gravityTimer should differ
+    expect(result.state.gravityTimer).toBe(10);
   });
 });

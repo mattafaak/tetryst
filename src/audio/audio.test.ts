@@ -366,4 +366,51 @@ describe("music behavioral — scheduling", () => {
     const schedule = buildSchedule(MELODY_DATA);
     expect(schedule[0].startBeat).toBe(0);
   });
+
+  it("buildSchedule returns empty array for empty melody", () => {
+    expect(buildSchedule([])).toEqual([]);
+  });
+
+  it("buildSchedule produces correct beat offsets and durations", () => {
+    const melody = [
+      { note: "A4", duration: 1 },
+      { note: "B4", duration: 0.5 },
+      { note: "C5", duration: 1.5 },
+    ];
+    const events = buildSchedule(melody);
+    expect(events).toHaveLength(3);
+    expect(events[0].startBeat).toBe(0);
+    expect(events[0].durBeats).toBe(1);
+    expect(events[0].note).toBe("A4");
+    expect(events[1].startBeat).toBe(1);
+    expect(events[1].durBeats).toBe(0.5);
+    expect(events[1].note).toBe("B4");
+    expect(events[2].startBeat).toBe(1.5);
+    expect(events[2].durBeats).toBe(1.5);
+    expect(events[2].note).toBe("C5");
+  });
+
+  it("buildSchedule bass carries forward on off-beats", () => {
+    const melody = [
+      { note: "A4", duration: 1 },
+      { note: "B4", duration: 0.5 },
+      { note: "C5", duration: 0.5 },
+    ];
+    const events = buildSchedule(melody);
+    expect(events[0].bassFreq).toBe(110.0);
+    expect(events[1].bassFreq).toBe(82.41);
+    expect(events[2].startBeat).toBe(1.5);
+    expect(events[2].bassFreq).toBe(82.41);
+  });
+
+  it("buildSchedule last event endBeat does not exceed total duration", () => {
+    const events = buildSchedule(MELODY_DATA);
+    const totalBeats = events.reduce((max, e) => Math.max(max, e.startBeat + e.durBeats), 0);
+    expect(events[events.length - 1].startBeat + events[events.length - 1].durBeats).toBeLessThanOrEqual(totalBeats);
+  });
+
+  it("total melody duration is ≤ 176 beats", () => {
+    const total = MELODY_DATA.reduce((sum, e) => sum + e.duration, 0);
+    expect(total).toBeLessThanOrEqual(176);
+  });
 });

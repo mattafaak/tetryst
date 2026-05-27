@@ -208,6 +208,7 @@ describe("state", () => {
       const newState = holdPiece(state);
       expect(newState.phase).toBe(GamePhase.GameOver);
       expect(newState.heldPiece).toBe(TetriminoType.T);
+      expect(newState.activePiece).toBeNull();
     });
   });
 
@@ -263,6 +264,7 @@ describe("state", () => {
 
       const newState = spawnNextPiece(state);
       expect(newState.phase).toBe(GamePhase.GameOver);
+      expect(newState.activePiece).toBeNull();
     });
 
     it("works during EntryDelay phase", () => {
@@ -321,7 +323,7 @@ describe("state", () => {
 
       const newState = spawnNextPiece(state);
       expect(newState.phase).toBe(GamePhase.GameOver);
-      expect(newState.activePiece!.type).toBe(TetriminoType.I);
+      expect(newState.activePiece).toBeNull();
     });
 
     it("game over for O-piece collision at spawn", () => {
@@ -348,7 +350,7 @@ describe("state", () => {
 
       const newState = spawnNextPiece(state);
       expect(newState.phase).toBe(GamePhase.GameOver);
-      expect(newState.activePiece!.type).toBe(TetriminoType.O);
+      expect(newState.activePiece).toBeNull();
     });
 
     it("queue stays at NEXT_QUEUE_SIZE over multiple spawns as it refills from bag", () => {

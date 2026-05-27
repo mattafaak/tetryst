@@ -108,7 +108,7 @@ export function holdPiece(state: GameState): GameState {
 
   // Check if swap causes collision (game over condition for swap)
   if (checkCollision(baseState.board, swappedPiece)) {
-    return { ...baseState, phase: GamePhase.GameOver };
+    return { ...baseState, phase: GamePhase.GameOver, activePiece: null };
   }
 
   return {
@@ -156,8 +156,8 @@ function spawnFromQueue(state: GameState): GameState {
     return {
       ...state,
       phase: GamePhase.GameOver,
-      activePiece: piece,
-      ghostY: piece.pos.y,
+      activePiece: null,
+      ghostY: 0,
       nextQueue: newQueue,
       bag: currentBag,
       lockState: resetLockState(),

@@ -17,19 +17,13 @@ export function shouldLock(
     return { state, shouldLock: true };
   }
 
-  const newState: GameState = {
+  const newTimer = state.lockState.timer + dt;
+  const lockedState: GameState = {
     ...state,
-    lockState: {
-      ...state.lockState,
-      timer: state.lockState.timer + dt,
-    },
+    lockState: { ...state.lockState, timer: newTimer },
   };
 
-  if (newState.lockState.timer >= LOCK_DELAY) {
-    return { state: newState, shouldLock: true };
-  }
-
-  return { state: newState, shouldLock: false };
+  return { state: lockedState, shouldLock: newTimer >= LOCK_DELAY };
 }
 
 export function resetLockState(): LockState {
