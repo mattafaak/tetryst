@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { pushPopup, batchPushPopups, tickPopups } from "./popups.ts";
-import { GamePhase, GameMode } from "../core/types.ts";
-import type { GameState } from "../core/types.ts";
+import { GamePhase, GameMode } from "./types.ts";
+import type { GameState } from "./types.ts";
 
 function emptyState(): GameState {
   return {

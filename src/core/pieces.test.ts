@@ -11,19 +11,19 @@ import { TetriminoType, RotationState } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
 
 describe("spawnPiece", () => {
-  it("should spawn a standard piece at the standard spawn position", () => {
-    const piece = spawnPiece(TetriminoType.T);
-    expect(piece.type).toBe(TetriminoType.T);
-    expect(piece.pos).toEqual({ x: 3, y: 19 });
-    expect(piece.rotation).toBe(RotationState.ZERO);
-  });
-
-  it("should spawn L-piece at the standard spawn position", () => {
-    const piece = spawnPiece(TetriminoType.L);
-    expect(piece.type).toBe(TetriminoType.L);
-    expect(piece.pos).toEqual({ x: 3, y: 19 });
-    expect(piece.rotation).toBe(RotationState.ZERO);
-  });
+  // T, L, S, Z, J, O all spawn at (x=3, y=19); I-piece spawns one row higher
+  const STANDARD_SPAWN_PIECES = [
+    TetriminoType.T, TetriminoType.L, TetriminoType.S,
+    TetriminoType.Z, TetriminoType.J, TetriminoType.O,
+  ];
+  for (const type of STANDARD_SPAWN_PIECES) {
+    it(`should spawn ${type}-piece at standard position (x=3, y=19)`, () => {
+      const piece = spawnPiece(type);
+      expect(piece.type).toBe(type);
+      expect(piece.pos).toEqual({ x: 3, y: 19 });
+      expect(piece.rotation).toBe(RotationState.ZERO);
+    });
+  }
 
   it("should spawn I-piece at I_SPAWN_POSITION (x=3, y=18)", () => {
     const piece = spawnPiece(TetriminoType.I);
@@ -34,13 +34,8 @@ describe("spawnPiece", () => {
 
   it("should set rotation to ZERO for all piece types", () => {
     const types = [
-      TetriminoType.I,
-      TetriminoType.O,
-      TetriminoType.T,
-      TetriminoType.S,
-      TetriminoType.Z,
-      TetriminoType.J,
-      TetriminoType.L,
+      TetriminoType.I, TetriminoType.O, TetriminoType.T,
+      TetriminoType.S, TetriminoType.Z, TetriminoType.J, TetriminoType.L,
     ];
     for (const type of types) {
       const piece = spawnPiece(type);
@@ -48,33 +43,6 @@ describe("spawnPiece", () => {
     }
   });
 
-  it("should spawn S-piece at standard spawn position (x=3, y=19)", () => {
-    const piece = spawnPiece(TetriminoType.S);
-    expect(piece.type).toBe(TetriminoType.S);
-    expect(piece.pos).toEqual({ x: 3, y: 19 });
-    expect(piece.rotation).toBe(RotationState.ZERO);
-  });
-
-  it("should spawn Z-piece at standard spawn position (x=3, y=19)", () => {
-    const piece = spawnPiece(TetriminoType.Z);
-    expect(piece.type).toBe(TetriminoType.Z);
-    expect(piece.pos).toEqual({ x: 3, y: 19 });
-    expect(piece.rotation).toBe(RotationState.ZERO);
-  });
-
-  it("should spawn J-piece at standard spawn position (x=3, y=19)", () => {
-    const piece = spawnPiece(TetriminoType.J);
-    expect(piece.type).toBe(TetriminoType.J);
-    expect(piece.pos).toEqual({ x: 3, y: 19 });
-    expect(piece.rotation).toBe(RotationState.ZERO);
-  });
-
-  it("should spawn O-piece at standard spawn position (x=3, y=19)", () => {
-    const piece = spawnPiece(TetriminoType.O);
-    expect(piece.type).toBe(TetriminoType.O);
-    expect(piece.pos).toEqual({ x: 3, y: 19 });
-    expect(piece.rotation).toBe(RotationState.ZERO);
-  });
 });
 
 describe("movePiece", () => {

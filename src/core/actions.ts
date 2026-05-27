@@ -10,7 +10,7 @@ import { executeLock } from "./lock.ts";
 import { holdPiece } from "./state.ts";
 import { resetLockState, updateLowestY } from "./lock-delay.ts";
 import { MAX_LOCK_RESETS, SOFT_DROP_SCORE } from "./constants.ts";
-import { batchPushPopups } from "../render/popups.ts";
+import { batchPushPopups } from "./popups.ts";
 import type { LockState, Piece } from "./types.ts";
 
 export function processAction(

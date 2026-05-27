@@ -689,7 +689,7 @@ function drawVictory(
   ctx.fillText("PRESS  ENTER  FOR  MENU", cx, cy + 152);
 }
 
-function drawBestScores(ctx: CanvasRenderingContext2D, mode: string, cx: number, y: number, style: "menu" | "summary" = "summary"): void {
+function drawBestScores(ctx: CanvasRenderingContext2D, mode: GameMode, cx: number, y: number, style: "menu" | "summary" = "summary"): void {
   const scores = loadTopScores(mode, 5);
   if (style === "menu") {
     ctx.font = FONT_BOLD_11;

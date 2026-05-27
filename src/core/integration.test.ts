@@ -4,7 +4,7 @@ import { clearLines, createBoard, lockPiece } from "./board.ts";
 import { evaluateClear, effectiveLinesFor, calculateLevelFromEffective } from "./scoring.ts";
 import { updateCombo } from "./combo.ts";
 import { checkModeVictory } from "./mode-rules.ts";
-import { pushPopup, tickPopups } from "../render/popups.ts";
+import { pushPopup, tickPopups } from "./popups.ts";
 import { executeLock } from "./lock.ts";
 import { loadHighScores, saveHighScore } from "./high-scores.ts";
 import {

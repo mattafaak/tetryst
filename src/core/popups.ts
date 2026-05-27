@@ -1,4 +1,4 @@
-import { type GameState, type PopupItem } from "../core/types.ts";
+import { type GameState, type PopupItem } from "./types.ts";
 
 const POPUP_DURATION = 1200;
 

@@ -5,6 +5,7 @@ import {
   lockPiece,
   clearLines,
   isLockOut,
+  isPerfectClear,
 } from "./board.ts";
 import { TetriminoType, RotationState } from "./types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT } from "./constants.ts";
@@ -222,125 +223,22 @@ describe("checkCollision", () => {
     expect(checkCollision(board, piece)).toBe(true);
   });
 
-  it("should collide at x=8 for T-piece (right wall)", () => {
-    const board = createBoard();
-    // T-piece rotation 0: rightmost filled at shape row 1 col 2.
-    // At x=8: boardX = 10 >= BOARD_WIDTH => collision.
-    const piece = {
-      type: TetriminoType.T,
-      pos: { x: 8, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=8 for S-piece (right wall)", () => {
-    const board = createBoard();
-    // S-piece rotation 0: rightmost filled at shape row 0 col 2.
-    // At x=8: boardX = 10 >= BOARD_WIDTH => collision.
-    const piece = {
-      type: TetriminoType.S,
-      pos: { x: 8, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=8 for Z-piece (right wall)", () => {
-    const board = createBoard();
-    // Z-piece rotation 0: rightmost filled at shape row 1 col 2.
-    // At x=8: boardX = 10 >= BOARD_WIDTH => collision.
-    const piece = {
-      type: TetriminoType.Z,
-      pos: { x: 8, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=8 for J-piece (right wall)", () => {
-    const board = createBoard();
-    // J-piece rotation 0: rightmost filled at shape row 1 col 2.
-    // At x=8: boardX = 10 >= BOARD_WIDTH => collision.
-    const piece = {
-      type: TetriminoType.J,
-      pos: { x: 8, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=8 for L-piece (right wall)", () => {
-    const board = createBoard();
-    // L-piece rotation 0: rightmost filled at shape row 1 col 2.
-    // At x=8: boardX = 10 >= BOARD_WIDTH => collision.
-    const piece = {
-      type: TetriminoType.L,
-      pos: { x: 8, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=-1 for T-piece (left wall)", () => {
-    const board = createBoard();
-    // T-piece rotation 0: leftmost filled at shape row 1 col 0.
-    // At x=-1: boardX = -1 < 0 => collision.
-    const piece = {
-      type: TetriminoType.T,
-      pos: { x: -1, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=-1 for S-piece (left wall)", () => {
-    const board = createBoard();
-    // S-piece rotation 0: leftmost filled at shape row 1 col 0.
-    // At x=-1: boardX = -1 < 0 => collision.
-    const piece = {
-      type: TetriminoType.S,
-      pos: { x: -1, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=-1 for Z-piece (left wall)", () => {
-    const board = createBoard();
-    // Z-piece rotation 0: leftmost filled at shape row 0 col 0.
-    // At x=-1: boardX = -1 < 0 => collision.
-    const piece = {
-      type: TetriminoType.Z,
-      pos: { x: -1, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=-1 for J-piece (left wall)", () => {
-    const board = createBoard();
-    // J-piece rotation 0: leftmost filled at shape row 0 col 0 and row 1 col 0.
-    // At x=-1: boardX = -1 < 0 => collision.
-    const piece = {
-      type: TetriminoType.J,
-      pos: { x: -1, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
-
-  it("should collide at x=-1 for L-piece (left wall)", () => {
-    const board = createBoard();
-    // L-piece rotation 0: leftmost filled at shape row 1 col 0.
-    // At x=-1: boardX = -1 < 0 => collision.
-    const piece = {
-      type: TetriminoType.L,
-      pos: { x: -1, y: 5 },
-      rotation: RotationState.ZERO,
-    };
-    expect(checkCollision(board, piece)).toBe(true);
-  });
+  // JLSTZ pieces all have 3-wide bounding boxes at rotation ZERO:
+  // right edge overflows at x=8 (col 2 → boardX 10 >= BOARD_WIDTH)
+  // left edge overflows at x=-1 (col 0 → boardX -1 < 0)
+  const JLSTZ = [TetriminoType.T, TetriminoType.S, TetriminoType.Z, TetriminoType.J, TetriminoType.L];
+  for (const type of JLSTZ) {
+    it(`should collide at x=8 for ${type}-piece (right wall)`, () => {
+      const board = createBoard();
+      expect(checkCollision(board, { type, pos: { x: 8, y: 5 }, rotation: RotationState.ZERO })).toBe(true);
+    });
+  }
+  for (const type of JLSTZ) {
+    it(`should collide at x=-1 for ${type}-piece (left wall)`, () => {
+      const board = createBoard();
+      expect(checkCollision(board, { type, pos: { x: -1, y: 5 }, rotation: RotationState.ZERO })).toBe(true);
+    });
+  }
 
   it("should allow piece fully above the board (all cells with negative y)", () => {
     const board = createBoard();
@@ -875,5 +773,31 @@ describe("isLockOut", () => {
     // Row 1: y=19+1=20 = BUFFER_HEIGHT (visible) → not lock-out
     const piece = { type: TetriminoType.T, pos: { x: 3, y: 19 }, rotation: RotationState.ZERO };
     expect(isLockOut(piece)).toBe(false);
+  });
+});
+
+describe("isPerfectClear", () => {
+  it("returns true for a fully empty board", () => {
+    expect(isPerfectClear(createBoard())).toBe(true);
+  });
+
+  it("returns false when a single cell is occupied", () => {
+    const board = createBoard();
+    board[BOARD_HEIGHT - 1][0] = TetriminoType.I;
+    expect(isPerfectClear(board)).toBe(false);
+  });
+
+  it("returns false when a full bottom row is occupied", () => {
+    const board = createBoard();
+    for (let c = 0; c < BOARD_WIDTH; c++) {
+      board[BOARD_HEIGHT - 1][c] = TetriminoType.I;
+    }
+    expect(isPerfectClear(board)).toBe(false);
+  });
+
+  it("returns false when only the top-left cell is occupied", () => {
+    const board = createBoard();
+    board[0][0] = TetriminoType.T;
+    expect(isPerfectClear(board)).toBe(false);
   });
 });

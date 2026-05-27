@@ -15,7 +15,7 @@ import { playMusic, stopMusic } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
 import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL, MAX_CELL_SIZE } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
-import { batchPushPopups, tickPopups } from "../render/popups.ts";
+import { batchPushPopups, tickPopups } from "../core/popups.ts";
 import { triggerFlash, clearEffects, spawnParticlesForRows } from "../render/effects.ts";
 
 const GAME_MODES: readonly GameMode[] = Object.freeze([GameMode.Marathon, GameMode.Sprint, GameMode.Ultra]);
@@ -36,6 +36,7 @@ export class Game {
   private attractNeedsReset: boolean = false;
   private selectedMode: GameMode = GameMode.Marathon;
   private selectedStartLevel: number = 0;
+  private static readonly PAUSE_MENU_COUNT = 3;
   private pauseMenuSelection = 0;
   private bindings: Record<string, InputAction> = loadBindings();
   private isKeyBindingScreen = false;
@@ -224,11 +225,11 @@ export class Game {
         return;
       }
       if (action.type === "RotateCW" || action.type === "MoveLeft") {
-        this.pauseMenuSelection = (this.pauseMenuSelection - 1 + 3) % 3;
+        this.pauseMenuSelection = (this.pauseMenuSelection - 1 + Game.PAUSE_MENU_COUNT) % Game.PAUSE_MENU_COUNT;
         return;
       }
       if (action.type === "SoftDrop" || action.type === "MoveRight") {
-        this.pauseMenuSelection = (this.pauseMenuSelection + 1) % 3;
+        this.pauseMenuSelection = (this.pauseMenuSelection + 1) % Game.PAUSE_MENU_COUNT;
         return;
       }
       if (action.type === "Start") {
