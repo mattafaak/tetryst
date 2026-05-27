@@ -5,6 +5,7 @@ import { playMusic, stopMusic, freqOf, bassFreqOf, buildSchedule, BPM, BEAT_DURA
 import { createPulseOsc, createAPUMixer, type Song } from "./apu.ts";
 import { Sequencer } from "./sequencer.ts";
 import { SONG_TYPE_A } from "./songs/type-a.ts";
+import { SONG_TYPE_B } from "./songs/type-b.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -744,6 +745,31 @@ describe("song data — Type A", () => {
 
   it("all pulse1 notes have valid non-zero frequencies", () => {
     for (const n of SONG_TYPE_A.pulse1) {
+      expect(n.freq).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("song data — Type B", () => {
+  it("totalBeats equals max(note.beat + note.dur) across all channels", () => {
+    let max = 0;
+    for (const n of [...SONG_TYPE_B.pulse1, ...SONG_TYPE_B.pulse2, ...SONG_TYPE_B.triangle]) {
+      max = Math.max(max, n.beat + n.dur);
+    }
+    for (const n of SONG_TYPE_B.noise) {
+      max = Math.max(max, n.beat + n.dur);
+    }
+    expect(SONG_TYPE_B.totalBeats).toBeCloseTo(max, 5);
+  });
+
+  it("bpm is in waltz range (104–120)", () => {
+    expect(SONG_TYPE_B.bpm).toBeGreaterThanOrEqual(104);
+    expect(SONG_TYPE_B.bpm).toBeLessThanOrEqual(120);
+  });
+
+  it("pulse1 has notes and all frequencies are positive", () => {
+    expect(SONG_TYPE_B.pulse1.length).toBeGreaterThan(0);
+    for (const n of SONG_TYPE_B.pulse1) {
       expect(n.freq).toBeGreaterThan(0);
     }
   });
