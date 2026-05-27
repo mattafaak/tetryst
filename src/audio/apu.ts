@@ -38,7 +38,7 @@ export function createPulseOsc(
     osc.type = "square";
     return osc;
   }
-  const harmonics = 32;
+  const harmonics = 9;
   const real = new Float32Array(harmonics);
   const imag = new Float32Array(harmonics);
   // real[0] = 0 — no DC component
