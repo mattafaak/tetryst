@@ -56,6 +56,51 @@ Created: 2026-05-25
 | 26.15 | **Cache `formatMs` result to avoid per-frame string allocations** — `formatMs` (canvas.ts:726-731) creates 3 new strings per frame during Sprint/Ultra play (2× `toString()`, 2× `padStart()`, 1× template literal). Add a 1-entry cache: store last input ms truncated to centisecond granularity; return cached string when input is unchanged. | `formatMs` allocates strings only when the displayed time changes; Sprint/Ultra HUD unchanged; all tests pass | - | cc:完了 |
 | 26.16 | **Name the `0.92` sustain-gap literal in music.ts** — `const gap = 0.92` (music.ts:358) is an undocumented magic number controlling note sustain duration. Extract to a module-level named constant `SUSTAIN_FRACTION` alongside other audio constants. | `SUSTAIN_FRACTION` constant defined; no behavior change; build passes | - | cc:完了 |
 
+## Phase 28: Audio engine overhaul — NES APU–style four-channel synthesizer [tdd:required]
+
+**Spec SSOT**: [`docs/spec/audio-spec.md`](docs/spec/audio-spec.md)  
+**Overview**: Replace the current single-voice synthesizer with a four-channel NES APU–style engine (pulse × 2, triangle, noise). Three songs (Type A/B/C), per-mode defaults, level-driven tempo modulation, and NES-authentic SFX. Public API in `music.ts` and `sfx.ts` is preserved; `setSong` and `setTempoMultiplier` are added.
+
+### Group A — APU Foundation
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 28.1 | **`src/audio/apu.ts` — core types + pulse channel factory** — Define `ChannelNote`, `NoiseNote`, `Song` interfaces. Implement `createPulseOsc(ctx, duty)` using `PeriodicWave` Fourier series: `imag[n] = (2/(π·n))·sin(2π·duty·n)` for n=1..31. duty values: 0.125, 0.25, 0.5, 0.75. Write failing test first: `createPulseOsc(ctx, 0.25)` has `PeriodicWave` set (not built-in type). | Types exported; `createPulseOsc` test passes; `npm test` green | - | cc:TODO |
+| 28.2 | **`src/audio/apu.ts` — APU mixer** — Implement `createAPUMixer(ctx): APUMixer` creating 5 `GainNode`s (pulse1=0.25, pulse2=0.20, triangle=0.18, noise=0.14, master=0.70) connected to `ctx.destination`. Write failing test first: mixer creates 5 gain nodes; master connects to destination; gain values match spec exactly. | `createAPUMixer` test passes; `npm test` green | 28.1 | cc:TODO |
+
+### Group B — Sequencer
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 28.3 | **`tools/extract-rom-music.py` — ROM analysis helper** [tdd:skip:tooling] — Create extraction script per spec §11. `dump_nes` reads PRG-ROM (offset 0x10), reports note period occurrences. `dump_gb` dumps bytes 0x5000–0x5400. Run against both ROMs; capture output as reference for song transcription. | Script exists; runs without error on both ROMs; produces period/byte dump output | - | cc:TODO |
+| 28.4 | **`src/audio/sequencer.ts` — core multi-channel scheduler** — Implement `Sequencer` class: `constructor(mixer)`, `start(song, ctx)`, `stop()`. Scheduling uses `AudioContext.currentTime` with 80ms look-ahead; `setTimeout` triggers next cycle only. Per-channel: pulse1 uses `createPulseOsc(ctx, 0.25)`, pulse2 uses `createPulseOsc(ctx, 0.5)`, triangle uses `ctx.createOscillator` type `"triangle"`. ADSR: attack 6ms, decay 50ms, sustain 70%, release 40ms. Noise channel: white-noise `AudioBuffer` + highpass at `note.hp` Hz. Write failing test: `start()` schedules oscillators; `stop()` cleans them up. | Sequencer start/stop tests pass; `npm test` green | 28.2 | cc:TODO |
+| 28.5 | **`src/audio/sequencer.ts` — tempo multiplier + seamless loop** — Add `setTempoMultiplier(factor)` (safe mid-song, takes effect next cycle). Loop: `beatDuration = (60/bpm)/tempoMultiplier`; `songDuration = totalBeats × beatDuration`; `setTimeout(reschedule, (songDuration+0.1)*1000)`. Write failing test: `setTempoMultiplier(2.0)` halves effective beat duration. | Tempo test passes; seamless loop confirmed by manual listen; `npm test` green | 28.4 | cc:TODO |
+
+### Group C — Song Data
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 28.6 | **`src/audio/songs/type-a.ts` — Korobeiniki 4-channel refactor** — Convert existing `MELODY` array in `music.ts` to `pulse1: ChannelNote[]`. Add `pulse2` (harmony, thirds/sixths below in A minor), `triangle` (explicit bass `ChannelNote[]` from `BASS_ROOTS`), `noise` (hi-hat on beats 1.5, 3.5, 5.5…). Export as `SONG_TYPE_A: Song` with `bpm: 144`, `totalBeats: 176`. Write failing test: `SONG_TYPE_A.totalBeats` equals `max(note.beat + note.dur)` across all channels. | `SONG_TYPE_A` exported; totalBeats test passes; sounds correct on listen | 28.1 | cc:TODO |
+| 28.7 | **`src/audio/songs/type-b.ts` — Type B transcription** — Use `tools/extract-rom-music.py` output + known Musette/Menuet in D source to transcribe. Character: slower, lyrical, ~3/4 waltz. BPM ~104–120. Provide `pulse1` (melody), `pulse2` (harmony), `triangle` (bass), `noise` (waltz percussion). Export as `SONG_TYPE_B: Song`. Write failing test: `SONG_TYPE_B.totalBeats` matches computed max. | `SONG_TYPE_B` exported; totalBeats test passes; plays recognizable Type B | 28.3, 28.6 | cc:TODO |
+| 28.8 | **`src/audio/songs/type-c.ts` — Type C transcription** — Source: NES ROM Troika / high-energy third theme. BPM ~150–168. Short loop. Export as `SONG_TYPE_C: Song`. Write failing test: `SONG_TYPE_C.totalBeats` matches computed max. | `SONG_TYPE_C` exported; totalBeats test passes; plays recognizable Type C | 28.3, 28.6 | cc:TODO |
+
+### Group D — SFX Overhaul
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 28.9 | **`src/audio/sfx-defs.ts` — SFX as pure data** [tdd:skip:data-only] — Define `OscEvent`, `NoiseEvent`, `SFXEvent`, `SFXDef` interfaces. No Web Audio imports. Implement all 9 SFX per spec §8 table: move (pulse25, 150Hz, 60ms), rotate (pulse25, 280Hz, 80ms), lock (triangle, 90Hz, 120ms), clear (pulse50, 180→720Hz sweep, 220ms), tetris (chord [262,330,392,523]Hz, 400ms), tspin (pulse25, 350+500Hz, 150ms), hold (pulse25, 240Hz, 60ms), levelup (pulse25, 400/500/600Hz fanfare), gameover (pulse25, 400→90Hz, 700ms). | `sfx-defs.ts` has no Web Audio imports; exports `SFX_DEFS` record; all 9 entries present; `npm test` green | 28.1 | cc:TODO |
+| 28.10 | **Replace `src/audio/sfx.ts` — plays sfx-defs via APU channels** — New `sfx.ts` reads `SFX_DEFS`, instantiates Web Audio nodes per `SFXEvent` type using `createPulseOsc` for `pulse25`/`pulse50`, standard oscillator for `triangle`/`sawtooth`. Preserve `SFXName` type and `playSFX(name)` signature. Write failing test: `playSFX("move")` triggers an oscillator at ~150Hz. | Existing `playSFX` tests pass; new oscillator-trigger test passes; all 9 SFX audible | 28.9, 28.2 | cc:TODO |
+
+### Group E — Integration & Verification
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 28.11 | **Replace `src/audio/music.ts` — thin public API over Sequencer** — New `music.ts` exports: `playMusic()`, `stopMusic()`, `setSong(0|1|2)`, `setTempoMultiplier(factor)`. Internal: single `Sequencer` instance, song map `[SONG_TYPE_A, SONG_TYPE_B, SONG_TYPE_C]`. Write failing tests: `setSong(1)` then `playMusic()` plays SONG_TYPE_B; `setTempoMultiplier` delegates to sequencer. | All 4 public API functions present and tested; existing callers (`loop.ts`, `audio.test.ts`) unmodified; `npm test` green | 28.5, 28.6, 28.7, 28.8 | cc:TODO |
+| 28.12 | **`src/game/loop.ts` — wire `setTempoMultiplier` on level-up** — In `executeLock` result handling: `if (result.leveledUp) { setTempoMultiplier(1.0 + this.state.level * 0.015); }`. Import `setTempoMultiplier` from `"../audio/music.ts"`. | Level-up triggers tempo increase in-game; `npm test` green | 28.11 | cc:TODO |
+| 28.13 | **`src/game/loop.ts` — wire mode → default song** — In `startGame()`: map `GameMode.Marathon→0`, `GameMode.Ultra→1`, `GameMode.Sprint→2`; call `setSong(songMap[this.selectedMode])` before `playMusic()`. Import `setSong`. | Each mode starts with correct song; `npm test` green | 28.11 | cc:TODO |
+| 28.14 | **`src/audio/audio.test.ts` — regression test update** — Merge any surviving tests from removed `music.test.ts`; add: APU mixer creates 5 gain nodes + master→destination; `createPulseOsc` uses PeriodicWave; sequencer start/stop; tempo multiplier; `setSong`; each song's `totalBeats` validity. Delete now-redundant test files. | All 6 new test categories covered; `npm test` green; no duplicate test files | 28.11, 28.10 | cc:TODO |
+| 28.15 | **Build verification ≤70kB gzip** [tdd:skip:build-check] — Run `npm run build`; measure `dist/index.html` gzip size. Audio data (song arrays, sfx-defs) is pure TypeScript — no external assets. Target: ≤20kB gzip for audio contribution; total ≤70kB. If over budget, profile and trim song array verbosity (use shorter variable names, remove redundant rests). | `npm run build` succeeds; `dist/index.html` gzip ≤70kB; audio ≤20kB contribution confirmed | 28.14 | cc:TODO |
+
 ## Archive
 
 Phases 1–25 archived in [Plans-archive.md](Plans-archive.md). All tasks: cc:完了.
