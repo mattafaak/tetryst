@@ -7,6 +7,7 @@ import { Sequencer } from "./sequencer.ts";
 import { SONG_TYPE_A } from "./songs/type-a.ts";
 import { SONG_TYPE_B } from "./songs/type-b.ts";
 import { SONG_TYPE_C } from "./songs/type-c.ts";
+import { SFX_DEFS, type SFXName } from "./sfx-defs.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -797,6 +798,44 @@ describe("song data — Type C", () => {
     expect(SONG_TYPE_C.pulse1.length).toBeGreaterThan(0);
     for (const n of SONG_TYPE_C.pulse1) {
       expect(n.freq).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("sfx-defs — SFX_DEFS structure [tdd:skip:data-only]", () => {
+  const ALL_SFX: SFXName[] = ["move", "rotate", "lock", "clear", "tetris", "tspin", "hold", "levelup", "gameover"];
+
+  it("exports all 9 SFX entries", () => {
+    for (const name of ALL_SFX) {
+      expect(SFX_DEFS).toHaveProperty(name);
+    }
+  });
+
+  it("every SFX has at least one event", () => {
+    for (const name of ALL_SFX) {
+      expect(SFX_DEFS[name].events.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("tetris SFX has 4 events (chord)", () => {
+    expect(SFX_DEFS.tetris.events).toHaveLength(4);
+  });
+
+  it("levelup SFX has 3 events (ascending fanfare)", () => {
+    expect(SFX_DEFS.levelup.events).toHaveLength(3);
+  });
+
+  it("clear SFX has a rising sweep (endFreq > startFreq)", () => {
+    const ev = SFX_DEFS.clear.events[0];
+    if (ev.type === "osc") {
+      expect(ev.endFreq).toBeGreaterThan(ev.startFreq);
+    }
+  });
+
+  it("gameover SFX has a falling sweep (endFreq < startFreq)", () => {
+    const ev = SFX_DEFS.gameover.events[0];
+    if (ev.type === "osc") {
+      expect(ev.endFreq).toBeLessThan(ev.startFreq);
     }
   });
 });
