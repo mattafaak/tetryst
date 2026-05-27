@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAudioContext, resetAudioContext } from "./audio-ctx.ts";
 import { playSFX } from "./sfx.ts";
-import { playMusic, stopMusic, freqOf, bassFreqOf, buildSchedule, BPM, BEAT_DURATION, MELODY_DATA } from "./music.ts";
+import { playMusic, stopMusic, setSong, setTempoMultiplier } from "./music.ts";
 import { createPulseOsc, createAPUMixer, type Song } from "./apu.ts";
 import { Sequencer } from "./sequencer.ts";
 import { SONG_TYPE_A } from "./songs/type-a.ts";
@@ -49,7 +49,7 @@ function setupAudioCtx(state = "running") {
     createGain: vi.fn(() => ({
       connect: vi.fn(),
       disconnect: vi.fn(),
-      gain: { value: 0, setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+      gain: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
     })),
     createBuffer: vi.fn(() => ({ getChannelData: vi.fn(() => new Float32Array(441)) })),
     createBufferSource: vi.fn(() => mockSource),
@@ -143,6 +143,59 @@ describe("music", () => {
     expect(() => stopMusic()).not.toThrow();
     playMusic();
     stopMusic();
+  });
+});
+
+describe("music — setSong / setTempoMultiplier", () => {
+  let callbacks: Array<() => void>;
+  let delays: number[];
+
+  beforeEach(() => {
+    callbacks = [];
+    delays = [];
+    resetAudioContext();
+    vi.stubGlobal("window", {
+      setTimeout: vi.fn(function (cb: () => void, delay: number) {
+        callbacks.push(cb);
+        delays.push(delay);
+        return callbacks.length;
+      }),
+      clearTimeout: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    stopMusic();
+    vi.unstubAllGlobals();
+    resetAudioContext();
+  });
+
+  it("setSong(1) plays SONG_TYPE_B — shorter loop than SONG_TYPE_A (fewer beats, lower BPM)", () => {
+    setSong(0);
+    playMusic();
+    const delayA = delays[0];
+    stopMusic();
+    delays.length = 0;
+
+    setSong(1);
+    playMusic();
+    const delayB = delays[0];
+    stopMusic();
+
+    // Type A: 153 beats @ 144 BPM → ~63850ms; Type B: 48 beats @ 108 BPM → ~26800ms
+    expect(delayB).toBeLessThan(delayA);
+  });
+
+  it("setTempoMultiplier(2.0) halves the loop duration from the next cycle", () => {
+    setSong(0);
+    playMusic();
+    const baseDelay = delays[0];
+
+    setTempoMultiplier(2.0);
+    callbacks[0](); // trigger next scheduled cycle
+
+    expect(delays[1]).toBeCloseTo(baseDelay / 2, -3); // ±500ms tolerance (overhead not halved)
+    setTempoMultiplier(1.0); // reset
   });
 });
 
@@ -318,114 +371,6 @@ describe("audio behavioral — SFX parameter verification", () => {
   });
 });
 
-describe("music behavioral — scheduling", () => {
-  it("BPM is 144", () => {
-    expect(BPM).toBe(144);
-  });
-
-  it("BEAT_DURATION is 60 / 144", () => {
-    expect(BEAT_DURATION).toBeCloseTo(0.4167, 3);
-  });
-
-  it("MELODY_DATA has 176 entries", () => {
-    expect(MELODY_DATA).toHaveLength(176);
-  });
-
-  it("freqOf resolves common notes correctly", () => {
-    expect(freqOf("A4")).toBeCloseTo(440.0, 1);
-    expect(freqOf("C5")).toBeCloseTo(523.25, 1);
-    expect(freqOf("E5")).toBeCloseTo(659.25, 1);
-    expect(freqOf("Gs4")).toBeCloseTo(415.30, 1);
-  });
-
-  it("freqOf returns null for unknown notes", () => {
-    expect(freqOf("X9")).toBeNull();
-    expect(freqOf("")).toBeNull();
-  });
-
-  it("bassFreqOf resolves known roots", () => {
-    expect(bassFreqOf("E5")).toBeCloseTo(82.41, 1);
-    expect(bassFreqOf("A4")).toBeCloseTo(110.0, 1);
-    expect(bassFreqOf("D5")).toBeCloseTo(73.42, 1);
-  });
-
-  it("bassFreqOf returns null for rests, defaults to 110.0 for unknown", () => {
-    expect(bassFreqOf("R")).toBeNull();
-    expect(bassFreqOf("X5")).toBeCloseTo(110.0, 1);
-  });
-
-  it("buildSchedule produces 176 events with correct structure", () => {
-    const schedule = buildSchedule(MELODY_DATA);
-    expect(schedule).toHaveLength(176);
-    for (const event of schedule) {
-      expect(event).toHaveProperty("startBeat");
-      expect(event).toHaveProperty("note");
-      expect(event).toHaveProperty("durBeats");
-      expect(typeof event.startBeat).toBe("number");
-      expect(event.startBeat).toBeGreaterThanOrEqual(0);
-      expect(event.durBeats).toBeGreaterThan(0);
-    }
-  });
-
-  it("buildSchedule events are in chronological order", () => {
-    const schedule = buildSchedule(MELODY_DATA);
-    for (let i = 1; i < schedule.length; i++) {
-      expect(schedule[i].startBeat).toBeGreaterThanOrEqual(schedule[i - 1].startBeat);
-    }
-  });
-
-  it("buildSchedule first beat starts at 0", () => {
-    const schedule = buildSchedule(MELODY_DATA);
-    expect(schedule[0].startBeat).toBe(0);
-  });
-
-  it("buildSchedule returns empty array for empty melody", () => {
-    expect(buildSchedule([])).toEqual([]);
-  });
-
-  it("buildSchedule produces correct beat offsets and durations", () => {
-    const melody = [
-      { note: "A4", duration: 1 },
-      { note: "B4", duration: 0.5 },
-      { note: "C5", duration: 1.5 },
-    ];
-    const events = buildSchedule(melody);
-    expect(events).toHaveLength(3);
-    expect(events[0].startBeat).toBe(0);
-    expect(events[0].durBeats).toBe(1);
-    expect(events[0].note).toBe("A4");
-    expect(events[1].startBeat).toBe(1);
-    expect(events[1].durBeats).toBe(0.5);
-    expect(events[1].note).toBe("B4");
-    expect(events[2].startBeat).toBe(1.5);
-    expect(events[2].durBeats).toBe(1.5);
-    expect(events[2].note).toBe("C5");
-  });
-
-  it("buildSchedule bass carries forward on off-beats", () => {
-    const melody = [
-      { note: "A4", duration: 1 },
-      { note: "B4", duration: 0.5 },
-      { note: "C5", duration: 0.5 },
-    ];
-    const events = buildSchedule(melody);
-    expect(events[0].bassFreq).toBe(110.0);
-    expect(events[1].bassFreq).toBe(82.41);
-    expect(events[2].startBeat).toBe(1.5);
-    expect(events[2].bassFreq).toBe(82.41);
-  });
-
-  it("buildSchedule last event endBeat does not exceed total duration", () => {
-    const events = buildSchedule(MELODY_DATA);
-    const totalBeats = events.reduce((max, e) => Math.max(max, e.startBeat + e.durBeats), 0);
-    expect(events[events.length - 1].startBeat + events[events.length - 1].durBeats).toBeLessThanOrEqual(totalBeats);
-  });
-
-  it("total melody duration is ≤ 176 beats", () => {
-    const total = MELODY_DATA.reduce((sum, e) => sum + e.duration, 0);
-    expect(total).toBeLessThanOrEqual(176);
-  });
-});
 
 describe("apu — createPulseOsc", () => {
   function makeApuCtx(captureImag?: { ref: Float32Array | null }) {
