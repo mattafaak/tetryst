@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAudioContext, resetAudioContext } from "./audio-ctx.ts";
 import { playSFX } from "./sfx.ts";
 import { playMusic, stopMusic, freqOf, bassFreqOf, buildSchedule, BPM, BEAT_DURATION, MELODY_DATA } from "./music.ts";
-import { createPulseOsc, createAPUMixer } from "./apu.ts";
+import { createPulseOsc, createAPUMixer, type Song } from "./apu.ts";
+import { Sequencer } from "./sequencer.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -517,5 +518,156 @@ describe("apu — createAPUMixer", () => {
     expect(mixer.triangle.gain.value).toBe(0.18);
     expect(mixer.noise.gain.value).toBe(0.14);
     expect(mixer.master.gain.value).toBe(0.70);
+  });
+});
+
+describe("Sequencer — start/stop", () => {
+  function makeSeqCtx() {
+    const oscs: Array<Record<string, unknown>> = [];
+    const gains: Array<Record<string, unknown>> = [];
+    const sources: Array<Record<string, unknown>> = [];
+
+    const makeGain = () => ({
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      gain: {
+        value: 0,
+        setValueAtTime: vi.fn(),
+        linearRampToValueAtTime: vi.fn(),
+        exponentialRampToValueAtTime: vi.fn(),
+      },
+    });
+
+    const ctx = {
+      currentTime: 0,
+      sampleRate: 44100,
+      destination: {},
+      createOscillator: vi.fn(() => {
+        const o = {
+          type: "",
+          frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+          connect: vi.fn(),
+          start: vi.fn(),
+          stop: vi.fn(),
+          setPeriodicWave: vi.fn(),
+        };
+        oscs.push(o);
+        return o;
+      }),
+      createGain: vi.fn(() => {
+        const g = makeGain();
+        gains.push(g);
+        return g;
+      }),
+      createBuffer: vi.fn(() => ({ getChannelData: vi.fn(() => new Float32Array(44)) })),
+      createBufferSource: vi.fn(() => {
+        const s = { buffer: null, connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+        sources.push(s);
+        return s;
+      }),
+      createBiquadFilter: vi.fn(() => ({
+        type: "" as string,
+        frequency: { value: 0, setValueAtTime: vi.fn() },
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      })),
+      createPeriodicWave: vi.fn(() => ({})),
+    };
+
+    const mixer = {
+      pulse1: makeGain(),
+      pulse2: makeGain(),
+      triangle: makeGain(),
+      noise: makeGain(),
+      master: makeGain(),
+    };
+
+    return { ctx, oscs, gains, sources, mixer };
+  }
+
+  const ONE_NOTE_SONG: Song = {
+    title: "Test",
+    bpm: 120,
+    pulse1: [{ beat: 0, dur: 1, freq: 440 }],
+    pulse2: [],
+    triangle: [],
+    noise: [],
+    totalBeats: 1,
+  };
+
+  const NOISE_SONG: Song = {
+    title: "Noise test",
+    bpm: 120,
+    pulse1: [],
+    pulse2: [],
+    triangle: [],
+    noise: [{ beat: 0, dur: 0.5, vol: 0.5, hp: 6000 }],
+    totalBeats: 1,
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal("window", { setTimeout: vi.fn(() => 42), clearTimeout: vi.fn() });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("start() creates an oscillator for each tonal note", () => {
+    const { ctx, oscs, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(ONE_NOTE_SONG, ctx as unknown as AudioContext);
+
+    expect(oscs.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("start() schedules a setTimeout for the next loop cycle", () => {
+    const { ctx, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(ONE_NOTE_SONG, ctx as unknown as AudioContext);
+
+    expect(window.setTimeout).toHaveBeenCalled();
+  });
+
+  it("stop() calls stop() on all active oscillators", () => {
+    const { ctx, oscs, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(ONE_NOTE_SONG, ctx as unknown as AudioContext);
+    seq.stop();
+
+    for (const osc of oscs) {
+      expect(osc.stop).toHaveBeenCalled();
+    }
+  });
+
+  it("stop() calls clearTimeout to cancel the pending loop", () => {
+    const { ctx, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(ONE_NOTE_SONG, ctx as unknown as AudioContext);
+    seq.stop();
+
+    expect(window.clearTimeout).toHaveBeenCalledWith(42);
+  });
+
+  it("stop() is idempotent — calling twice does not throw", () => {
+    const { ctx, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(ONE_NOTE_SONG, ctx as unknown as AudioContext);
+    expect(() => { seq.stop(); seq.stop(); }).not.toThrow();
+  });
+
+  it("noise notes create a BufferSource and BiquadFilter highpass", () => {
+    const { ctx, sources, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    seq.start(NOISE_SONG, ctx as unknown as AudioContext);
+
+    expect(sources.length).toBeGreaterThanOrEqual(1);
+    expect(ctx.createBiquadFilter).toHaveBeenCalled();
   });
 });
