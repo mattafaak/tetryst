@@ -50,10 +50,12 @@ export class Sequencer {
     this.pulse1Filter = ctx.createBiquadFilter();
     this.pulse1Filter.type = "lowpass";
     this.pulse1Filter.frequency.value = 4500;
+    if (this.pulse1Filter.Q) this.pulse1Filter.Q.value = 0.7;
 
     this.pulse2Filter = ctx.createBiquadFilter();
     this.pulse2Filter.type = "lowpass";
     this.pulse2Filter.frequency.value = 4500;
+    if (this.pulse2Filter.Q) this.pulse2Filter.Q.value = 0.7;
 
     this.pulse1Osc.connect(this.pulse1Gain);
     this.pulse1Gain.connect(this.pulse1Filter);
@@ -91,7 +93,7 @@ export class Sequencer {
     }
 
     for (const osc of [this.pulse1Osc, this.pulse2Osc, this.triangleOsc]) {
-      if (osc) try { osc.stop(); } catch { /* already stopped */ }
+      if (osc) try { osc.stop(); osc.disconnect(); } catch { /* already stopped */ }
     }
     for (const node of [this.pulse1Gain, this.pulse2Gain, this.triangleGain, this.pulse1Filter, this.pulse2Filter]) {
       if (node) try { node.disconnect(); } catch { /* already disconnected */ }
@@ -123,6 +125,7 @@ export class Sequencer {
   private scheduleOneCycle(): void {
     if (!this.isPlaying || !this.song || !this.ctx) return;
 
+    for (const s of this.activeNoiseSources) try { s.stop(); } catch { /* done */ }
     for (const f of this.activeNoiseFilters) try { f.disconnect(); } catch { /* done */ }
     for (const g of this.activeNoiseGains) try { g.disconnect(); } catch { /* done */ }
     this.activeNoiseSources = [];

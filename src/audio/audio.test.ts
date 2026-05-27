@@ -731,6 +731,59 @@ describe("Sequencer — start/stop", () => {
     )[1]?.[1] as number;
     expect(secondScheduledTime).toBeCloseTo(0.58, 2);
   });
+
+  it("clamped ADSR: attack and release respect dur*0.15 and dur*0.30 on short notes", () => {
+    const { ctx, gains, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    // 0.25 beat at BPM 120 → dur = 0.125s
+    // maxAttack = 0.125 * 0.15 = 0.01875s  (< unclamped 0.010? No — 0.010 < 0.01875, so attack = 0.010)
+    // Use a very short note to force clamping: 0.05 beat → dur = 0.025s
+    // maxAttack = 0.025 * 0.15 = 0.00375s  (<  0.010 unclamped → clamped to 0.00375)
+    const SHORT_SONG: Song = {
+      title: "ADSR clamp test",
+      bpm: 120, // beatDuration = 0.5s
+      pulse1: [{ beat: 0, dur: 0.05, freq: 440 }], // dur = 0.05 * 0.5 = 0.025s
+      pulse2: [],
+      triangle: [],
+      noise: [],
+      totalBeats: 0.05,
+    };
+
+    seq.start(SHORT_SONG, ctx as unknown as AudioContext);
+
+    // gains[0] = pulse1Gain (first createGain call), the permanent gain node for pulse1
+    const pulse1Gain = gains[0];
+    const gainParam = pulse1Gain.gain as {
+      linearRampToValueAtTime: ReturnType<typeof vi.fn>;
+      exponentialRampToValueAtTime: ReturnType<typeof vi.fn>;
+    };
+
+    const dur = 0.05 * (60 / 120); // 0.025s
+    const maxAttack = dur * 0.15;   // 0.00375s
+    const maxRelease = dur * 0.30;  // 0.0075s
+    const startTime = 0.08;         // ctx.currentTime=0 + LOOK_AHEAD=0.08
+
+    // Attack ramp: linearRampToValueAtTime(1.0, startTime + attack)
+    const attackCall = gainParam.linearRampToValueAtTime.mock.calls.find(
+      (c: unknown[]) => c[0] === 1.0,
+    );
+    expect(attackCall).toBeDefined();
+    const attackEnd = (attackCall![1] as number) - startTime;
+    expect(attackEnd).toBeLessThanOrEqual(maxAttack + 1e-9);
+    expect(attackEnd).toBeGreaterThan(0);
+
+    // Release ramp: exponentialRampToValueAtTime(0.001, end)
+    const end = startTime + dur;
+    const releaseCall = gainParam.exponentialRampToValueAtTime.mock.calls.find(
+      (c: unknown[]) => (c[1] as number) > startTime + dur * 0.5,
+    );
+    expect(releaseCall).toBeDefined();
+    const releaseEnd = (releaseCall![1] as number);
+    expect(releaseEnd).toBeCloseTo(end, 3);
+    const releaseStart = end - maxRelease;
+    expect(releaseEnd - releaseStart).toBeLessThanOrEqual(maxRelease + 1e-9);
+  });
 });
 
 describe("song data — Type A", () => {
