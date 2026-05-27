@@ -3,6 +3,12 @@
 
 let audioCtx: AudioContext | null = null;
 
+/** Reset the singleton so the next call to getAudioContext creates a new one.
+ *  Used in tests to ensure a fresh AudioContext per test case. */
+export function resetAudioContext(): void {
+  audioCtx = null;
+}
+
 export function getAudioContext(): AudioContext | null {
   if (!audioCtx) {
     try {

@@ -10,7 +10,7 @@ import { executeLock } from "./lock.ts";
 import { holdPiece } from "./state.ts";
 import { resetLockState, updateLowestY } from "./lock-delay.ts";
 import { MAX_LOCK_RESETS, SOFT_DROP_SCORE } from "./constants.ts";
-import { pushPopup } from "../render/popups.ts";
+import { batchPushPopups } from "../render/popups.ts";
 import type { LockState, Piece } from "./types.ts";
 
 export function processAction(
@@ -159,6 +159,7 @@ function handleHardDrop(state: GameState): GameState {
       activePiece: null,
       phase: GamePhase.GameOver,
       lockState: resetLockState(),
+      lastLockResult: undefined,
     };
   }
 
@@ -176,9 +177,9 @@ function handleHardDrop(state: GameState): GameState {
   const result = executeLock(nextState, dropped);
   nextState = result.state;
 
-  // Apply action popups (hard drops now show TETRIS!, COMBO, etc.)
-  for (const popup of result.popupInfo) {
-    nextState = pushPopup(nextState, popup.text, popup.color);
+  // Apply action popups (batched — single state spread instead of N)
+  if (result.popupInfo.length > 0) {
+    nextState = batchPushPopups(nextState, result.popupInfo);
   }
 
   return nextState;

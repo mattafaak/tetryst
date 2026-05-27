@@ -11,6 +11,20 @@ export function pushPopup(
   return { ...state, popups: [...state.popups, item] };
 }
 
+export function batchPushPopups(
+  state: GameState,
+  popupInfos: Array<{ text: string; color: string }>,
+): GameState {
+  if (popupInfos.length === 0) return state;
+  const items: PopupItem[] = popupInfos.map((p) => ({
+    text: p.text,
+    timer: 0,
+    duration: POPUP_DURATION,
+    color: p.color,
+  }));
+  return { ...state, popups: [...state.popups, ...items] };
+}
+
 export function tickPopups(state: GameState, dt: number): GameState {
   const next: PopupItem[] = [];
   for (const p of state.popups) {

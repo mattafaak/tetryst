@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pushPopup, tickPopups } from "./popups.ts";
+import { pushPopup, batchPushPopups, tickPopups } from "./popups.ts";
 import { GamePhase, GameMode } from "../core/types.ts";
 import type { GameState } from "../core/types.ts";
 
@@ -48,6 +48,38 @@ describe("pushPopup", () => {
     expect(s2.popups).toHaveLength(2);
     expect(s2.popups[0].text).toBe("TETRIS!");
     expect(s2.popups[1].text).toBe("BACK-TO-BACK");
+  });
+});
+
+describe("batchPushPopups", () => {
+  it("adds multiple popups in a single call", () => {
+    const state = emptyState();
+    const next = batchPushPopups(state, [
+      { text: "TETRIS!", color: "#00f0f0" },
+      { text: "BACK-TO-BACK", color: "#f0a000" },
+    ]);
+    expect(next.popups).toHaveLength(2);
+    expect(next.popups[0].text).toBe("TETRIS!");
+    expect(next.popups[0].duration).toBe(1200);
+    expect(next.popups[0].timer).toBe(0);
+    expect(next.popups[1].text).toBe("BACK-TO-BACK");
+  });
+
+  it("returns original state for empty array", () => {
+    const state = emptyState();
+    const next = batchPushPopups(state, []);
+    expect(next).toBe(state);
+  });
+
+  it("preserves existing popups when adding new ones", () => {
+    let state = emptyState();
+    state = pushPopup(state, "COMBO x2", "#fff");
+    const next = batchPushPopups(state, [
+      { text: "TETRIS!", color: "#00f0f0" },
+    ]);
+    expect(next.popups).toHaveLength(2);
+    expect(next.popups[0].text).toBe("COMBO x2");
+    expect(next.popups[1].text).toBe("TETRIS!");
   });
 });
 

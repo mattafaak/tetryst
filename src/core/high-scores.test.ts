@@ -93,4 +93,37 @@ describe("high-scores", () => {
     storage.setItem("tetryst_hs_Marathon", JSON.stringify({ score: 100, level: 1 }));
     expect(loadHighScores("Marathon")).toEqual([]);
   });
+
+  describe("scoresCache (25.8)", () => {
+    it("caches loadHighScores results across repeated calls", () => {
+      clearScoresCache();
+      const getItemSpy = vi.spyOn(storage, "getItem");
+
+      // First call: cache miss, reads from storage
+      const first = loadHighScores("Marathon");
+      expect(getItemSpy).toHaveBeenCalledTimes(1);
+
+      // Second call: cache hit, no storage access
+      getItemSpy.mockClear();
+      const second = loadHighScores("Marathon");
+      expect(getItemSpy).not.toHaveBeenCalled();
+      expect(second).toEqual(first);
+    });
+
+    it("invalidates cache on saveHighScore", () => {
+      clearScoresCache();
+      loadHighScores("Marathon"); // populate cache
+
+      const getItemSpy = vi.spyOn(storage, "getItem");
+      getItemSpy.mockClear();
+
+      // Save a new high score — this invalidates the cache
+      saveHighScore({ score: 5000, level: 10, lines: 50, mode: "Marathon" });
+
+      // Next load should re-read from storage (cache was invalidated)
+      getItemSpy.mockClear();
+      loadHighScores("Marathon");
+      expect(getItemSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

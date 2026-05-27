@@ -15,7 +15,7 @@ import { playMusic, stopMusic } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
 import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL, MAX_CELL_SIZE } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
-import { pushPopup, tickPopups } from "../render/popups.ts";
+import { batchPushPopups, tickPopups } from "../render/popups.ts";
 import { triggerFlash, clearEffects, spawnParticlesForRows } from "../render/effects.ts";
 
 const GAME_MODES: readonly GameMode[] = Object.freeze([GameMode.Marathon, GameMode.Sprint, GameMode.Ultra]);
@@ -558,9 +558,9 @@ export class Game {
       triggerFlash("#ffffff", 200);
     }
 
-    // Apply popups
-    for (const popup of result.popupInfo) {
-      this.state = pushPopup(this.state, popup.text, popup.color);
+    // Apply popups (batched — single state spread instead of N)
+    if (result.popupInfo.length > 0) {
+      this.state = batchPushPopups(this.state, result.popupInfo);
     }
 
     // Check mode victory after all scoring

@@ -13,6 +13,7 @@ import {
   BUFFER_HEIGHT,
   PIECE_COLORS,
   GHOST_OPACITY,
+  GHOST_FILL_OPACITY,
   PIECE_SHAPES,
   NEXT_QUEUE_SIZE,
   ULTRA_DANGER_THRESHOLD,
@@ -350,6 +351,9 @@ function drawGhost(
           const y = visibleRow * cellSize;
           const inset = 1;
 
+          ctx.fillStyle = color;
+          ctx.globalAlpha = GHOST_FILL_OPACITY;
+          ctx.fillRect(x + inset, y + inset, cellSize - inset * 2, cellSize - inset * 2);
           ctx.strokeStyle = color;
           ctx.globalAlpha = GHOST_OPACITY;
           ctx.lineWidth = 2;
@@ -459,7 +463,7 @@ function renderMenuContent(
   } else {
     ctx.font = FONT_13;
     ctx.fillStyle = TEXT_DIM;
-    ctx.fillText("Score as many points as you can in 2 min", cx, cy + 34);
+    ctx.fillText("Score as many points as you can in 3 min", cx, cy + 34);
     scoresY = cy + 58;
   }
 

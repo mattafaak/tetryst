@@ -34,6 +34,7 @@ export const PIECE_COLORS = {
 
 // Ghost piece opacity
 export const GHOST_OPACITY = 0.3;
+export const GHOST_FILL_OPACITY = 0.15;
 
 // Piece shapes: [rotationState][row][col] — true = filled, false = empty
 // Each piece is defined as a 4x4 grid for all 4 rotation states.

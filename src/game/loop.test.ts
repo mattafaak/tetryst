@@ -12,7 +12,7 @@ import { triggerFlash } from "../render/effects.ts";
 import { Game } from "./loop.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
 import type { GameState, Cell } from "../core/types.ts";
-import { BOARD_WIDTH, BOARD_HEIGHT } from "../core/constants.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT } from "../core/constants.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -734,6 +734,58 @@ describe("Game integration", () => {
 
       expect(playSFX).toHaveBeenCalledWith("lock");
       expect(triggerFlash).not.toHaveBeenCalled();
+    });
+
+    it("hard-drop lock-out clears lastLockResult and does not fire stale SFX", () => {
+      const g = startPlayingGame();
+
+      // Set up a stale lastLockResult (as if a previous lock set it)
+      g.state = {
+        ...g.state,
+        lastLockResult: {
+          linesCleared: 4,
+          isPerfectClear: false,
+          isTSpin: false,
+          victoryTriggered: false,
+          needsLevelupSFX: false,
+          needsTSpinSFX: false,
+        } as never,
+      };
+
+      // Fill row BUFFER_HEIGHT (first visible row) so the piece can't enter it
+      const board = Array.from({ length: BOARD_HEIGHT }, () =>
+        Array<Cell>(BOARD_WIDTH).fill(null),
+      );
+      for (let x = 0; x < BOARD_WIDTH; x++) {
+        board[BUFFER_HEIGHT][x] = TetriminoType.Z;
+      }
+      // Place an O-piece at y=18 — all cells at rows 18-19 (< BUFFER_HEIGHT)
+      g.state = {
+        ...g.state,
+        board,
+        activePiece: {
+          type: TetriminoType.O,
+          pos: { x: 4, y: 18 },
+          rotation: RotationState.ZERO,
+        },
+      };
+
+      vi.clearAllMocks();
+      pressKey("Space"); // Hard drop — collides immediately, lock-out
+
+      // Lock SFX still plays (hard drop always plays it), but no scoring effects
+      expect(playSFX).toHaveBeenCalledWith("lock");
+      expect(playSFX).not.toHaveBeenCalledWith("tetris");
+      expect(playSFX).not.toHaveBeenCalledWith("tspin");
+      expect(playSFX).not.toHaveBeenCalledWith("clear");
+      expect(playSFX).not.toHaveBeenCalledWith("levelup");
+      expect(triggerFlash).not.toHaveBeenCalled();
+
+      // lastLockResult is cleaned up in the lock-out return
+      expect(
+        (g.state as { lastLockResult?: unknown }).lastLockResult,
+      ).toBeUndefined();
+      expect(g.state.phase).toBe(GamePhase.GameOver);
     });
   });
 
