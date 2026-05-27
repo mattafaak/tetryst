@@ -6,6 +6,7 @@ import { createPulseOsc, createAPUMixer, type Song } from "./apu.ts";
 import { Sequencer } from "./sequencer.ts";
 import { SONG_TYPE_A } from "./songs/type-a.ts";
 import { SONG_TYPE_B } from "./songs/type-b.ts";
+import { SONG_TYPE_C } from "./songs/type-c.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -770,6 +771,31 @@ describe("song data — Type B", () => {
   it("pulse1 has notes and all frequencies are positive", () => {
     expect(SONG_TYPE_B.pulse1.length).toBeGreaterThan(0);
     for (const n of SONG_TYPE_B.pulse1) {
+      expect(n.freq).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("song data — Type C", () => {
+  it("totalBeats equals max(note.beat + note.dur) across all channels", () => {
+    let max = 0;
+    for (const n of [...SONG_TYPE_C.pulse1, ...SONG_TYPE_C.pulse2, ...SONG_TYPE_C.triangle]) {
+      max = Math.max(max, n.beat + n.dur);
+    }
+    for (const n of SONG_TYPE_C.noise) {
+      max = Math.max(max, n.beat + n.dur);
+    }
+    expect(SONG_TYPE_C.totalBeats).toBeCloseTo(max, 5);
+  });
+
+  it("bpm is in high-energy range (150–168)", () => {
+    expect(SONG_TYPE_C.bpm).toBeGreaterThanOrEqual(150);
+    expect(SONG_TYPE_C.bpm).toBeLessThanOrEqual(168);
+  });
+
+  it("pulse1 has notes and all frequencies are positive", () => {
+    expect(SONG_TYPE_C.pulse1.length).toBeGreaterThan(0);
+    for (const n of SONG_TYPE_C.pulse1) {
       expect(n.freq).toBeGreaterThan(0);
     }
   });
