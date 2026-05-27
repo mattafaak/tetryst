@@ -99,7 +99,14 @@ Created: 2026-05-25
 | 28.12 | **`src/game/loop.ts` — wire `setTempoMultiplier` on level-up** — In `executeLock` result handling: `if (result.leveledUp) { setTempoMultiplier(1.0 + this.state.level * 0.015); }`. Import `setTempoMultiplier` from `"../audio/music.ts"`. | Level-up triggers tempo increase in-game; `npm test` green | 28.11 | cc:完了 [aefd7a5] |
 | 28.13 | **`src/game/loop.ts` — wire mode → default song** — In `startGame()`: map `GameMode.Marathon→0`, `GameMode.Ultra→1`, `GameMode.Sprint→2`; call `setSong(songMap[this.selectedMode])` before `playMusic()`. Import `setSong`. | Each mode starts with correct song; `npm test` green | 28.11 | cc:完了 [aefd7a5] |
 | 28.14 | **`src/audio/audio.test.ts` — regression test update** — Merge any surviving tests from removed `music.test.ts`; add: APU mixer creates 5 gain nodes + master→destination; `createPulseOsc` uses PeriodicWave; sequencer start/stop; tempo multiplier; `setSong`; each song's `totalBeats` validity. Delete now-redundant test files. | All 6 new test categories covered; `npm test` green; no duplicate test files | 28.11, 28.10 | cc:完了 [aefd7a5] |
-| 28.15 | **Build verification ≤70kB gzip** [tdd:skip:build-check] — Run `npm run build`; measure `dist/index.html` gzip size. Audio data (song arrays, sfx-defs) is pure TypeScript — no external assets. Target: ≤20kB gzip for audio contribution; total ≤70kB. If over budget, profile and trim song array verbosity (use shorter variable names, remove redundant rests). | `npm run build` succeeds; `dist/index.html` gzip ≤70kB; audio ≤20kB contribution confirmed | 28.14 | cc:TODO |
+| 28.15 | **Build verification ≤70kB gzip** [tdd:skip:build-check] — Run `npm run build`; measure `dist/index.html` gzip size. Audio data (song arrays, sfx-defs) is pure TypeScript — no external assets. Target: ≤20kB gzip for audio contribution; total ≤70kB. If over budget, profile and trim song array verbosity (use shorter variable names, remove redundant rests). | `npm run build` succeeds; `dist/index.html` gzip ≤70kB; audio ≤20kB contribution confirmed | 28.14 | cc:完了 |
+
+## Phase 29: Audio sequencer overhaul — continuous oscillators, loop stutter, harshness [tdd:required]
+
+| Task | Content | DoD | Depends | Status |
+|------|---------|-----|---------|--------|
+| 29.1 | **Reduce Fourier harmonics 32 → 9** — `createPulseOsc` in `apu.ts` | Harmonic count test passes; `npm test` green | - | cc:完了 |
+| 29.2 | **Sequencer: continuous oscillators + loop stutter fix** — rewrite `sequencer.ts`; 3 permanent oscs; `cycleAudioStart` tracking; `(songDuration - 0.2) * 1000` timeout; clamped ADSR; 4.5kHz lowpass on pulse channels; triangle near-instant envelope | 3 new tests pass; `npm test` green; no 180ms gap on loop | 29.1 | cc:完了 |
 
 ## Archive
 
