@@ -670,4 +670,41 @@ describe("Sequencer — start/stop", () => {
     expect(sources.length).toBeGreaterThanOrEqual(1);
     expect(ctx.createBiquadFilter).toHaveBeenCalled();
   });
+
+  it("setTempoMultiplier(2.0) halves the effective beat duration for the next cycle", () => {
+    const callbacks: Array<() => void> = [];
+    const delays: number[] = [];
+    vi.stubGlobal("window", {
+      setTimeout: vi.fn((cb: () => void, delay: number) => {
+        callbacks.push(cb);
+        delays.push(delay);
+        return callbacks.length;
+      }),
+      clearTimeout: vi.fn(),
+    });
+
+    const { ctx, mixer } = makeSeqCtx();
+    const seq = new Sequencer(mixer as unknown as ReturnType<typeof createAPUMixer>);
+
+    // BPM=120, totalBeats=4: beatDur=0.5s → delay=(4×0.5+0.1)×1000=2100ms
+    const TEMPO_SONG: Song = {
+      title: "Tempo test",
+      bpm: 120,
+      pulse1: [],
+      pulse2: [],
+      triangle: [],
+      noise: [],
+      totalBeats: 4,
+    };
+
+    seq.start(TEMPO_SONG, ctx as unknown as AudioContext);
+    expect(delays[0]).toBeCloseTo(2100, -2); // base tempo
+
+    seq.setTempoMultiplier(2.0);
+    // Trigger next cycle via the captured callback
+    callbacks[0]();
+
+    // With 2× multiplier: beatDur=0.25s → delay=(4×0.25+0.1)×1000=1100ms
+    expect(delays[1]).toBeCloseTo(1100, -2);
+  });
 });
