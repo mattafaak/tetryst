@@ -11,7 +11,7 @@ import { KeyboardHandler } from "../input/keyboard.ts";
 import { loadBindings, saveBindings, resetBindings } from "../core/key-bindings.ts";
 import { ACTION_LABELS } from "../render/key-bindings-ui.ts";
 import { playSFX } from "../audio/sfx.ts";
-import { playMusic, stopMusic } from "../audio/music.ts";
+import { playMusic, stopMusic, setSong, setTempoMultiplier } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
 import { LINE_CLEAR_ANIM_DURATION, MARATHON_MAX_LEVEL, MAX_CELL_SIZE } from "../core/constants.ts";
 import { saveHighScore } from "../core/high-scores.ts";
@@ -168,6 +168,12 @@ export class Game {
       if (action.type === "Start") {
         this.exitAttractMode();
         clearEffects();
+        const songMap: Record<GameMode, 0 | 1 | 2> = {
+          [GameMode.Marathon]: 0,
+          [GameMode.Ultra]: 1,
+          [GameMode.Sprint]: 2,
+        };
+        setSong(songMap[this.selectedMode]);
         this.state = startGame(
           createInitialState(this.selectedMode),
           this.selectedStartLevel,
@@ -548,6 +554,9 @@ export class Game {
       }
       if (result.needsLevelupSFX) playSFX("levelup");
       if (result.needsTSpinSFX) playSFX("tspin");
+    }
+    if (result.needsLevelupSFX) {
+      setTempoMultiplier(1.0 + this.state.level * 0.015);
     }
 
     // Screen flash for major events
