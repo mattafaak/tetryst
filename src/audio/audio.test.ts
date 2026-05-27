@@ -40,6 +40,7 @@ function setupAudioCtx(state = "running") {
         connect: vi.fn(() => mockGain),
         start: vi.fn(),
         stop: vi.fn(),
+        setPeriodicWave: vi.fn(),
         onended: null as (() => void) | null,
       };
       sfxOscs.push(o);
@@ -57,6 +58,7 @@ function setupAudioCtx(state = "running") {
       frequency: { value: 0, setValueAtTime: vi.fn() },
       connect: vi.fn(),
     })),
+    createPeriodicWave: vi.fn(() => ({})),
     resume: vi.fn(() => Promise.resolve()),
   };
 
@@ -168,6 +170,7 @@ describe("audio behavioral — SFX parameter verification", () => {
             connect: vi.fn(() => gains[gains.length - 1]),
             start: vi.fn(),
             stop: vi.fn(),
+            setPeriodicWave: vi.fn(),
             onended: null as (() => void) | null,
           };
           oscs.push(o);
@@ -186,6 +189,7 @@ describe("audio behavioral — SFX parameter verification", () => {
         createBiquadFilter: vi.fn(() => ({
           type: "", frequency: { value: 0, setValueAtTime: vi.fn() }, connect: vi.fn(),
         })),
+        createPeriodicWave: vi.fn(() => ({})),
         resume: vi.fn(() => Promise.resolve()),
       };
     }));
@@ -196,50 +200,49 @@ describe("audio behavioral — SFX parameter verification", () => {
     vi.unstubAllGlobals();
   });
 
-  it('"move" SFX: triangle wave, 200Hz, 0.06s, volume 0.12', () => {
+  it('"move" SFX: pulse25, 150Hz, 0.06s, volume 0.12', () => {
     playSFX("move");
     expect(oscs).toHaveLength(1);
-    expect(oscs[0].type).toBe("triangle");
-    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(200, 0);
+    expect(oscs[0].setPeriodicWave).toHaveBeenCalled();
+    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(150, 0);
     expect(oscs[0].start).toHaveBeenCalledWith(0);
     expect(oscs[0].stop).toHaveBeenCalledWith(0.06);
     expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.12, 0);
   });
 
-  it('"rotate" SFX: sine wave, 300Hz, 0.08s, volume 0.15', () => {
+  it('"rotate" SFX: pulse25, 280Hz, 0.08s, volume 0.15', () => {
     playSFX("rotate");
     expect(oscs).toHaveLength(1);
-    expect(oscs[0].type).toBe("sine");
-    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(300, 0);
+    expect(oscs[0].setPeriodicWave).toHaveBeenCalled();
+    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(280, 0);
     expect(oscs[0].stop).toHaveBeenCalledWith(0.08);
     expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.15, 0);
   });
 
-  it('"lock" SFX: triangle wave, 100Hz, 0.12s, volume 0.2', () => {
+  it('"lock" SFX: triangle, 90Hz, 0.12s, volume 0.2', () => {
     playSFX("lock");
     expect(oscs).toHaveLength(1);
     expect(oscs[0].type).toBe("triangle");
-    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(100, 0);
+    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(90, 0);
     expect(oscs[0].stop).toHaveBeenCalledWith(0.12);
     expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.2, 0);
   });
 
-  it('"clear" SFX: sweep from 200Hz to 800Hz, triangle, 0.25s', () => {
+  it('"clear" SFX: sweep 180→720Hz, pulse50 (square type), 0.22s', () => {
     playSFX("clear");
     expect(oscs).toHaveLength(1);
-    expect(oscs[0].type).toBe("triangle");
-    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(200, 0);
-    expect((oscs[0].frequency as Record<string, unknown>).linearRampToValueAtTime).toHaveBeenCalledWith(800, 0.25);
-    expect(oscs[0].stop).toHaveBeenCalledWith(0.25);
+    expect(oscs[0].type).toBe("square"); // pulse50 → built-in square
+    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(180, 0);
+    expect((oscs[0].frequency as Record<string, unknown>).linearRampToValueAtTime).toHaveBeenCalledWith(720, 0.22);
+    expect(oscs[0].stop).toHaveBeenCalledWith(0.22);
   });
 
-  it('"tetris" SFX: chord of 4 frequencies [262, 330, 392, 523], each sine, 0.4s', () => {
+  it('"tetris" SFX: chord of 4 triangle oscillators [262, 330, 392, 523], 0.4s', () => {
     playSFX("tetris");
     expect(oscs).toHaveLength(4);
     for (const osc of oscs) {
       expect(osc.type).toBe("triangle");
     }
-    // Collect all frequencies set across all 4 oscillators
     const freqs: number[] = [];
     for (const osc of oscs) {
       const calls = (osc.frequency as Record<string, unknown>).setValueAtTime as ReturnType<typeof vi.fn>;
@@ -250,29 +253,32 @@ describe("audio behavioral — SFX parameter verification", () => {
     expect(freqs.sort()).toEqual([262, 330, 392, 523]);
   });
 
-  it('"tspin" SFX: triangle wave, 400Hz, 0.15s, volume 0.2', () => {
+  it('"tspin" SFX: 2 pulse25 oscillators ascending (350Hz + 500Hz)', () => {
     playSFX("tspin");
-    expect(oscs).toHaveLength(1);
-    expect(oscs[0].type).toBe("triangle");
-    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(400, 0);
-    expect(oscs[0].stop).toHaveBeenCalledWith(0.15);
-    expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.2, 0);
+    expect(oscs).toHaveLength(2);
+    for (const osc of oscs) {
+      expect(osc.setPeriodicWave).toHaveBeenCalled();
+    }
+    const freqs = oscs.map(o =>
+      ((o.frequency as Record<string, unknown>).setValueAtTime as ReturnType<typeof vi.fn>).mock.calls[0][0] as number
+    );
+    expect(freqs.sort((a, b) => a - b)).toEqual([350, 500]);
   });
 
-  it('"hold" SFX: triangle wave, 250Hz, 0.06s, volume 0.12', () => {
+  it('"hold" SFX: pulse25, 240Hz, 0.06s, volume 0.12', () => {
     playSFX("hold");
     expect(oscs).toHaveLength(1);
-    expect(oscs[0].type).toBe("triangle");
-    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(250, 0);
+    expect(oscs[0].setPeriodicWave).toHaveBeenCalled();
+    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(240, 0);
     expect(oscs[0].stop).toHaveBeenCalledWith(0.06);
     expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.12, 0);
   });
 
-  it('"levelup" SFX: 3 ascending tones (400→500→600Hz), triangle', () => {
+  it('"levelup" SFX: 3 ascending pulse25 tones (400→500→600Hz)', () => {
     playSFX("levelup");
     expect(oscs).toHaveLength(3);
     for (const osc of oscs) {
-      expect(osc.type).toBe("triangle");
+      expect(osc.setPeriodicWave).toHaveBeenCalled();
     }
     expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(400, 0);
     expect(oscs[0].stop).toHaveBeenCalledWith(0.08);
@@ -282,12 +288,12 @@ describe("audio behavioral — SFX parameter verification", () => {
     expect(oscs[2].stop).toHaveBeenCalledWith(0.32);
   });
 
-  it('"gameover" SFX: sweep 400→100Hz, triangle, 0.7s, volume 0.25', () => {
+  it('"gameover" SFX: sweep 400→90Hz, pulse25, 0.7s, volume 0.25', () => {
     playSFX("gameover");
     expect(oscs).toHaveLength(1);
-    expect(oscs[0].type).toBe("triangle");
+    expect(oscs[0].setPeriodicWave).toHaveBeenCalled();
     expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(400, 0);
-    expect((oscs[0].frequency as Record<string, unknown>).linearRampToValueAtTime).toHaveBeenCalledWith(100, 0.7);
+    expect((oscs[0].frequency as Record<string, unknown>).linearRampToValueAtTime).toHaveBeenCalledWith(90, 0.7);
     expect(oscs[0].stop).toHaveBeenCalledWith(0.7);
     expect((gains[0].gain as Record<string, unknown>).setValueAtTime).toHaveBeenCalledWith(0.25, 0);
   });
@@ -799,6 +805,54 @@ describe("song data — Type C", () => {
     for (const n of SONG_TYPE_C.pulse1) {
       expect(n.freq).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("sfx — sfx-defs integration", () => {
+  function makeIntegrationCtx() {
+    const oscs: Array<Record<string, unknown>> = [];
+    const gains: Array<Record<string, unknown>> = [];
+    const ctx = {
+      currentTime: 0, state: "running", destination: {}, sampleRate: 44100,
+      createOscillator: vi.fn(() => {
+        const o = {
+          type: "",
+          frequency: { value: 0, setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+          connect: vi.fn(), start: vi.fn(), stop: vi.fn(),
+          setPeriodicWave: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        oscs.push(o);
+        return o;
+      }),
+      createGain: vi.fn(() => {
+        const g = {
+          connect: vi.fn(), disconnect: vi.fn(),
+          gain: { value: 0, setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+        };
+        gains.push(g);
+        return g;
+      }),
+      createPeriodicWave: vi.fn(() => ({})),
+      resume: vi.fn(() => Promise.resolve()),
+    };
+    return { ctx, oscs, gains };
+  }
+
+  beforeEach(() => { resetAudioContext(); });
+  afterEach(() => { vi.unstubAllGlobals(); resetAudioContext(); });
+
+  it('playSFX("move") uses pulse25 oscillator at 150Hz (sfx-defs)', () => {
+    const { ctx, oscs, gains } = makeIntegrationCtx();
+    vi.stubGlobal("AudioContext", vi.fn(function () { return ctx; }));
+
+    playSFX("move");
+
+    expect(oscs).toHaveLength(1);
+    expect(oscs[0].setPeriodicWave).toHaveBeenCalled();
+    expect((oscs[0].frequency as Record<string, unknown>).setValueAtTime)
+      .toHaveBeenCalledWith(150, 0);
+    expect(gains[0].gain.setValueAtTime).toHaveBeenCalledWith(0.12, 0);
   });
 });
 
