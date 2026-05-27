@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getAudioContext, resetAudioContext } from "./audio-ctx.ts";
 import { playSFX } from "./sfx.ts";
 import { playMusic, stopMusic, freqOf, bassFreqOf, buildSchedule, BPM, BEAT_DURATION, MELODY_DATA } from "./music.ts";
-import { createPulseOsc } from "./apu.ts";
+import { createPulseOsc, createAPUMixer } from "./apu.ts";
 
 let mockGain: Record<string, unknown>;
 /** Shared array of oscillators created by playSFX, reset per test. */
@@ -471,5 +471,51 @@ describe("apu — createPulseOsc", () => {
     expect(captured.ref).not.toBeNull();
     const expected = (2 / Math.PI) * Math.sin(2 * Math.PI * 0.125); // ≈ 0.450
     expect(captured.ref![1]).toBeCloseTo(expected, 4);
+  });
+});
+
+describe("apu — createAPUMixer", () => {
+  function makeMixerCtx() {
+    const gains: Array<{ connect: ReturnType<typeof vi.fn>; gain: { value: number } }> = [];
+    const destination = {};
+    const ctx = {
+      destination,
+      createGain: vi.fn(() => {
+        const g = { connect: vi.fn(), gain: { value: 0 } };
+        gains.push(g);
+        return g;
+      }),
+    };
+    return { ctx, gains, destination };
+  }
+
+  it("creates exactly 5 GainNodes", () => {
+    const { ctx, gains } = makeMixerCtx();
+    createAPUMixer(ctx as unknown as AudioContext);
+    expect(gains).toHaveLength(5);
+  });
+
+  it("master GainNode connects to ctx.destination", () => {
+    const { ctx, destination } = makeMixerCtx();
+    const mixer = createAPUMixer(ctx as unknown as AudioContext);
+    expect(mixer.master.connect).toHaveBeenCalledWith(destination);
+  });
+
+  it("channel GainNodes each connect to master", () => {
+    const { ctx } = makeMixerCtx();
+    const mixer = createAPUMixer(ctx as unknown as AudioContext);
+    for (const ch of [mixer.pulse1, mixer.pulse2, mixer.triangle, mixer.noise]) {
+      expect(ch.connect).toHaveBeenCalledWith(mixer.master);
+    }
+  });
+
+  it("gain values match spec: pulse1=0.25, pulse2=0.20, triangle=0.18, noise=0.14, master=0.70", () => {
+    const { ctx } = makeMixerCtx();
+    const mixer = createAPUMixer(ctx as unknown as AudioContext);
+    expect(mixer.pulse1.gain.value).toBe(0.25);
+    expect(mixer.pulse2.gain.value).toBe(0.20);
+    expect(mixer.triangle.gain.value).toBe(0.18);
+    expect(mixer.noise.gain.value).toBe(0.14);
+    expect(mixer.master.gain.value).toBe(0.70);
   });
 });
