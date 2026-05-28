@@ -111,22 +111,21 @@ export function detectTSpin(
 
   const { corners, backIndices } = getCornerInfo(piece);
 
-  let occupiedCount = 0;
-  const occupiedSet = new Set<number>();
+  let occupiedMask = 0;
   for (let i = 0; i < corners.length; i++) {
     if (isOccupied(board, corners[i].x, corners[i].y)) {
-      occupiedCount++;
-      occupiedSet.add(i);
+      occupiedMask |= (1 << i);
     }
   }
+  // Popcount for 4-bit mask (no Set allocation)
+  const occupiedCount = (occupiedMask & 1) + ((occupiedMask >> 1) & 1) + ((occupiedMask >> 2) & 1) + ((occupiedMask >> 3) & 1);
 
   if (occupiedCount < 3) {
     return { isTSpin: false, isMini: false };
   }
 
-  const bothBackOccupied =
-    occupiedSet.has(backIndices[0]) &&
-    occupiedSet.has(backIndices[1]);
+  const backMask = (1 << backIndices[0]) | (1 << backIndices[1]);
+  const bothBackOccupied = (occupiedMask & backMask) === backMask;
 
   if (bothBackOccupied) {
     return { isTSpin: true, isMini: false };
