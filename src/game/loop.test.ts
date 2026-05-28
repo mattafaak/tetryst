@@ -1536,3 +1536,117 @@ describe("branch coverage 35.1 — loop.ts remaining paths", () => {
     expect([GamePhase.EntryDelay, GamePhase.Playing]).toContain(g.state.phase);
   });
 });
+
+describe("Phase 37: latent bug fixes", () => {
+  describe("37.1 — pause-menu Enter→Resume restores pausedFromPhase", () => {
+    it("Enter→Resume during LineClear-paused restores LineClear, not Playing", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter"); // start Marathon
+      advanceFrames(10);
+
+      const g = game as unknown as {
+        state: GameState;
+        prevPhase: GamePhase;
+        pauseMenuSelection: number;
+      };
+      expect(g.state.phase).toBe(GamePhase.Playing);
+
+      // Force LineClear phase, then pause
+      g.state = {
+        ...g.state,
+        phase: GamePhase.LineClear,
+        lineClearTimer: 50,
+        clearedRowIndices: [],
+        activePiece: null,
+      };
+      pressKey("Escape"); releaseKey("Escape"); // pause
+      advanceFrames(1);
+      expect(g.state.phase).toBe(GamePhase.Paused);
+      expect((g.state as { pausedFromPhase?: GamePhase }).pausedFromPhase).toBe(GamePhase.LineClear);
+
+      // Navigate to "Resume" (selection 0) and press Enter
+      g.pauseMenuSelection = 0;
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(1);
+
+      // Must restore LineClear, NOT Playing (no activePiece = would be stuck in Playing)
+      expect(g.state.phase).toBe(GamePhase.LineClear);
+      expect((g.state as { pausedFromPhase?: GamePhase }).pausedFromPhase).toBeUndefined();
+    });
+
+    it("Enter→Resume from Playing-paused correctly resumes to Playing", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as {
+        state: GameState;
+        prevPhase: GamePhase;
+        pauseMenuSelection: number;
+      };
+      expect(g.state.phase).toBe(GamePhase.Playing);
+
+      pressKey("Escape"); releaseKey("Escape"); // pause from Playing
+      advanceFrames(1);
+      expect(g.state.phase).toBe(GamePhase.Paused);
+
+      g.pauseMenuSelection = 0;
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(1);
+
+      expect(g.state.phase).toBe(GamePhase.Playing);
+    });
+  });
+
+  describe("37.2 — Sprint timer ticks during LineClear and EntryDelay", () => {
+    function startSprintGame() {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("ArrowRight"); releaseKey("ArrowRight"); // → Sprint
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+      return game as unknown as { state: GameState };
+    }
+
+    it("Sprint modeTimer increments during LineClear phase", () => {
+      const g = startSprintGame();
+      expect(g.state.mode).toBe(GameMode.Sprint);
+
+      const timerBefore = 5000;
+      g.state = {
+        ...g.state,
+        phase: GamePhase.LineClear,
+        lineClearTimer: 0,
+        clearedRowIndices: [],
+        modeTimer: timerBefore,
+      };
+
+      advanceFrames(5, 16); // 80ms
+
+      expect(g.state.modeTimer).toBeGreaterThan(timerBefore);
+    });
+
+    it("Sprint modeTimer increments during EntryDelay phase", () => {
+      const g = startSprintGame();
+      expect(g.state.mode).toBe(GameMode.Sprint);
+
+      const timerBefore = 5000;
+      g.state = {
+        ...g.state,
+        phase: GamePhase.EntryDelay,
+        entryDelayTimer: 0,
+        modeTimer: timerBefore,
+        activePiece: null,
+      };
+
+      advanceFrames(3, 16); // 48ms — less than ENTRY_DELAY=200ms so stays in EntryDelay
+
+      expect(g.state.modeTimer).toBeGreaterThan(timerBefore);
+    });
+  });
+});

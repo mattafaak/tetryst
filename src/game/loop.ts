@@ -240,9 +240,13 @@ export class Game {
       }
       if (action.type === "Start") {
         if (this.pauseMenuSelection === 0) {
-          // Resume
+          // Resume — restore whichever phase was active when pause was pressed
           this.pauseMenuSelection = 0;
-          this.state = { ...this.state, phase: GamePhase.Playing };
+          this.state = {
+            ...this.state,
+            phase: this.state.pausedFromPhase ?? GamePhase.Playing,
+            pausedFromPhase: undefined,
+          };
         } else if (this.pauseMenuSelection === 1) {
           // Restart
           this.pauseMenuSelection = 0;
@@ -472,17 +476,22 @@ export class Game {
     }
   }
 
-  /** Apply Ultra countdown in non-Playing phases so timer stays continuous.
-   *  Returns Victory-phase state when time expires so the caller's assignment
-   *  propagates the phase correctly (fix 12.1: side-effect triggerVictory was
-   *  overwritten by the returned spread from the original state parameter). */
+  /** Apply mode timers in non-Playing phases so they stay continuous.
+   *  Ultra counts down (returning Victory when expired); Sprint counts up.
+   *  Fix 12.1: return new state rather than mutating so caller's assignment
+   *  propagates phase correctly. */
   private applyUltraTimer(state: GameState, dt: number): GameState {
-    if (state.mode !== GameMode.Ultra) return state;
-    const next = Math.max(0, state.modeTimer - dt);
-    if (next <= 0) {
-      return { ...state, modeTimer: 0, phase: GamePhase.Victory };
+    if (state.mode === GameMode.Ultra) {
+      const next = Math.max(0, state.modeTimer - dt);
+      if (next <= 0) {
+        return { ...state, modeTimer: 0, phase: GamePhase.Victory };
+      }
+      return { ...state, modeTimer: next };
     }
-    return { ...state, modeTimer: next };
+    if (state.mode === GameMode.Sprint) {
+      return { ...state, modeTimer: state.modeTimer + dt };
+    }
+    return state;
   }
 
   private updatePlaying(dt: number): void {
