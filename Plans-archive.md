@@ -379,3 +379,19 @@ Findings from comprehensive code audit. Phase 22 sync (19 tasks marked complete)
 | 24.5 | **Dynamic controls hint in menu overlay** — `buildControlsHint()` generates hint from current bindings. Hint cached with generation counter. Passed through drawMenuOverlay → renderMenuContent. | Menu hint reflects current bindings; cache invalidated on binding change; 4 hint tests pass | 24.1, 24.4 | cc:完了 |
 | 24.6 | **Key-bindings integration tests** — Tests for setBindings replacement, removed-key cleanup, detach/attach lifecycle, remap old→new key for fired actions, DAS→non-DAS remap stops repeats, rawKeyHandler capture-then-apply flow. | 7 integration lifecycle tests + 3 raw handler tests; all pass | 24.2, 24.4 | cc:完了 |
 
+## Phase 26: Deep audit — bugs, test infrastructure, hot-path perf [tdd:required]
+
+All 16 tasks cc:完了. Bugs fixed: audio state clobber, activePiece non-null on GameOver, auto-pause during sub-phases. Tests fixed: T-Spin Mini popup, popup tautology. Infrastructure: shared test-utils factories, fuzz test separation, v8 coverage. Perf: applyGravity early-return, shouldLock boundary guard, high-score slice cache, context write hoisting, formatMs cache, SUSTAIN_FRACTION constant.
+
+## Phase 28: Audio engine overhaul — NES APU–style four-channel synthesizer [tdd:required]
+
+All 15 tasks cc:完了. Full NES APU-style 4-channel engine (pulse×2, triangle, noise). Three songs (Type A/B/C), per-mode defaults, level-driven tempo, NES-authentic SFX. Build verified ≤70kB gzip.
+
+## Phase 29: Audio sequencer overhaul — continuous oscillators, loop stutter, harshness [tdd:required]
+
+All 2 tasks cc:完了. Harmonics reduced 32→9; sequencer rewritten with continuous oscillators, 4.5kHz lowpass, clamped ADSR, cycleAudioStart tracking, 0.2s pre-timeout — eliminates 180ms loop gap.
+
+## Phase 30: Deep audit — bug fixes, guideline compliance, gameplay standards [tdd:required]
+
+All 11 tasks cc:完了. Bugs: combo off-by-one, pause-phase loss, soft-drop DAS, lock-out SFX asymmetry, T-spin kick exception. Compliance: kick index #4/#5 → always full T-spin. Features: IRS (initial rotation system), IHS (initial hold system). Cleanup: 4 dead exports removed, LastLockResult exported, AI hold fix, Set→bitmask perf.
+
