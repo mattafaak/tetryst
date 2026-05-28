@@ -51,9 +51,10 @@ describe("key-bindings", () => {
       expect(DEFAULT_BINDINGS["ArrowLeft"]).toEqual({ type: "MoveLeft" });
     });
 
-    it("maps ArrowUp and KeyZ to RotateCW", () => {
+    it("maps ArrowUp and KeyX to RotateCW, KeyZ to RotateCCW (TDG §13 standard)", () => {
       expect(DEFAULT_BINDINGS["ArrowUp"]).toEqual({ type: "RotateCW" });
-      expect(DEFAULT_BINDINGS["KeyZ"]).toEqual({ type: "RotateCW" });
+      expect(DEFAULT_BINDINGS["KeyX"]).toEqual({ type: "RotateCW" });
+      expect(DEFAULT_BINDINGS["KeyZ"]).toEqual({ type: "RotateCCW" });
     });
   });
 

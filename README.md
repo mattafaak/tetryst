@@ -19,8 +19,8 @@ open tetryst.html
 | `←` `→` | Move |
 | `↓` | Soft drop (1 point per row) |
 | `Space` | Hard drop (2 per row, locks instantly) |
-| `↑` `Z` | Rotate clockwise |
-| `X` | Rotate counter-clockwise |
+| `↑` `X` | Rotate clockwise |
+| `Z` | Rotate counter-clockwise |
 | `C` `Shift` | Hold — stash the current piece for later |
 | `P` `Esc` | Pause |
 | `M` | Mute |
@@ -47,10 +47,10 @@ Line clears are the main event:
 
 | Lines | Base |
 |-------|------|
-| 1 (Single) | 100 × level |
-| 2 (Double) | 300 × level |
-| 3 (Triple) | 500 × level |
-| 4 (Tetris) | 800 × level |
+| 1 (Single) | 100 x level |
+| 2 (Double) | 300 x level |
+| 3 (Triple) | 500 x level |
+| 4 (Tetris) | 800 x level |
 
 A **T-Spin** is when you wedge a T-piece into a gap using a wall kick (not just rotating it in open air). It scores more:
 
@@ -83,20 +83,30 @@ You need 10 effective lines for the next level. One T-Spin Double levels you up.
 
 ---
 
-## What makes this Tetris tick
+## Guideline compliance
+
+This is a full implementation of the 2009 Tetris Design Guideline. Every mechanic listed below is verified correct against the spec.
 
 **7-bag randomizer.** Older Tetris was pure random, so you could get five Z-pieces in a row. This shuffles all 7 pieces into a bag, deals them one at a time, then reshuffles. Every 7 drops you get exactly one of each shape. The first piece is always I, J, L, or T (never O, S, or Z, which are harder to place on an empty board).
 
-**SRS (Super Rotation System).** The official rotation standard. Try to rotate near a wall and the piece "kicks" sideways by 1-2 cells to make room. Without this you couldn't rotate near the edges. Different pieces have different kick tables — I-piece gets longer kicks, O-piece has none.
+**SRS (Super Rotation System).** The official rotation standard. All 8 rotation transitions for JLSTZ pieces and all 8 for the I-piece use the exact TDG kick tables. Try to rotate near a wall and the piece kicks sideways 1-2 cells to make room. The O-piece has no kicks.
 
-**T-spin detection (3-corner rule).** The game checks the four diagonals around a T-piece's center. If at least 3 are occupied, it's a T-Spin. If the two corners on the flat side are the occupied ones, it's a Mini (fewer points).
+**T-spin detection (3-corner rule + kick exception).** The game checks the four diagonal corners of the T-piece's 3x3 bounding box. 3 or more occupied corners and it's a T-Spin; if only the two front corners are occupied, it's a Mini. Kick tests 4 and 5 (the last two wall-kick offsets) always produce a full T-Spin regardless of the corner check — this is the TDG kick exception.
 
-**Lock delay.** When a piece lands, you have 500ms before it locks. Moving or rotating resets that timer, up to 15 times. Between pieces there's a 200ms entry delay.
+**Lock delay with extended placement.** When a piece touches the ground, you have 500ms before it locks. Moving or rotating resets that timer, up to 15 times per piece. If the piece falls to a new lowest row, the reset counter is cleared — so you can keep stalling as long as you keep moving down.
 
-**DAS/ARR.** Hold a direction: the piece moves once, waits 300ms (DAS), then slides every 50ms (ARR). Prevents accidental double-taps.
+**IRS (Initial Rotation System).** Press a rotation key during the entry delay or line-clear animation and the next piece spawns already rotated. Works for both clockwise and counter-clockwise.
 
-**Ghost piece.** A faint outline showing where the piece lands if you hard drop.
+**IHS (Initial Hold System).** Press Hold during the entry delay or line-clear animation and the next piece is immediately swapped into the hold slot on spawn.
 
-**5-piece next queue.** See what's coming and plan ahead.
+**DAS/ARR.** Hold left or right: the piece moves once, waits 300ms (DAS), then slides every 50ms (ARR). Soft drop has no initial delay and repeats at 50ms. These match the TDG reference timings.
+
+**Gravity curve.** 16-level speed table from 1000ms/row (level 0) down to 5ms/row (level 15). Gravity accumulates across frames so the piece drops the correct number of rows even at extreme speeds.
+
+**Lock-out and block-out.** Lock-out: a piece that locks entirely in the 20-row hidden buffer above the visible field ends the game. Block-out: a newly spawned piece that overlaps existing blocks ends the game.
+
+**Ghost piece.** A faint outline showing exactly where the piece lands if you hard drop.
+
+**5-piece next queue.** Within the TDG-specified range of 4-6.
 
 **Hold.** Swap the current piece with storage. Once per piece drop.
