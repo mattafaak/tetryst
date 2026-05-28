@@ -818,8 +818,8 @@ describe("Game integration", () => {
       vi.clearAllMocks();
       pressKey("Space"); // Hard drop — collides immediately, lock-out
 
-      // Lock SFX still plays (hard drop always plays it), but no scoring effects
-      expect(playSFX).toHaveBeenCalledWith("lock");
+      // Lock SFX must NOT play on lock-out — symmetric with gravity-lock path
+      expect(playSFX).not.toHaveBeenCalledWith("lock");
       expect(playSFX).not.toHaveBeenCalledWith("tetris");
       expect(playSFX).not.toHaveBeenCalledWith("tspin");
       expect(playSFX).not.toHaveBeenCalledWith("clear");

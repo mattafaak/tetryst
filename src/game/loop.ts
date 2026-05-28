@@ -288,7 +288,8 @@ export class Game {
             playSFX("rotate");
             break;
           case "HardDrop":
-            playSFX("lock");
+            // lock SFX deferred: played below only when lastLockResult is set
+            // (i.e., not a lock-out), symmetric with gravity-lock path
             break;
           case "Hold":
             playSFX("hold");
@@ -297,12 +298,14 @@ export class Game {
       }
       this.state = newState;
 
-      // Hard-drop locks bypass lockActivePiece, so handle flash and SFX here
-      // using the transient lastLockResult set by executeLock.
+      // Hard-drop locks bypass lockActivePiece, so handle lock SFX, flash, and
+      // scoring SFX here using the transient lastLockResult set by executeLock.
+      // lastLockResult is undefined on lock-out, so all SFX are gated on it.
       if (action.type === "HardDrop") {
         const r = this.state.lastLockResult;
         if (r) {
           if (this.audioEnabled) {
+            playSFX("lock");
             if (r.linesCleared > 0) {
               if (r.linesCleared === 4) {
                 playSFX("tetris");
