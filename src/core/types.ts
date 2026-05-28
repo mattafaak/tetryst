@@ -107,6 +107,7 @@ export interface GameState {
   backToBack: boolean;
   phase: GamePhase;
   pausedFromPhase?: GamePhase;
+  bufferedRotation?: "CW" | "CCW" | null;
   gravityTimer: number;
   lockState: LockState;
   entryDelayTimer: number;

@@ -31,8 +31,14 @@ export function processAction(
     case "HardDrop":
       return handleHardDrop(state);
     case "RotateCW":
+      if (state.phase === GamePhase.EntryDelay || state.phase === GamePhase.LineClear) {
+        return { ...state, bufferedRotation: "CW" };
+      }
       return handleRotateCW(state);
     case "RotateCCW":
+      if (state.phase === GamePhase.EntryDelay || state.phase === GamePhase.LineClear) {
+        return { ...state, bufferedRotation: "CCW" };
+      }
       return handleRotateCCW(state);
     case "Hold":
       return handleHold(state);

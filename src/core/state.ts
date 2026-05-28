@@ -5,7 +5,7 @@ import {
   GameMode,
 } from "./types.ts";
 import { createBoard, checkCollision } from "./board.ts";
-import { spawnPiece, getGhostY } from "./pieces.ts";
+import { spawnPiece, getGhostY, tryRotateCW, tryRotateCCW } from "./pieces.ts";
 import { resetLockState } from "./lock-delay.ts";
 import { createFirstBag, drawFromBag, createBag } from "./randomizer.ts";
 import { ULTRA_DURATION_MS, NEXT_QUEUE_SIZE } from "./constants.ts";
@@ -150,7 +150,18 @@ function spawnFromQueue(state: GameState): GameState {
     }
   }
 
-  const piece = spawnPiece(nextType);
+  let piece = spawnPiece(nextType);
+
+  // IRS: apply buffered rotation from EntryDelay/LineClear phase
+  const bufRot = state.bufferedRotation;
+  if (bufRot) {
+    const rotResult = bufRot === "CW"
+      ? tryRotateCW(piece, state.board)
+      : tryRotateCCW(piece, state.board);
+    if (rotResult !== null) {
+      piece = rotResult.piece;
+    }
+  }
 
   if (checkCollision(state.board, piece)) {
     return {
@@ -162,6 +173,7 @@ function spawnFromQueue(state: GameState): GameState {
       bag: currentBag,
       lockState: resetLockState(),
       gravityTimer: 0,
+      bufferedRotation: null,
     };
   }
 
@@ -174,6 +186,7 @@ function spawnFromQueue(state: GameState): GameState {
     bag: currentBag,
     lockState: { ...resetLockState(), lowestY: piece.pos.y },
     gravityTimer: 0,
+    bufferedRotation: null,
   };
 }
 

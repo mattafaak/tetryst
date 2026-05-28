@@ -585,3 +585,39 @@ describe("processAction dispatch", () => {
     expect(next).toBe(s);
   });
 });
+
+describe("IRS — Initial Rotation System", () => {
+  it("RotateCW during EntryDelay buffers rotation instead of ignoring", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay };
+    const next = processAction(s, { type: "RotateCW" });
+    expect(next.bufferedRotation).toBe("CW");
+    expect(next.phase).toBe(GamePhase.EntryDelay); // phase unchanged
+  });
+
+  it("RotateCCW during EntryDelay buffers rotation", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay };
+    const next = processAction(s, { type: "RotateCCW" });
+    expect(next.bufferedRotation).toBe("CCW");
+  });
+
+  it("RotateCW during LineClear buffers rotation", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.LineClear };
+    const next = processAction(s, { type: "RotateCW" });
+    expect(next.bufferedRotation).toBe("CW");
+  });
+
+  it("RotateCW during Playing does NOT buffer (normal rotation)", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.Playing };
+    const next = processAction(s, { type: "RotateCW" });
+    // Normal rotation fires — bufferedRotation stays null/undefined
+    expect(next.bufferedRotation ?? null).toBeNull();
+  });
+
+  it("later RotateCCW overrides earlier RotateCW buffer", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay };
+    const after1 = processAction(s, { type: "RotateCW" });
+    expect(after1.bufferedRotation).toBe("CW");
+    const after2 = processAction(after1, { type: "RotateCCW" });
+    expect(after2.bufferedRotation).toBe("CCW");
+  });
+});
