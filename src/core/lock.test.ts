@@ -15,7 +15,7 @@ function lockAndExecute(
   const boardWithPiece = lockPiece(board, piece);
   const state = baseState({
     phase: GamePhase.Playing,
-    lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0 },
+    lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0, lastRotationKickIndex: null },
     board: boardWithPiece,
     ...overrides,
   });

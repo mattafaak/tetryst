@@ -19,7 +19,7 @@ function emptyState(): GameState {
     backToBack: false,
     phase: GamePhase.Playing,
     gravityTimer: 0,
-    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1, lastRotationKickIndex: null },
     entryDelayTimer: 0,
     bag: [],
     lineClearTimer: 0,

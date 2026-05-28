@@ -68,7 +68,7 @@ describe("edge: lock delay boundaries", () => {
     const state = baseState({
       phase: GamePhase.Playing,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO },
-      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 20 },
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 20, lastRotationKickIndex: null },
     });
     const result = checkLock(state, LOCK_DELAY - 1);
     expect(result.shouldLock).toBe(false);
@@ -78,7 +78,7 @@ describe("edge: lock delay boundaries", () => {
     const state = baseState({
       phase: GamePhase.Playing,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO },
-      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 20 },
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 20, lastRotationKickIndex: null },
     });
     const result = checkLock(state, LOCK_DELAY);
     expect(result.shouldLock).toBe(true);
@@ -88,7 +88,7 @@ describe("edge: lock delay boundaries", () => {
     const state = baseState({
       phase: GamePhase.Playing,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO },
-      lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: 20 },
+      lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: 20, lastRotationKickIndex: null },
     });
     const result = checkLock(state, 0);
     expect(result.shouldLock).toBe(true);
@@ -98,7 +98,7 @@ describe("edge: lock delay boundaries", () => {
     let state = baseState({
       phase: GamePhase.Playing,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 20 }, rotation: RotationState.ZERO },
-      lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: 20 },
+      lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: 20, lastRotationKickIndex: null },
     });
     state = processAction(state, { type: "MoveLeft" });
     expect(state.lockState.resets).toBeLessThanOrEqual(MAX_LOCK_RESETS);

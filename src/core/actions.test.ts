@@ -36,7 +36,7 @@ function baseState(overrides?: Partial<GameState>): GameState {
     backToBack: false,
     phase: GamePhase.Playing,
     gravityTimer: 0,
-    lockState: { timer: 0, resets: 5, onGround: false, lowestY: 20 },
+    lockState: { timer: 0, resets: 5, onGround: false, lowestY: 20, lastRotationKickIndex: null },
     entryDelayTimer: 0,
     bag: [],
     lineClearTimer: 0,
@@ -64,7 +64,7 @@ describe("handleMove horizontal into gap", () => {
         pos: { x: 3, y: BOARD_HEIGHT - 5 },
         rotation: RotationState.R,
       },
-      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "MoveRight" });
@@ -87,7 +87,7 @@ describe("handleMove horizontal into gap", () => {
         pos: { x: 3, y: BOARD_HEIGHT - 5 },
         rotation: RotationState.R,
       },
-      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "MoveRight" });
@@ -118,7 +118,7 @@ describe("handleRotate — wall kick and onGround", () => {
     const state = baseState({
       board,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 10 }, rotation: RotationState.R },
-      lockState: { timer: 300, resets: 2, onGround: true, lowestY: 10 },
+      lockState: { timer: 300, resets: 2, onGround: true, lowestY: 10, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "RotateCCW" });
@@ -140,7 +140,7 @@ describe("handleRotate — wall kick and onGround", () => {
     const BH = BOARD_HEIGHT;
     const state = baseState({
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: BH - 2 }, rotation: RotationState.ZERO },
-      lockState: { timer: 400, resets: 1, onGround: true, lowestY: BH - 2 },
+      lockState: { timer: 400, resets: 1, onGround: true, lowestY: BH - 2, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "RotateCW" });
@@ -155,7 +155,7 @@ describe("handleRotate — wall kick and onGround", () => {
 describe("handleSoftDrop", () => {
   it("resets lock resets counter when piece descends to new lowest Y", () => {
     const state = baseState({
-      lockState: { timer: 200, resets: 10, onGround: false, lowestY: 20 },
+      lockState: { timer: 200, resets: 10, onGround: false, lowestY: 20, lastRotationKickIndex: null },
       activePiece: makePiece(20),
     });
     const next = processAction(state, { type: "SoftDrop" });
@@ -170,7 +170,7 @@ describe("handleSoftDrop", () => {
     // Artificially stale state: piece is mid-air but onGround=true (e.g., from rotation kick)
     const state = baseState({
       activePiece: makePiece(20),  // I-piece, lots of room to fall
-      lockState: { timer: 400, resets: 3, onGround: true, lowestY: 20 },
+      lockState: { timer: 400, resets: 3, onGround: true, lowestY: 20, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "SoftDrop" });
@@ -188,7 +188,7 @@ describe("handleSoftDrop", () => {
     const state = baseState({
       board,
       activePiece: makePiece(20),
-      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 20 },
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 20, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "SoftDrop" });
@@ -252,7 +252,7 @@ describe("handleHardDrop", () => {
     const state = baseState({
       board,
       activePiece: makePiece(18), // I-piece at y=18, can't drop (row 20 is full)
-      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 18 },
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 18, lastRotationKickIndex: null },
     });
     const next = processAction(state, { type: "HardDrop" });
     expect(next.phase).toBe(GamePhase.GameOver);
@@ -330,7 +330,7 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
         pos: { x: 3, y: BOARD_HEIGHT - 5 },
         rotation: RotationState.R,
       },
-      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+      lockState: { timer: 300, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 5, lastRotationKickIndex: null },
     });
     const next = processAction(state, { type: "MoveRight" });
     expect(next.lockState.onGround).toBe(false);
@@ -348,7 +348,7 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
         pos: { x: 3, y: BOARD_HEIGHT - 5 },
         rotation: RotationState.R,
       },
-      lockState: { timer: 300, resets: 15, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+      lockState: { timer: 300, resets: 15, onGround: true, lowestY: BOARD_HEIGHT - 5, lastRotationKickIndex: null },
     });
     const next = processAction(state, { type: "MoveRight" });
     expect(next.lockState.onGround).toBe(false);
@@ -364,7 +364,7 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
     const state = baseState({
       board,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 10 }, rotation: RotationState.R },
-      lockState: { timer: 300, resets: 2, onGround: true, lowestY: 10 },
+      lockState: { timer: 300, resets: 2, onGround: true, lowestY: 10, lastRotationKickIndex: null },
     });
     const next = processAction(state, { type: "RotateCCW" });
     expect(next.lockState.onGround).toBe(false);
@@ -380,7 +380,7 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
     const state = baseState({
       board,
       activePiece: { type: TetriminoType.T, pos: { x: 3, y: 10 }, rotation: RotationState.R },
-      lockState: { timer: 300, resets: 15, onGround: true, lowestY: 10 },
+      lockState: { timer: 300, resets: 15, onGround: true, lowestY: 10, lastRotationKickIndex: null },
     });
     const next = processAction(state, { type: "RotateCCW" });
     expect(next.lockState.onGround).toBe(false);
@@ -399,7 +399,7 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
         pos: { x: 3, y: BOARD_HEIGHT - 5 },
         rotation: RotationState.R,
       },
-      lockState: { timer: 400, resets: 14, onGround: true, lowestY: BOARD_HEIGHT - 5 },
+      lockState: { timer: 400, resets: 14, onGround: true, lowestY: BOARD_HEIGHT - 5, lastRotationKickIndex: null },
     });
 
     // 15th move resets timer, hitting MAX_LOCK_RESETS
@@ -432,7 +432,7 @@ describe("infinite spin prevention — kick-to-air consumes a reset (TDG §7)", 
         pos: { x: 3, y: BH - 4 },
         rotation: RotationState.ZERO,
       },
-      lockState: { timer: 200, resets: 15, onGround: false, lowestY: BH - 4 },
+      lockState: { timer: 200, resets: 15, onGround: false, lowestY: BH - 4, lastRotationKickIndex: null },
     });
 
     const next = processAction(state, { type: "RotateCW" });

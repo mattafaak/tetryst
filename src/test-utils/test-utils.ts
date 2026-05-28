@@ -52,7 +52,7 @@ export function playingState(overrides?: Partial<GameState>): GameState {
   return baseState({
     phase: GamePhase.Playing,
     activePiece: makePiece(TetriminoType.I, 3, 20, RotationState.ZERO),
-    lockState: { timer: 0, resets: 0, onGround: false, lowestY: 20 },
+    lockState: { timer: 0, resets: 0, onGround: false, lowestY: 20, lastRotationKickIndex: null },
     gravityTimer: 0,
     nextQueue: [
       { type: TetriminoType.T },

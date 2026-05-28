@@ -12,7 +12,7 @@ import { baseState } from "../test-utils/test-utils.ts";
 function createTestState(overrides?: Partial<GameState>): GameState {
   return baseState({
     phase: GamePhase.Playing,
-    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1, lastRotationKickIndex: null },
     ...overrides,
   });
 }
@@ -21,7 +21,7 @@ describe("lock-delay", () => {
   describe("shouldLock", () => {
     it("returns false when piece is not on ground", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+        lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1, lastRotationKickIndex: null },
       });
       const result = shouldLock(state, 100);
       expect(result.shouldLock).toBe(false);
@@ -30,7 +30,7 @@ describe("lock-delay", () => {
 
     it("returns false when onGround is false regardless of timer value", () => {
       const state = createTestState({
-        lockState: { timer: 50000, resets: 0, onGround: false, lowestY: -1 },
+        lockState: { timer: 50000, resets: 0, onGround: false, lowestY: -1, lastRotationKickIndex: null },
       });
       const result = shouldLock(state, 100);
       expect(result.shouldLock).toBe(false);
@@ -49,7 +49,7 @@ describe("lock-delay", () => {
       for (const phase of phases) {
         const state = createTestState({
           phase,
-          lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1 },
+          lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1, lastRotationKickIndex: null },
         });
         const result = shouldLock(state, 500);
         expect(result.shouldLock).toBe(false);
@@ -59,7 +59,7 @@ describe("lock-delay", () => {
 
     it("timer accumulates correctly", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1 },
+        lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1, lastRotationKickIndex: null },
       });
       const result1 = shouldLock(state, 200);
       expect(result1.shouldLock).toBe(false);
@@ -72,7 +72,7 @@ describe("lock-delay", () => {
 
     it("multiple dt accumulations 200+200+200 = 600 >= 500 → shouldLock", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1 },
+        lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1, lastRotationKickIndex: null },
       });
       const r1 = shouldLock(state, 200);
       expect(r1.shouldLock).toBe(false);
@@ -89,7 +89,7 @@ describe("lock-delay", () => {
 
     it("locks immediately when resets >= MAX_LOCK_RESETS, ignoring timer (TDG §7)", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: -1 },
+        lockState: { timer: 0, resets: MAX_LOCK_RESETS, onGround: true, lowestY: -1, lastRotationKickIndex: null },
       });
       const result = shouldLock(state, 1); // tiny dt — well below LOCK_DELAY
       expect(result.shouldLock).toBe(true);
@@ -98,7 +98,7 @@ describe("lock-delay", () => {
 
     it("does not lock immediately when resets is one below the limit", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: MAX_LOCK_RESETS - 1, onGround: true, lowestY: -1 },
+        lockState: { timer: 0, resets: MAX_LOCK_RESETS - 1, onGround: true, lowestY: -1, lastRotationKickIndex: null },
       });
       const result = shouldLock(state, 1);
       expect(result.shouldLock).toBe(false); // timer only 1ms — well below 500ms
@@ -106,7 +106,7 @@ describe("lock-delay", () => {
 
     it("returns true when timer >= LOCK_DELAY", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1 },
+        lockState: { timer: 0, resets: 0, onGround: true, lowestY: -1, lastRotationKickIndex: null },
       });
       const result = shouldLock(state, LOCK_DELAY);
       expect(result.shouldLock).toBe(true);
@@ -131,7 +131,7 @@ describe("lock-delay", () => {
   describe("updateLowestY", () => {
     it("resets resets counter when piece descends to new lowest y", () => {
       const state = createTestState({
-        lockState: { timer: 300, resets: 10, onGround: true, lowestY: 25 },
+        lockState: { timer: 300, resets: 10, onGround: true, lowestY: 25, lastRotationKickIndex: null },
       });
       const next = updateLowestY(state, 26);
       expect(next.lockState.resets).toBe(0);
@@ -140,7 +140,7 @@ describe("lock-delay", () => {
 
     it("does not reset counter when y is same or higher", () => {
       const state = createTestState({
-        lockState: { timer: 300, resets: 10, onGround: true, lowestY: 25 },
+        lockState: { timer: 300, resets: 10, onGround: true, lowestY: 25, lastRotationKickIndex: null },
       });
       const next = updateLowestY(state, 25);
       expect(next.lockState.resets).toBe(10);
@@ -149,7 +149,7 @@ describe("lock-delay", () => {
 
     it("initializes lowestY on first descent from -1", () => {
       const state = createTestState({
-        lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+        lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1, lastRotationKickIndex: null },
       });
       const next = updateLowestY(state, 20);
       expect(next.lockState.lowestY).toBe(20);

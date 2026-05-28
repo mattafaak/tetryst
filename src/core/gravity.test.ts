@@ -40,7 +40,7 @@ function makeState(
     activePiece: piece,
     level: opts.level ?? 0,
     gravityTimer: opts.gravityTimer ?? 0,
-    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1 },
+    lockState: { timer: 0, resets: 0, onGround: false, lowestY: -1, lastRotationKickIndex: null },
   });
 }
 
@@ -160,7 +160,7 @@ describe("applyGravity", () => {
     const state = makeState({ piece: pieceAtFloor, gravityTimer: 0 });
     const stateOnGround: GameState = {
       ...state,
-      lockState: { timer: 400, resets: 5, onGround: true, lowestY: -1 },
+      lockState: { timer: 400, resets: 5, onGround: true, lowestY: -1, lastRotationKickIndex: null },
     };
     const result = applyGravity(stateOnGround, 3000);
 
@@ -181,7 +181,7 @@ describe("applyGravity", () => {
     const state = makeState({ piece: { type: TetriminoType.T, pos: { x: 3, y: 0 }, rotation: RotationState.ZERO }, gravityTimer: 0 });
     const staleOnGround: GameState = {
       ...state,
-      lockState: { timer: 400, resets: 3, onGround: true, lowestY: 0 },
+      lockState: { timer: 400, resets: 3, onGround: true, lowestY: 0, lastRotationKickIndex: null },
     };
 
     const result = applyGravity(staleOnGround, 1100);
