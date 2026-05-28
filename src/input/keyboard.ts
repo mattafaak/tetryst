@@ -7,13 +7,21 @@ interface KeyState {
   dasTimer: number;
   arrTimer: number;
   dasCharged: boolean;
+  sdrTimer: number;
 }
 
-/** Action types that get DAS/ARR auto-repeat processing. */
-const DAS_ACTION_TYPES = new Set(["MoveLeft", "MoveRight", "SoftDrop"]);
+/** Action types that get DAS/ARR auto-repeat (300ms delay, then 50ms repeat). */
+const DAS_ACTION_TYPES = new Set(["MoveLeft", "MoveRight"]);
+
+/** Action types that get SDR — Soft Drop Rate: no initial delay, repeat every ARR_RATE. */
+const SDR_ACTION_TYPES = new Set(["SoftDrop"]);
 
 function isDasAction(action: InputAction): boolean {
   return DAS_ACTION_TYPES.has(action.type);
+}
+
+function isSdrAction(action: InputAction): boolean {
+  return SDR_ACTION_TYPES.has(action.type);
 }
 
 type InputCallback = (action: InputAction) => void;
@@ -57,7 +65,17 @@ export class KeyboardHandler {
     for (const [, state] of this.keys) {
       if (!state.pressed) continue;
 
-      // Only DAS actions auto-repeat
+      // SDR: soft drop repeats immediately at ARR_RATE with no initial DAS delay
+      if (isSdrAction(state.action)) {
+        state.sdrTimer += dt;
+        while (state.sdrTimer >= ARR_RATE) {
+          state.sdrTimer -= ARR_RATE;
+          this.fire(state.action);
+        }
+        continue;
+      }
+
+      // DAS: left/right wait DAS_DELAY then repeat at ARR_RATE
       if (!isDasAction(state.action)) continue;
 
       if (!state.dasCharged) {
@@ -101,6 +119,7 @@ export class KeyboardHandler {
       dasTimer: 0,
       arrTimer: 0,
       dasCharged: false,
+      sdrTimer: 0,
     });
 
     this.fire(action);

@@ -453,6 +453,57 @@ describe("KeyboardHandler", () => {
     });
   });
 
+  describe("SoftDrop SDR — no DAS delay, immediate repeat at ARR_RATE", () => {
+    it("SoftDrop fires immediately on keydown", () => {
+      handler.attach();
+      pressKey("ArrowDown");
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "SoftDrop" });
+    });
+
+    it("SoftDrop repeats after ARR_RATE without waiting DAS_DELAY", () => {
+      handler.attach();
+      pressKey("ArrowDown");
+      actions.length = 0;
+
+      // After ARR_RATE ms (well before DAS_DELAY), should fire again
+      handler.update(ARR_RATE);
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "SoftDrop" });
+    });
+
+    it("SoftDrop does NOT wait DAS_DELAY before first repeat", () => {
+      handler.attach();
+      pressKey("ArrowDown");
+      actions.length = 0;
+
+      // Less than DAS_DELAY but more than ARR_RATE — should already have repeated
+      handler.update(ARR_RATE * 2);
+      expect(actions.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("SoftDrop repeats multiple times at ARR_RATE intervals", () => {
+      handler.attach();
+      pressKey("ArrowDown");
+      actions.length = 0;
+
+      handler.update(ARR_RATE * 5);
+      expect(actions.length).toBeGreaterThanOrEqual(5);
+    });
+
+    it("releasing SoftDrop stops SDR repeats", () => {
+      handler.attach();
+      pressKey("ArrowDown");
+      actions.length = 0;
+      handler.update(ARR_RATE * 2);
+      actions.length = 0;
+
+      releaseKey("ArrowDown");
+      handler.update(ARR_RATE * 10);
+      expect(actions).toHaveLength(0);
+    });
+  });
+
   describe("dynamic bindings", () => {
     it("fires action from custom binding", () => {
       const customBindings: Record<string, InputAction> = {
