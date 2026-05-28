@@ -41,6 +41,12 @@ export function processAction(
       }
       return handleRotateCCW(state);
     case "Hold":
+      if (
+        (state.phase === GamePhase.EntryDelay || state.phase === GamePhase.LineClear) &&
+        !state.hasSwappedThisTurn
+      ) {
+        return { ...state, bufferedHold: true };
+      }
       return handleHold(state);
     case "Mute":
       return state;

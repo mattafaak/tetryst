@@ -128,7 +128,14 @@ export function spawnNextPiece(state: GameState): GameState {
     return state;
   }
 
-  return { ...spawnFromQueue(state), hasSwappedThisTurn: false };
+  const spawned = { ...spawnFromQueue(state), hasSwappedThisTurn: false };
+
+  // IHS: apply buffered hold immediately after spawn
+  if (state.bufferedHold && !state.hasSwappedThisTurn) {
+    return { ...holdPiece(spawned), bufferedHold: false };
+  }
+
+  return spawned;
 }
 
 function spawnFromQueue(state: GameState): GameState {

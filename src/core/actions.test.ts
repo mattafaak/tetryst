@@ -621,3 +621,44 @@ describe("IRS — Initial Rotation System", () => {
     expect(after2.bufferedRotation).toBe("CCW");
   });
 });
+
+describe("IHS — Initial Hold System", () => {
+  it("Hold during EntryDelay sets bufferedHold = true", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay, hasSwappedThisTurn: false };
+    const next = processAction(s, { type: "Hold" });
+    expect(next.bufferedHold).toBe(true);
+    expect(next.phase).toBe(GamePhase.EntryDelay); // phase unchanged
+  });
+
+  it("Hold during LineClear sets bufferedHold = true", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.LineClear, hasSwappedThisTurn: false };
+    const next = processAction(s, { type: "Hold" });
+    expect(next.bufferedHold).toBe(true);
+  });
+
+  it("Hold during Playing does NOT set bufferedHold (normal hold)", () => {
+    // Playing-phase hold goes through holdPiece, not buffer
+    const s: GameState = {
+      ...baseState(),
+      phase: GamePhase.Playing,
+      hasSwappedThisTurn: false,
+      nextQueue: [
+        { type: TetriminoType.O },
+        { type: TetriminoType.T },
+        { type: TetriminoType.S },
+        { type: TetriminoType.Z },
+        { type: TetriminoType.J },
+      ],
+      bag: [TetriminoType.L, TetriminoType.I],
+    };
+    const next = processAction(s, { type: "Hold" });
+    expect(next.bufferedHold ?? false).toBe(false);
+  });
+
+  it("Hold during EntryDelay when hasSwappedThisTurn=true does not buffer", () => {
+    // Can't hold twice in one turn
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay, hasSwappedThisTurn: true };
+    const next = processAction(s, { type: "Hold" });
+    expect(next.bufferedHold ?? false).toBe(false);
+  });
+});
