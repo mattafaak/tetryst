@@ -114,9 +114,10 @@ describe("edge: combo chain stress", () => {
     for (let i = 0; i < 255; i++) {
       const result = updateCombo(state, 1);
       state = result.state;
-      // After i clears: state.combo = i + 1, bonus = 50 × (i+1) × (level+1)
+      // After i clears: state.combo = i + 1; bonus uses PRE-increment combo (TDG §7)
+      // So bonus = 50 × i × (level+1=1). First clear (i=0) gives 0 bonus.
       expect(state.combo).toBe(i + 1);
-      expect(result.bonusScore).toBe(COMBO_BASE * (i + 1));
+      expect(result.bonusScore).toBe(COMBO_BASE * i);
     }
     expect(state.combo).toBe(255);
   });
