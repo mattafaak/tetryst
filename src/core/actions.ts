@@ -17,15 +17,22 @@ const KEYPRESS_COUNTED_ACTIONS = new Set([
   "MoveLeft", "MoveRight", "RotateCW", "RotateCCW", "HardDrop", "Hold",
 ]);
 
+const PIECE_NAV_ACTIONS = new Set(["MoveLeft", "MoveRight", "RotateCW", "RotateCCW"]);
+
 export function processAction(
   state: GameState,
   action: InputAction
 ): GameState {
   // Count keypresses only during active play (not menus, pause, game-over, etc.)
-  const s =
-    state.phase === GamePhase.Playing && KEYPRESS_COUNTED_ACTIONS.has(action.type)
-      ? { ...state, totalKeypresses: state.totalKeypresses + 1 }
-      : state;
+  const counted = state.phase === GamePhase.Playing && KEYPRESS_COUNTED_ACTIONS.has(action.type);
+  const navCounted = state.phase === GamePhase.Playing && PIECE_NAV_ACTIONS.has(action.type);
+  const s = counted
+    ? {
+        ...state,
+        totalKeypresses: state.totalKeypresses + 1,
+        currentPieceKeypresses: navCounted ? state.currentPieceKeypresses + 1 : state.currentPieceKeypresses,
+      }
+    : state;
 
   switch (action.type) {
     case "Start":

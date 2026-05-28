@@ -202,6 +202,7 @@ function spawnFromQueue(state: GameState): GameState {
     lockState: { ...resetLockState(), lowestY: piece.pos.y },
     gravityTimer: 0,
     bufferedRotation: null,
+    currentPieceKeypresses: 0,
   };
 }
 
