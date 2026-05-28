@@ -4,6 +4,7 @@ import { detectTSpin, evaluateClear, effectiveLinesFor, calculateLevelFromEffect
 import { updateCombo } from "./combo.ts";
 import { MARATHON_MAX_LEVEL } from "./constants.ts";
 import { checkModeVictory } from "./mode-rules.ts";
+import { canonicalKeypresses } from "./finesse.ts";
 
 interface LockResult {
   state: GameState;
@@ -29,7 +30,13 @@ interface LockResult {
  * use to play SFX and trigger victory externally.
  */
 export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
-  let s = { ...state, piecesPlaced: state.piecesPlaced + 1 };
+  const canonical = canonicalKeypresses(lockedPiece.type, lockedPiece.rotation, lockedPiece.pos.x);
+  const hasFault = state.currentPieceKeypresses > canonical;
+  let s = {
+    ...state,
+    piecesPlaced: state.piecesPlaced + 1,
+    finesseFaults: hasFault ? state.finesseFaults + 1 : state.finesseFaults,
+  };
 
   const tSpinResult = detectTSpin(s.board, lockedPiece, s.lockState.lastRotationKickIndex);
   const clearResult = clearLines(s.board);
