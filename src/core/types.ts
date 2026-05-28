@@ -81,7 +81,7 @@ export interface NextQueueItem {
   type: TetriminoType;
 }
 
-interface LastLockResult {
+export interface LastLockResult {
   linesCleared: number;
   isPerfectClear: boolean;
   isTSpin: boolean;

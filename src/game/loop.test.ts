@@ -11,7 +11,7 @@ import { stopMusic, setSong, setTempoMultiplier } from "../audio/music.ts";
 import { triggerFlash } from "../render/effects.ts";
 import { Game } from "./loop.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
-import type { GameState, Cell } from "../core/types.ts";
+import type { GameState, Cell, LastLockResult } from "../core/types.ts";
 import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT } from "../core/constants.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
@@ -790,10 +790,11 @@ describe("Game integration", () => {
           linesCleared: 4,
           isPerfectClear: false,
           isTSpin: false,
+          isTSpinMini: false,
           victoryTriggered: false,
           needsLevelupSFX: false,
           needsTSpinSFX: false,
-        } as never,
+        } satisfies LastLockResult,
       };
 
       // Fill row BUFFER_HEIGHT (first visible row) so the piece can't enter it
