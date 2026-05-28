@@ -521,6 +521,36 @@ describe("handlePause", () => {
     const next = processAction(s, { type: "Pause" });
     expect(next.phase).toBe(GamePhase.Paused);
   });
+
+  it("resume from Paused restores LineClear phase (not Playing)", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.LineClear };
+    const paused = processAction(s, { type: "Pause" });
+    expect(paused.phase).toBe(GamePhase.Paused);
+    const resumed = processAction(paused, { type: "Pause" });
+    expect(resumed.phase).toBe(GamePhase.LineClear);
+  });
+
+  it("resume from Paused restores EntryDelay phase (not Playing)", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.EntryDelay };
+    const paused = processAction(s, { type: "Pause" });
+    const resumed = processAction(paused, { type: "Pause" });
+    expect(resumed.phase).toBe(GamePhase.EntryDelay);
+  });
+
+  it("resume from Paused restores Playing phase", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.Playing };
+    const paused = processAction(s, { type: "Pause" });
+    const resumed = processAction(paused, { type: "Pause" });
+    expect(resumed.phase).toBe(GamePhase.Playing);
+  });
+
+  it("pausedFromPhase is set on pause and cleared on resume", () => {
+    const s: GameState = { ...baseState(), phase: GamePhase.LineClear };
+    const paused = processAction(s, { type: "Pause" });
+    expect(paused.pausedFromPhase).toBe(GamePhase.LineClear);
+    const resumed = processAction(paused, { type: "Pause" });
+    expect(resumed.pausedFromPhase).toBeUndefined();
+  });
 });
 
 describe("processAction dispatch", () => {

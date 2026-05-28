@@ -49,10 +49,14 @@ function handlePause(state: GameState): GameState {
     state.phase === GamePhase.LineClear ||
     state.phase === GamePhase.EntryDelay
   ) {
-    return { ...state, phase: GamePhase.Paused };
+    return { ...state, phase: GamePhase.Paused, pausedFromPhase: state.phase };
   }
   if (state.phase === GamePhase.Paused) {
-    return { ...state, phase: GamePhase.Playing };
+    return {
+      ...state,
+      phase: state.pausedFromPhase ?? GamePhase.Playing,
+      pausedFromPhase: undefined,
+    };
   }
   return state;
 }

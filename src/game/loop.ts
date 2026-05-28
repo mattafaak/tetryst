@@ -431,6 +431,15 @@ export class Game {
           this.state = { ...this.state, popups: [] };
         }
         break;
+      case GamePhase.LineClear:
+      case GamePhase.EntryDelay:
+        // Resuming from Pause back to a non-Playing phase — restart music and
+        // clear stale popups, same as resuming to Playing.
+        if (this.prevPhase === GamePhase.Paused) {
+          if (this.audioEnabled) playMusic();
+          this.state = { ...this.state, popups: [] };
+        }
+        break;
       case GamePhase.Paused:
         if (this.audioEnabled) stopMusic();
         this.state = { ...this.state, popups: [] };

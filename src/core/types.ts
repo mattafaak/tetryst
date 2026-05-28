@@ -105,6 +105,7 @@ export interface GameState {
   combo: number;
   backToBack: boolean;
   phase: GamePhase;
+  pausedFromPhase?: GamePhase;
   gravityTimer: number;
   lockState: LockState;
   entryDelayTimer: number;
