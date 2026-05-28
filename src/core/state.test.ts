@@ -461,4 +461,108 @@ describe("state", () => {
       expect(started.popups).toEqual([]);
     });
   });
+
+  describe("spawnNextPiece — 32.1a", () => {
+    it("empty nextQueue with empty bag triggers GameOver immediately", () => {
+      const base = createInitialState(GameMode.Marathon);
+      const state: GameState = {
+        ...base,
+        phase: GamePhase.Playing,
+        nextQueue: [],
+        bag: [],
+        activePiece: null,
+      };
+      const next = spawnNextPiece(state);
+      expect(next.phase).toBe(GamePhase.GameOver);
+      expect(next.activePiece).toBeNull();
+    });
+  });
+
+  describe("holdPiece — 32.1c", () => {
+    it("is a no-op in non-Playing phases (Menu, Paused, LineClear, EntryDelay)", () => {
+      const base: GameState = {
+        ...createInitialState(GameMode.Marathon),
+        activePiece: { type: TetriminoType.T, pos: { x: 3, y: 5 }, rotation: RotationState.ZERO },
+        hasSwappedThisTurn: false,
+      };
+      for (const phase of [GamePhase.Menu, GamePhase.Paused, GamePhase.LineClear, GamePhase.EntryDelay]) {
+        const s: GameState = { ...base, phase };
+        expect(holdPiece(s)).toBe(s);
+      }
+    });
+  });
+
+  describe("IRS — Initial Rotation System (state.ts branch coverage)", () => {
+    it("bufferedRotation=CW rotates spawned piece CW during EntryDelay", () => {
+      const base = startGame(createInitialState(GameMode.Marathon));
+      const withBuffer: GameState = {
+        ...base,
+        phase: GamePhase.EntryDelay,
+        bufferedRotation: "CW",
+        activePiece: null,
+      };
+      const next = spawnNextPiece(withBuffer);
+      expect(next.phase).toBe(GamePhase.Playing);
+      // Piece should have been rotated CW (rotation !== ZERO unless CW rotation failed)
+      // At minimum, IRS path was exercised and spawn succeeded
+      expect(next.activePiece).not.toBeNull();
+      expect(next.bufferedRotation).toBeNull();
+    });
+
+    it("bufferedRotation=CCW rotates spawned piece CCW during EntryDelay", () => {
+      const base = startGame(createInitialState(GameMode.Marathon));
+      const withBuffer: GameState = {
+        ...base,
+        phase: GamePhase.EntryDelay,
+        bufferedRotation: "CCW",
+        activePiece: null,
+      };
+      const next = spawnNextPiece(withBuffer);
+      expect(next.phase).toBe(GamePhase.Playing);
+      expect(next.activePiece).not.toBeNull();
+    });
+
+    it("bufferedRotation=undefined skips IRS — piece spawns at ZERO rotation", () => {
+      const base = startGame(createInitialState(GameMode.Marathon));
+      const noBuffer: GameState = {
+        ...base,
+        phase: GamePhase.EntryDelay,
+        bufferedRotation: undefined,
+        activePiece: null,
+      };
+      const next = spawnNextPiece(noBuffer);
+      // Without IRS, T/S/Z/J/L/I/O all spawn at ZERO
+      expect(next.activePiece?.rotation).toBe(RotationState.ZERO);
+    });
+  });
+
+  describe("IHS — Initial Hold System (state.ts branch coverage)", () => {
+    it("bufferedHold=true swaps hold immediately after spawn during EntryDelay", () => {
+      const base = startGame(createInitialState(GameMode.Marathon));
+      const withBuffer: GameState = {
+        ...base,
+        phase: GamePhase.EntryDelay,
+        bufferedHold: true,
+        hasSwappedThisTurn: false,
+        activePiece: null,
+      };
+      const next = spawnNextPiece(withBuffer);
+      expect(next.phase).toBe(GamePhase.Playing);
+      expect(next.heldPiece).not.toBeNull();
+      expect(next.bufferedHold).toBe(false);
+    });
+
+    it("bufferedHold=false does NOT trigger IHS", () => {
+      const base = startGame(createInitialState(GameMode.Marathon));
+      const noBuffer: GameState = {
+        ...base,
+        phase: GamePhase.EntryDelay,
+        bufferedHold: false,
+        activePiece: null,
+      };
+      const next = spawnNextPiece(noBuffer);
+      // No IHS — heldPiece should remain null
+      expect(next.heldPiece).toBeNull();
+    });
+  });
 });

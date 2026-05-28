@@ -9,12 +9,13 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:fuzz": "vitest run --include \"src/**/*.fuzz.test.ts\"",
+    "test:fuzz": "vitest run --config vitest.fuzz.config.ts",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "fast-check": "^4.8.0",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",

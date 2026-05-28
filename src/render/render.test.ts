@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { rotateCW, rotateCCW } from "../core/srs.ts";
 import { RotationState, GamePhase, GameMode, TetriminoType } from "../core/types.ts";
 import type { GameState } from "../core/types.ts";
@@ -702,6 +702,302 @@ describe("canvas.ts — setParticleLayout called in renderFrame", () => {
       expectedBoardY,
       cellSize,
     );
+  });
+});
+
+describe("canvas.ts — Sprint/Ultra menu + GameOver + held piece (33.3 coverage)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", { devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as Window & typeof globalThis);
+    vi.stubGlobal("document", createDocStub());
+    vi.stubGlobal("localStorage", { getItem: vi.fn(() => null), setItem: vi.fn(), removeItem: vi.fn() });
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("renders Sprint menu mode without throwing (covers Sprint-specific content branch)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const { createInitialState } = await import("../core/state.ts");
+    const ctx = makeMockCtx();
+    expect(() => renderFrame(ctx, createInitialState(), 30, false, GameMode.Sprint)).not.toThrow();
+    expect(ctx.drawImage).toHaveBeenCalled();
+  });
+
+  it("renders Ultra menu mode without throwing (covers Ultra-specific content branch)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const { createInitialState } = await import("../core/state.ts");
+    const ctx = makeMockCtx();
+    expect(() => renderFrame(ctx, createInitialState(), 30, false, GameMode.Ultra)).not.toThrow();
+    expect(ctx.drawImage).toHaveBeenCalled();
+  });
+
+  it("Sprint GameOver shows TIME label with formatted timer", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.GameOver,
+      mode: GameMode.Sprint,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [], score: 0, level: 3, lines: 30, effectiveLines: 30,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 45000, popups: [],
+    } as unknown as GameState;
+    renderFrame(ctx, state, 30);
+    const allText = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: string[]) => c[0]).join(" ");
+    expect(allText).toContain("TIME");
+    expect(allText).toContain("0:45");
+  });
+
+  it("HUD renders held piece without throwing when heldPiece is non-null", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.Playing,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0,
+      heldPiece: TetriminoType.T,
+      hasSwappedThisTurn: false,
+      nextQueue: [
+        { type: TetriminoType.S }, { type: TetriminoType.Z }, { type: TetriminoType.J },
+        { type: TetriminoType.L }, { type: TetriminoType.I },
+      ],
+      score: 1000, level: 2, lines: 10, effectiveLines: 10,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 0, popups: [],
+    } as unknown as GameState;
+    expect(() => renderFrame(ctx, state, 30)).not.toThrow();
+  });
+});
+
+describe("canvas.ts — drawBestScores with loaded scores (33.3 summary branch)", () => {
+  const mockMarathonScores = [
+    { score: 50000, level: 5, lines: 50, mode: "Marathon", date: "2024-01-01" },
+    { score: 30000, level: 3, lines: 30, mode: "Marathon", date: "2024-01-02" },
+    { score: 10000, level: 1, lines: 10, mode: "Marathon", date: "2024-01-03" },
+  ];
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", { devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as Window & typeof globalThis);
+    vi.stubGlobal("document", createDocStub());
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) =>
+        key === "tetryst_hs_Marathon" ? JSON.stringify(mockMarathonScores) : null,
+      ),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("GameOver summary renders BEST SCORES entries when scores exist in localStorage", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.GameOver,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [], score: 50000, level: 5, lines: 50, effectiveLines: 50,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 0, popups: [],
+    } as unknown as GameState;
+    renderFrame(ctx, state, 30);
+    const allText = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: string[]) => c[0]).join(" ");
+    expect(allText).toContain("BEST");
+    expect(allText).toContain("50,000");
+  });
+
+  it("Victory summary renders BEST SCORES entries when scores exist", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.Victory,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [], score: 50000, level: 10, lines: 150, effectiveLines: 150,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 60000, popups: [],
+    } as unknown as GameState;
+    renderFrame(ctx, state, 30);
+    const allText = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: string[]) => c[0]).join(" ");
+    expect(allText).toContain("BEST");
+  });
+
+  it("Menu style renders score list entries for Marathon when scores exist", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const { createInitialState } = await import("../core/state.ts");
+    const ctx = makeMockCtx();
+    expect(() => renderFrame(ctx, createInitialState(), 30, false, GameMode.Marathon)).not.toThrow();
+    expect(ctx.drawImage).toHaveBeenCalled();
+  });
+});
+
+describe("canvas.ts — HUD audioEnabled=false and dimmed hold (33.3 branch coverage)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", { devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as Window & typeof globalThis);
+    vi.stubGlobal("document", createDocStub());
+    vi.stubGlobal("localStorage", { getItem: vi.fn(() => null), setItem: vi.fn(), removeItem: vi.fn() });
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("HUD renders muted state when audioEnabled=false", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.Playing,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [
+        { type: TetriminoType.S }, { type: TetriminoType.Z }, { type: TetriminoType.J },
+        { type: TetriminoType.L }, { type: TetriminoType.I },
+      ],
+      score: 1000, level: 2, lines: 10, effectiveLines: 10,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 0, popups: [],
+    } as unknown as GameState;
+    // Pass audioEnabled=false (7th arg)
+    renderFrame(ctx, state, 30, false, undefined, undefined, false);
+    const allText = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: string[]) => c[0]).join(" ");
+    expect(allText).toContain("♪  off");
+  });
+
+  it("HUD renders combo without B2B — combo text positioned lower (covers backToBack=false branch)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.Playing,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [
+        { type: TetriminoType.S }, { type: TetriminoType.Z }, { type: TetriminoType.J },
+        { type: TetriminoType.L }, { type: TetriminoType.I },
+      ],
+      score: 1000, level: 2, lines: 10, effectiveLines: 10,
+      combo: 3, backToBack: false, // combo active but NO B2B
+      gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 0, popups: [],
+    } as unknown as GameState;
+    renderFrame(ctx, state, 30);
+    const allText = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: string[]) => c[0]).join(" ");
+    expect(allText).toContain("COMBO");
+  });
+
+  it("HUD dims held piece when hasSwappedThisTurn=true", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.Playing,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0,
+      heldPiece: TetriminoType.T,
+      hasSwappedThisTurn: true,
+      nextQueue: [
+        { type: TetriminoType.S }, { type: TetriminoType.Z }, { type: TetriminoType.J },
+        { type: TetriminoType.L }, { type: TetriminoType.I },
+      ],
+      score: 500, level: 1, lines: 5, effectiveLines: 5,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: false, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 0, popups: [],
+    } as unknown as GameState;
+    expect(() => renderFrame(ctx, state, 30)).not.toThrow();
+  });
+});
+
+describe("canvas.ts — drawBestScores Sprint mode and 4+ scores (33.3 branch coverage)", () => {
+  const mockSprintScores = [
+    { score: 35000, level: 1, lines: 40, mode: "Sprint", date: "2024-01-01" },
+    { score: 40000, level: 1, lines: 40, mode: "Sprint", date: "2024-01-02" },
+    { score: 50000, level: 1, lines: 40, mode: "Sprint", date: "2024-01-03" },
+    { score: 60000, level: 1, lines: 40, mode: "Sprint", date: "2024-01-04" },
+  ];
+  const mockMarathon4 = [
+    { score: 50000, level: 5, lines: 50, mode: "Marathon", date: "2024-01-01" },
+    { score: 40000, level: 4, lines: 40, mode: "Marathon", date: "2024-01-02" },
+    { score: 30000, level: 3, lines: 30, mode: "Marathon", date: "2024-01-03" },
+    { score: 20000, level: 2, lines: 20, mode: "Marathon", date: "2024-01-04" },
+  ];
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubGlobal("window", { devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as Window & typeof globalThis);
+    vi.stubGlobal("document", createDocStub());
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) => {
+        if (key === "tetryst_hs_Sprint") return JSON.stringify(mockSprintScores);
+        if (key === "tetryst_hs_Marathon") return JSON.stringify(mockMarathon4);
+        return null;
+      }),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("Sprint menu shows formatted time entries (covers Sprint ternary in drawBestScores)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const { createInitialState } = await import("../core/state.ts");
+    const ctx = makeMockCtx();
+    expect(() => renderFrame(ctx, createInitialState(), 30, false, GameMode.Sprint)).not.toThrow();
+    expect(ctx.drawImage).toHaveBeenCalled();
+  });
+
+  it("GameOver renders 4th score with dim color (covers i>=3 color branch)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const state = {
+      phase: GamePhase.GameOver,
+      mode: GameMode.Marathon,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [], score: 50000, level: 5, lines: 50, effectiveLines: 50,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 0, popups: [],
+    } as unknown as GameState;
+    expect(() => renderFrame(ctx, state, 30)).not.toThrow();
+  });
+
+  it("Sprint Victory summary renders time via formatMs (covers Sprint summary branch)", async () => {
+    const { renderFrame } = await import("./canvas.ts");
+    const ctx = makeMockCtx();
+    const sprintVictory = {
+      phase: GamePhase.Victory,
+      mode: GameMode.Sprint,
+      board: Array.from({ length: 40 }, () => Array(10).fill(null)),
+      activePiece: null, ghostY: 0, heldPiece: null, hasSwappedThisTurn: false,
+      nextQueue: [], score: 35000, level: 1, lines: 40, effectiveLines: 40,
+      combo: 0, backToBack: false, gravityTimer: 0,
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: 0, lastRotationKickIndex: null },
+      entryDelayTimer: 0, bag: [], lineClearTimer: 0, clearedRowIndices: [],
+      modeTimer: 35000, popups: [],
+    } as unknown as GameState;
+    expect(() => renderFrame(ctx, sprintVictory, 30)).not.toThrow();
   });
 });
 

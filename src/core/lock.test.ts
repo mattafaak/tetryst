@@ -214,4 +214,37 @@ describe("executeLock", () => {
     expect(result.linesCleared).toBe(0);
     expect(result.victoryTriggered).toBe(true);
   });
+
+  it("T-spin zero-clear awards 400*(level+1), shows T-SPIN popup, sets EntryDelay (32.4)", () => {
+    // T-piece ZERO at (3, py): TL+TR+BL corners occupied → full T-spin, 0 lines cleared
+    const py = BOARD_HEIGHT - 3;
+    const board = createBoard();
+    board[py][3] = TetriminoType.S;                   // TL corner (back)
+    board[py][5] = TetriminoType.Z;                   // TR corner (back)
+    board[BOARD_HEIGHT - 1][3] = TetriminoType.J;     // BL corner (front)
+    const piece = { type: TetriminoType.T, pos: { x: 3, y: py }, rotation: RotationState.ZERO };
+    const result = lockAndExecute(board, piece, { level: 0, mode: GameMode.Marathon });
+    expect(result.linesCleared).toBe(0);
+    expect(result.tSpinResult.isTSpin).toBe(true);
+    expect(result.tSpinResult.isMini).toBe(false);
+    expect(result.state.score).toBe(400); // TSPIN_SCORES["0"] * (0 + 1) = 400
+    expect(result.popupInfo.some((p) => p.text === "T-SPIN")).toBe(true);
+    expect(result.popupInfo.some((p) => p.text === "T-SPIN MINI")).toBe(false);
+    expect(result.state.phase).toBe(GamePhase.EntryDelay);
+  });
+
+  it("T-spin zero-clear at effectiveLines=596 level-14 triggers level-up to 15 and victory (32.5)", () => {
+    // effectiveLines=596 → level 14. T-spin zero adds 4 eff lines → 600 → level 15 → victoryTriggered.
+    const py = BOARD_HEIGHT - 3;
+    const board = createBoard();
+    board[py][3] = TetriminoType.S;
+    board[py][5] = TetriminoType.Z;
+    board[BOARD_HEIGHT - 1][3] = TetriminoType.J;
+    const piece = { type: TetriminoType.T, pos: { x: 3, y: py }, rotation: RotationState.ZERO };
+    const result = lockAndExecute(board, piece, { level: 14, effectiveLines: 596, mode: GameMode.Marathon });
+    expect(result.linesCleared).toBe(0);
+    expect(result.tSpinResult.isTSpin).toBe(true);
+    expect(result.state.level).toBe(MARATHON_MAX_LEVEL);
+    expect(result.victoryTriggered).toBe(true);
+  });
 });

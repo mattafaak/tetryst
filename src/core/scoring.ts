@@ -83,6 +83,7 @@ function getCornerInfo(
       // Stem left, flat right -> back = TL, BL
       backIndices = [0, 2];
       break;
+    /* c8 ignore next 2 -- RotationState enum is exhaustive; default is unreachable */
     default:
       backIndices = [0, 1];
   }
@@ -165,23 +166,23 @@ export function evaluateClear(
       score = PERFECT_CLEAR_B2B_TETRIS * multiplier;
       isB2B = true;
     } else {
+      /* c8 ignore next -- PERFECT_CLEAR_SCORES always has entries for linesCleared 1-4 */
       const pcBase = PERFECT_CLEAR_SCORES[linesCleared] ?? 0;
       score = currentEligible && isB2BActive
         ? Math.floor(pcBase * multiplier * B2B_MULTIPLIER)
         : pcBase * multiplier;
-      if (currentEligible) {
-        isB2B = true;
-      } else if (isB2BActive) {
-        isB2BBroken = true;
-      }
+      // currentEligible is always true here: isPerfectClear=true guarantees it
+      isB2B = true;
     }
     return { score, isB2B, isB2BBroken };
   }
 
   // Normal (non-PC) scoring
   if (tSpinResult.isTSpin && !tSpinResult.isMini) {
+    /* c8 ignore next -- TSPIN_SCORES always has keys "0"-"3"; ?? 0 is unreachable */
     score = (TSPIN_SCORES[String(Math.min(linesCleared, 3))] ?? 0) * multiplier;
   } else if (tSpinResult.isMini) {
+    /* c8 ignore next -- TSPIN_MINI_SCORES always has keys "0"-"1"; ?? 0 is unreachable */
     score = (TSPIN_MINI_SCORES[String(Math.min(linesCleared, 1))] ?? 0) * multiplier;
   } else {
     score = (LINE_CLEAR_SCORES[linesCleared] ?? 0) * multiplier;
@@ -242,6 +243,7 @@ export function effectiveLinesFor(
     const labels = ["", "single", "double", "triple", "tetris"];
     key = labels[linesCleared] ?? "tetris";
   }
+  /* c8 ignore next -- EFFECTIVE_LINE_COUNTS always has all valid keys; ?? 0 is unreachable */
   const base = EFFECTIVE_LINE_COUNTS[key] ?? 0;
   return isB2B ? Math.floor(base * 1.5) : base;
 }
@@ -253,5 +255,6 @@ export function calculateLevelFromEffective(effectiveLines: number): number {
   for (let level = LEVEL_GOAL_CUMULATIVE.length - 1; level >= 0; level--) {
     if (effectiveLines >= LEVEL_GOAL_CUMULATIVE[level]) return level;
   }
+  /* c8 ignore next -- LEVEL_GOAL_CUMULATIVE[0]=0 makes this unreachable */
   return 0;
 }

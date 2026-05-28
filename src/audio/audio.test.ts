@@ -960,3 +960,89 @@ describe("sfx-defs — SFX_DEFS structure [tdd:skip:data-only]", () => {
     }
   });
 });
+
+describe("sfx — noise event path (33.1)", () => {
+  let createBuffer: ReturnType<typeof vi.fn>;
+  let createBufferSource: ReturnType<typeof vi.fn>;
+  let createBiquadFilter: ReturnType<typeof vi.fn>;
+  let createGain: ReturnType<typeof vi.fn>;
+  let mockSource: { buffer: unknown; connect: ReturnType<typeof vi.fn>; start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> };
+  let mockFilter: { type: string; frequency: { setValueAtTime: ReturnType<typeof vi.fn> }; connect: ReturnType<typeof vi.fn> };
+  let mockNoiseGain: { connect: ReturnType<typeof vi.fn>; gain: { setValueAtTime: ReturnType<typeof vi.fn>; exponentialRampToValueAtTime: ReturnType<typeof vi.fn> } };
+  let mockBuf: { getChannelData: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    resetAudioContext();
+    mockBuf = { getChannelData: vi.fn(() => new Float32Array(4410)) };
+    mockSource = { buffer: null, connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+    mockFilter = { type: "", frequency: { setValueAtTime: vi.fn() }, connect: vi.fn() };
+    mockNoiseGain = { connect: vi.fn(), gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() } };
+    createBuffer = vi.fn(() => mockBuf);
+    createBufferSource = vi.fn(() => mockSource);
+    createBiquadFilter = vi.fn(() => mockFilter);
+    createGain = vi.fn(() => mockNoiseGain);
+    vi.stubGlobal("AudioContext", vi.fn(function () {
+      return {
+        currentTime: 0,
+        state: "running",
+        destination: {},
+        sampleRate: 44100,
+        createBuffer,
+        createBufferSource,
+        createBiquadFilter,
+        createGain,
+        createOscillator: vi.fn(() => ({
+          type: "", frequency: { setValueAtTime: vi.fn(), linearRampToValueAtTime: vi.fn() },
+          connect: vi.fn(), start: vi.fn(), stop: vi.fn(), setPeriodicWave: vi.fn(), onended: null,
+        })),
+        createPeriodicWave: vi.fn(() => ({})),
+        resume: vi.fn(() => Promise.resolve()),
+      };
+    }));
+    (SFX_DEFS as Record<string, unknown>)["_noise_test"] = {
+      events: [{ type: "noise", duration: 0.1, delay: 0, volume: 0.5, hp: 1000 }],
+    };
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetAudioContext();
+    delete (SFX_DEFS as Record<string, unknown>)["_noise_test"];
+  });
+
+  it("noise event exercises createBuffer, createBufferSource, createBiquadFilter (33.1a)", () => {
+    playSFX("_noise_test" as SFXName);
+    expect(createBuffer).toHaveBeenCalledWith(1, expect.any(Number), 44100);
+    expect(mockBuf.getChannelData).toHaveBeenCalledWith(0);
+    expect(createBufferSource).toHaveBeenCalled();
+    expect(createBiquadFilter).toHaveBeenCalled();
+    expect(mockSource.connect).toHaveBeenCalledWith(mockFilter);
+    expect(mockFilter.type).toBe("highpass");
+    expect(mockFilter.connect).toHaveBeenCalledWith(mockNoiseGain);
+    expect(mockSource.start).toHaveBeenCalledWith(0);
+    expect(mockSource.stop).toHaveBeenCalledWith(0.1);
+  });
+
+  it("noise event: gain envelope — setValueAtTime(volume) + exponentialRamp(0.001, end) (33.1b)", () => {
+    playSFX("_noise_test" as SFXName);
+    expect(mockNoiseGain.gain.setValueAtTime).toHaveBeenCalledWith(0.5, 0);
+    expect(mockNoiseGain.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(0.001, 0.1);
+  });
+
+  it("noise bufLen = ceil(sampleRate * duration) = 4410 for 44100Hz, 0.1s (33.1c)", () => {
+    playSFX("_noise_test" as SFXName);
+    expect(createBuffer).toHaveBeenCalledWith(1, 4410, 44100);
+  });
+
+  it("noise event with non-zero delay schedules at now+delay (33.1d)", () => {
+    (SFX_DEFS as Record<string, unknown>)["_noise_test"] = {
+      events: [{ type: "noise", duration: 0.2, delay: 0.05, volume: 0.8, hp: 2000 }],
+    };
+    playSFX("_noise_test" as SFXName);
+    expect(mockNoiseGain.gain.setValueAtTime).toHaveBeenCalledWith(0.8, 0.05);
+    expect(mockNoiseGain.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(0.001, 0.25);
+    expect(mockFilter.frequency.setValueAtTime).toHaveBeenCalledWith(2000, 0.05);
+    expect(mockSource.start).toHaveBeenCalledWith(0.05);
+    expect(mockSource.stop).toHaveBeenCalledWith(0.25);
+  });
+});

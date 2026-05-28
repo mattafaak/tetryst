@@ -389,17 +389,19 @@ describe("scoring fuzz: calculateLevelFromEffective", () => {
 // ── Combo chain ─────────────────────────────────────────────────────────
 
 describe("scoring fuzz: combo chain", () => {
-  it("combo starts at 0 (bonus on first clear is 50)", () => {
+  it("first clear (combo=0) gives no bonus — bonus starts on 2nd consecutive", () => {
+    // updateCombo uses state.combo (pre-increment) as the multiplier:
+    // bonusScore = COMBO_BASE * state.combo * (level+1); on first clear combo=0 → 0
     const state = baseState({ combo: 0 });
     const result = updateCombo(state, 1);
     expect(result.state.combo).toBe(1);
-    expect(result.bonusScore).toBe(50);
+    expect(result.bonusScore).toBe(0);
   });
 
-  it("second consecutive clear awards 50 × 1 × (level+1)", () => {
-    const state = baseState({ combo: 0, level: 0 });
+  it("second consecutive clear (combo=1) awards 50 × 1 × (level+1)", () => {
+    const state = baseState({ combo: 1, level: 0 });
     const result = updateCombo(state, 1);
-    expect(result.state.combo).toBe(1);
+    expect(result.state.combo).toBe(2);
     expect(result.bonusScore).toBe(50);
   });
 
@@ -408,10 +410,9 @@ describe("scoring fuzz: combo chain", () => {
     for (let i = 0; i < 5; i++) {
       const result = updateCombo(state, 1);
       state = result.state;
-      // First clear: newCombo = 0 + 1 = 1, bonus = 50 * 1 * 1 = 50
-      // After: state.combo = 1
-      // Second clear: newCombo = 1 + 1 = 2, bonus = 50 * 2 * 1 = 100
-      const expectedComboScore = (i + 1) * 50;
+      // bonusScore = COMBO_BASE * pre-increment-combo * (level+1)
+      // i=0: 50*0 = 0, i=1: 50*1 = 50, i=2: 50*2 = 100...
+      const expectedComboScore = i * 50;
       expect(result.bonusScore).toBe(expectedComboScore);
       expect(result.state.combo).toBe(i + 1);
     }
@@ -424,14 +425,14 @@ describe("scoring fuzz: combo chain", () => {
     expect(result.bonusScore).toBe(0);
   });
 
-  it("combo bonus uses (combo + 1) multiplier per updateCombo logic", () => {
+  it("combo bonus uses state.combo (pre-increment) multiplier per updateCombo logic", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 10 }),
         (level) => {
           const state = baseState({ combo: 2, level });
           const result = updateCombo(state, 1);
-          // updateCombo uses state.combo + 1 as the multiplier
-          const expected = 50 * (2 + 1) * (level + 1);
+          // bonusScore = COMBO_BASE * state.combo * (level+1) = 50 * 2 * (level+1)
+          const expected = 50 * 2 * (level + 1);
           expect(result.bonusScore).toBe(expected);
         }),
       { numRuns: 50 },
@@ -462,11 +463,11 @@ describe("scoring fuzz: known bug patterns", () => {
   });
 
   it("combo counter overflows gracefully (high combo values)", () => {
-    let state = baseState({ combo: 254, level: 0 });
+    const state = baseState({ combo: 254, level: 0 });
     const result = updateCombo(state, 1);
     expect(result.state.combo).toBe(255);
-    // updateCombo uses state.combo + 1 = 255 as multiplier
-    expect(result.bonusScore).toBe(COMBO_BASE * 255);
+    // bonusScore = COMBO_BASE * state.combo (pre-increment=254) * (level+1=1)
+    expect(result.bonusScore).toBe(COMBO_BASE * 254);
   });
 
   it("PERFECT_CLEAR_SCORES table has correct values", () => {

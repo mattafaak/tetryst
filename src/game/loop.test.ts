@@ -7,12 +7,12 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { playSFX } from "../audio/sfx.ts";
-import { stopMusic, setSong, setTempoMultiplier } from "../audio/music.ts";
-import { triggerFlash } from "../render/effects.ts";
+import { playMusic, stopMusic, setSong, setTempoMultiplier } from "../audio/music.ts";
+import { triggerFlash, clearEffects } from "../render/effects.ts";
 import { Game } from "./loop.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
 import type { GameState, Cell, LastLockResult } from "../core/types.ts";
-import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT } from "../core/constants.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT, ENTRY_DELAY } from "../core/constants.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -92,6 +92,7 @@ beforeEach(() => {
   vi.stubGlobal("requestAnimationFrame", rafMock);
   vi.stubGlobal("cancelAnimationFrame", cafMock);
   vi.spyOn(performance, "now").mockImplementation(() => currentTime);
+  vi.stubGlobal("localStorage", { getItem: vi.fn(() => null), setItem: vi.fn(), removeItem: vi.fn() });
 });
 
 afterEach(() => {
@@ -831,6 +832,7 @@ describe("Game integration", () => {
         (g.state as { lastLockResult?: unknown }).lastLockResult,
       ).toBeUndefined();
       expect(g.state.phase).toBe(GamePhase.GameOver);
+      expect(g.state.activePiece).toBeNull(); // 31.1: activePiece must be null on lock-out
     });
   });
 
@@ -982,5 +984,461 @@ describe("audio integration — setSong and setTempoMultiplier wiring (28.12, 28
     // At minimum, verify the function is imported and callable from loop context
     // (deeper level-up test covered in dedicated scoring tests)
     expect(setTempoMultiplier).toBeDefined();
+  });
+});
+
+// ── Phase 31 additions ────────────────────────────────────────────────────
+
+describe("Ultra timer expiry in sub-phases (31.2)", () => {
+  function startUltraGame(): { state: GameState } {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    // Navigate to Ultra: Marathon → Sprint → Ultra
+    pressKey("ArrowRight"); releaseKey("ArrowRight");
+    pressKey("ArrowRight"); releaseKey("ArrowRight");
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    return game as unknown as { state: GameState };
+  }
+
+  it("Ultra timer=0 during LineClear phase triggers Victory", () => {
+    const g = startUltraGame();
+    expect(g.state.mode).toBe(GameMode.Ultra);
+
+    g.state = {
+      ...g.state,
+      phase: GamePhase.LineClear,
+      modeTimer: 5,
+      lineClearTimer: 0,
+      clearedRowIndices: [BOARD_HEIGHT - 1],
+    };
+
+    advanceFrames(3, 16); // 48ms, enough to drain modeTimer=5
+
+    expect(g.state.phase).toBe(GamePhase.Victory);
+  });
+
+  it("Ultra timer=0 during EntryDelay phase triggers Victory", () => {
+    const g = startUltraGame();
+    expect(g.state.mode).toBe(GameMode.Ultra);
+
+    g.state = {
+      ...g.state,
+      phase: GamePhase.EntryDelay,
+      modeTimer: 5,
+      entryDelayTimer: 0,
+    };
+
+    advanceFrames(3, 16);
+
+    expect(g.state.phase).toBe(GamePhase.Victory);
+  });
+});
+
+describe("gravity lock paths (31.3)", () => {
+  function startMarathonGame(): { state: GameState } {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    const g = game as unknown as { state: GameState };
+    expect(g.state.mode).toBe(GameMode.Marathon);
+    return g;
+  }
+
+  it("piece on ground for LOCK_DELAY ms triggers lockActivePiece and transitions phase (31.3a)", () => {
+    const g = startMarathonGame();
+    vi.clearAllMocks();
+
+    // I-piece at visual bottom; board clear → piece rests on floor
+    const board = Array.from({ length: BOARD_HEIGHT }, () =>
+      Array<Cell>(BOARD_WIDTH).fill(null),
+    );
+    g.state = {
+      ...g.state,
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 3, y: BOARD_HEIGHT - 2 }, rotation: RotationState.ZERO },
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 2, lastRotationKickIndex: null },
+      phase: GamePhase.Playing,
+    };
+
+    // Advance frames totalling > LOCK_DELAY ms
+    advanceFrames(6, 100); // 600ms > LOCK_DELAY=500ms
+
+    // Phase must have advanced away from Playing (EntryDelay, LineClear, or GameOver)
+    expect(g.state.phase).not.toBe(GamePhase.Playing);
+    // Lock SFX fires for normal gravity lock (audioEnabled=true after exitAttractMode)
+    expect(playSFX).toHaveBeenCalledWith("lock");
+    // No flash on zero-clear lock (triggerFlash only fires on line-clear)
+    expect(triggerFlash).not.toHaveBeenCalled();
+  });
+
+  it("gravity lock followed by block-out on spawn transitions to GameOver, no triggerFlash (31.3b)", () => {
+    const g = startMarathonGame();
+    vi.clearAllMocks();
+
+    // Board: cells at T-piece spawn position (3,19)+(4,19) to force block-out on next spawn
+    // These cells are NOT in a full row, so executeLock won't clear them after the current lock
+    const board = Array.from({ length: BOARD_HEIGHT }, () =>
+      Array<Cell>(BOARD_WIDTH).fill(null),
+    );
+    board[19][4] = TetriminoType.Z; // occupies T-piece spawn mino position
+
+    // Current piece at visual bottom — will gravity-lock normally (not a lock-out)
+    // Inject into EntryDelay with nearly-expired timer to skip gravity simulation
+    g.state = {
+      ...g.state,
+      board,
+      phase: GamePhase.EntryDelay,
+      entryDelayTimer: ENTRY_DELAY - 1,
+      activePiece: null,
+      nextQueue: [
+        { type: TetriminoType.T },
+        { type: TetriminoType.O },
+        { type: TetriminoType.S },
+        { type: TetriminoType.Z },
+        { type: TetriminoType.J },
+      ],
+      bag: [TetriminoType.L, TetriminoType.I],
+    };
+
+    // 1 frame to expire entry delay → spawn T → block-out → GameOver
+    advanceFrames(2, 16);
+
+    expect(g.state.phase).toBe(GamePhase.GameOver);
+    expect(g.state.activePiece).toBeNull();
+    expect(triggerFlash).not.toHaveBeenCalled();
+  });
+});
+
+describe("pause resume clears popups (31.4)", () => {
+  it("resuming from pause clears popups accumulated while paused", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+
+    const g = game as unknown as { state: GameState };
+    // Inject popups then pause
+    g.state = {
+      ...g.state,
+      popups: [{ text: "TEST", color: "#fff", timer: 0, duration: 9999 }],
+    };
+
+    pressKey("Escape"); releaseKey("Escape"); // pause
+    advanceFrames(2);
+
+    // Popups cleared on pause entry (by onPhaseTransition)
+    // Inject a popup while paused (simulating a stale state)
+    g.state = {
+      ...g.state,
+      popups: [{ text: "STALE", color: "#fff", timer: 0, duration: 9999 }],
+    };
+
+    pressKey("Escape"); releaseKey("Escape"); // resume
+    advanceFrames(2);
+
+    expect(g.state.phase).toBe(GamePhase.Playing);
+    expect(g.state.popups).toHaveLength(0);
+  });
+});
+
+describe("key binding screen (31.5)", () => {
+  function openKeyBindings(): { bindingsSelectedIdx: number; bindingsWaitingForKey: boolean; bindings: Record<string, { type: string }> } {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("KeyK"); releaseKey("KeyK"); // open key bindings screen
+    advanceFrames(2);
+    return game as unknown as { bindingsSelectedIdx: number; bindingsWaitingForKey: boolean; bindings: Record<string, { type: string }> };
+  }
+
+  it("Escape during active key-capture exits without saving (31.5a)", () => {
+    const g = openKeyBindings();
+    expect((game as unknown as { isKeyBindingScreen: boolean }).isKeyBindingScreen).toBe(true);
+
+    // Press Enter to start capture for current slot (RotateCW at slot 4)
+    // Navigate to RotateCW slot first
+    pressKey("ArrowDown"); releaseKey("ArrowDown"); // slot 1 (MoveRight)
+    pressKey("ArrowDown"); releaseKey("ArrowDown"); // slot 2 (SoftDrop)
+    pressKey("ArrowDown"); releaseKey("ArrowDown"); // slot 3 (HardDrop)
+    pressKey("ArrowDown"); releaseKey("ArrowDown"); // slot 4 (RotateCW)
+
+    const slotBefore = g.bindingsSelectedIdx;
+    const bindingsBefore = { ...g.bindings };
+
+    pressKey("Enter"); releaseKey("Enter"); // start capture
+    advanceFrames(1);
+    expect(g.bindingsWaitingForKey).toBe(true);
+
+    pressKey("Escape"); // Escape goes to rawKeyHandler (not Enter which is also Escape here)
+
+    expect(g.bindingsWaitingForKey).toBe(false);
+    // Bindings unchanged
+    expect(g.bindings).toEqual(bindingsBefore);
+    expect(g.bindingsSelectedIdx).toBe(slotBefore);
+  });
+
+  it("Up/Down navigation moves selector and wraps (31.5c)", () => {
+    const g = openKeyBindings();
+    expect(g.bindingsSelectedIdx).toBe(0);
+
+    pressKey("ArrowDown"); releaseKey("ArrowDown"); // SoftDrop action → forward
+    expect(g.bindingsSelectedIdx).toBe(1);
+
+    pressKey("ArrowUp"); releaseKey("ArrowUp"); // RotateCW action → backward
+    expect(g.bindingsSelectedIdx).toBe(0);
+
+    // From 0, press ArrowUp wraps to last slot (ACTION_LABELS.length = 11)
+    pressKey("ArrowUp"); releaseKey("ArrowUp");
+    expect(g.bindingsSelectedIdx).toBe(11);
+  });
+
+  it("pressing a key already bound to another action removes the old binding (31.5b)", () => {
+    const g = openKeyBindings();
+
+    // Navigate to slot 4 (RotateCW)
+    pressKey("ArrowDown"); releaseKey("ArrowDown");
+    pressKey("ArrowDown"); releaseKey("ArrowDown");
+    pressKey("ArrowDown"); releaseKey("ArrowDown");
+    pressKey("ArrowDown"); releaseKey("ArrowDown");
+
+    pressKey("Enter"); releaseKey("Enter"); // start capture for RotateCW slot
+    advanceFrames(1);
+
+    // Press ArrowDown — currently bound to SoftDrop
+    // rawKeyHandler receives "ArrowDown"; dedup removes old SoftDrop binding
+    pressKey("ArrowDown"); // goes to rawKeyHandler
+
+    // ArrowDown should now be bound to RotateCW (not SoftDrop)
+    const entries = Object.entries(g.bindings);
+    const arrowDownEntry = entries.find(([code]) => code === "ArrowDown");
+    expect(arrowDownEntry).toBeDefined();
+    expect(arrowDownEntry![1].type).toBe("RotateCW");
+
+    // Old RotateCW (ArrowUp) binding should be removed
+    const arrowUpEntry = entries.find(([code]) => code === "ArrowUp");
+    const arrowUpAction = arrowUpEntry ? arrowUpEntry[1].type : undefined;
+    expect(arrowUpAction).not.toBe("RotateCW");
+  });
+});
+
+describe("attract mode lifecycle (31.6)", () => {
+  it("attractNeedsReset consumed: aiController.reset() called once after spawn (31.6a)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5); // let attract mode run
+
+    const g = game as unknown as {
+      state: GameState;
+      isAttractMode: boolean;
+      attractNeedsReset: boolean;
+      aiController: { reset: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> } | null;
+    };
+
+    expect(g.isAttractMode).toBe(true);
+    expect(g.aiController).not.toBeNull();
+
+    // Spy on the real aiController.reset
+    const resetSpy = vi.spyOn(g.aiController!, "reset");
+
+    // Set attractNeedsReset=true (as if a new piece just spawned)
+    g.attractNeedsReset = true;
+
+    advanceFrames(2, 16);
+
+    // reset() should have been called exactly once to initialize AI for new piece
+    expect(resetSpy).toHaveBeenCalledTimes(1);
+    expect(g.attractNeedsReset).toBe(false);
+  });
+
+  it("attract GameOver triggers clearEffects and restarts with fresh state (31.6b)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+    expect(g.isAttractMode).toBe(true);
+
+    vi.mocked(clearEffects).mockClear();
+    // Force attract game to GameOver
+    g.state = { ...g.state, phase: GamePhase.GameOver };
+
+    advanceFrames(3, 16);
+
+    // After GameOver in attract, restartAttractGame() is called → clearEffects + fresh state
+    expect(clearEffects).toHaveBeenCalled();
+    expect(g.state.phase).toBe(GamePhase.Playing); // restarted
+    expect(g.state.score).toBe(0); // fresh state
+    expect(g.isAttractMode).toBe(true); // still in attract
+  });
+});
+
+describe("level-up tempo multiplier formula (31.7)", () => {
+  it("level-up via gravity lock calls setTempoMultiplier(1.0 + newLevel * 0.015)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter"); // start Marathon
+    advanceFrames(10);
+
+    const g = game as unknown as { state: GameState };
+    expect(g.state.mode).toBe(GameMode.Marathon);
+
+    vi.mocked(setTempoMultiplier).mockClear();
+
+    // Inject Marathon near level-1 threshold: level=0, effectiveLines=4
+    // (LEVEL_GOAL_CUMULATIVE[1]=5; clearing 1 more line gives effectiveLines=5 → level 1)
+    // Board: cols 4-9 filled at bottom row; I-piece fills cols 0-3 → full row → 1 clear
+    const board = Array.from({ length: BOARD_HEIGHT }, () =>
+      Array<Cell>(BOARD_WIDTH).fill(null),
+    );
+    for (let x = 4; x < BOARD_WIDTH; x++) {
+      board[BOARD_HEIGHT - 1][x] = TetriminoType.Z;
+    }
+    g.state = {
+      ...g.state,
+      board,
+      activePiece: { type: TetriminoType.I, pos: { x: 0, y: BOARD_HEIGHT - 2 }, rotation: RotationState.ZERO },
+      lockState: { timer: 0, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 2, lastRotationKickIndex: null },
+      level: 0,
+      effectiveLines: 4,
+      phase: GamePhase.Playing,
+    };
+
+    // Gravity lock fires after LOCK_DELAY ms → 1 clear → level 1 → setTempoMultiplier
+    advanceFrames(6, 100); // 600ms > LOCK_DELAY=500ms
+
+    expect(setTempoMultiplier).toHaveBeenCalledWith(1.0 + 1 * 0.015);
+  });
+});
+
+describe("branch coverage 35.1 — loop.ts remaining paths", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("start() registers visibilitychange on document when present (35.1a)", () => {
+    const addSpy = vi.fn();
+    const removeSpy = vi.fn();
+    vi.stubGlobal("document", { addEventListener: addSpy, removeEventListener: removeSpy, hidden: false });
+    game = new Game(mockCtx);
+    game.start();
+    expect(addSpy).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+    game.stop();
+    expect(removeSpy).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+  });
+
+  it("onVisibilityChange pauses game when document.hidden=true (35.1b)", () => {
+    const mockDoc = { addEventListener: vi.fn(), removeEventListener: vi.fn(), hidden: true };
+    vi.stubGlobal("document", mockDoc);
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    const g = game as unknown as { state: GameState; onVisibilityChange: () => void };
+    g.onVisibilityChange();
+    expect(g.state.phase).toBe(GamePhase.Paused);
+  });
+
+  it("Enter in GameOver (real non-attract game) restarts (35.1c)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+    expect(g.isAttractMode).toBe(false);
+    vi.mocked(clearEffects).mockClear();
+    g.state = { ...g.state, phase: GamePhase.GameOver };
+    pressKey("Enter"); releaseKey("Enter");
+    expect(g.state.phase).not.toBe(GamePhase.GameOver);
+    expect(clearEffects).toHaveBeenCalled();
+  });
+
+  it("Enter in Victory (real non-attract game) returns to attract menu (35.1d)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    const g = game as unknown as { state: GameState; isAttractMode: boolean; prevPhase: GamePhase };
+    expect(g.isAttractMode).toBe(false);
+    vi.mocked(clearEffects).mockClear();
+    g.state = { ...g.state, phase: GamePhase.Victory };
+    pressKey("Enter"); releaseKey("Enter");
+    expect(g.isAttractMode).toBe(true);
+    expect(clearEffects).toHaveBeenCalled();
+  });
+
+  it("un-muting during Playing phase calls playMusic (35.1e)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    const g = game as unknown as { state: GameState; audioEnabled: boolean };
+    expect(g.state.phase).toBe(GamePhase.Playing);
+    expect(g.audioEnabled).toBe(true);
+    vi.mocked(playMusic).mockClear();
+    pressKey("KeyM"); releaseKey("KeyM"); // mute → audioEnabled=false
+    pressKey("KeyM"); releaseKey("KeyM"); // un-mute → audioEnabled=true, phase=Playing → playMusic
+    expect(g.audioEnabled).toBe(true);
+    expect(playMusic).toHaveBeenCalled();
+  });
+
+  it("LineClear partial frame advance stays in LineClear phase (35.1f)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    pressKey("Enter"); releaseKey("Enter");
+    advanceFrames(10);
+    const g = game as unknown as { state: GameState };
+    g.state = {
+      ...g.state,
+      phase: GamePhase.LineClear,
+      lineClearTimer: 0,
+      clearedRowIndices: [],
+    };
+    advanceFrames(1, 16);
+    expect(g.state.phase).toBe(GamePhase.LineClear);
+    expect(g.state.lineClearTimer).toBeGreaterThan(0);
+    expect(g.state.lineClearTimer).toBeLessThan(300);
+  });
+
+  it("attract game in LineClear advances lineClearTimer (35.1g)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+    expect(g.isAttractMode).toBe(true);
+    g.state = {
+      ...g.state,
+      phase: GamePhase.LineClear,
+      lineClearTimer: 0,
+      clearedRowIndices: [],
+    };
+    advanceFrames(1, 16);
+    expect(g.state.lineClearTimer).toBeGreaterThan(0);
+  });
+
+  it("attract game in EntryDelay advances toward spawn (35.1h)", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+    expect(g.isAttractMode).toBe(true);
+    g.state = {
+      ...g.state,
+      phase: GamePhase.EntryDelay,
+      entryDelayTimer: 0,
+      activePiece: null,
+    };
+    advanceFrames(1, 16);
+    expect([GamePhase.EntryDelay, GamePhase.Playing]).toContain(g.state.phase);
   });
 });
