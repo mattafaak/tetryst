@@ -23,6 +23,7 @@ import {
 import { loadTopScores, getScoresGeneration } from "../core/high-scores.ts";
 import { getBindingsGeneration } from "../core/key-bindings.ts";
 import { computeGameStats } from "../core/stats.ts";
+import { type DASSettings, DEFAULT_DAS_SETTINGS } from "../core/das-settings.ts";
 import { renderBackground } from "./background.ts";
 import { renderEffects, setParticleLayout } from "./effects.ts";
 import { type InputAction } from "../core/types.ts";
@@ -207,6 +208,7 @@ export function renderFrame(
   isKeyBindingScreen?: boolean,
   bindingsSelectedIdx?: number,
   bindingsWaitingForKey?: boolean,
+  dasSettings?: DASSettings,
 ): void {
   // Refresh DPR cache when canvas dimensions change (window resize)
   const { width, height } = ctx.canvas;
@@ -272,7 +274,7 @@ export function renderFrame(
   // Draw overlays — unified menu overlay renders whenever attract mode is active
   // or the game is in menu phase (covers attract AI game + mode selection)
   if (isKeyBindingScreen) {
-    drawKeyBindingsScreen(ctx, canvasWidth, canvasHeight, bindings ?? {}, bindingsSelectedIdx ?? 0, bindingsWaitingForKey ?? false);
+    drawKeyBindingsScreen(ctx, canvasWidth, canvasHeight, bindings ?? {}, bindingsSelectedIdx ?? 0, bindingsWaitingForKey ?? false, dasSettings ?? DEFAULT_DAS_SETTINGS);
   } else if (state.phase === GamePhase.Menu || isAttractMode) {
     drawMenuOverlay(ctx, canvasWidth, canvasHeight, selectedMode ?? GameMode.Marathon, selectedStartLevel ?? 0, audioEnabled ?? true, bindings ?? {});
   } else if (state.phase === GamePhase.Paused) {

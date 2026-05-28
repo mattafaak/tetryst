@@ -44,6 +44,10 @@ function baseState(overrides?: Partial<GameState>): GameState {
     mode: GameMode.Marathon,
     modeTimer: 0,
     popups: [],
+    piecesPlaced: 0,
+    totalKeypresses: 0,
+    finesseFaults: 0,
+    currentPieceKeypresses: 0,
     ...overrides,
   };
 }

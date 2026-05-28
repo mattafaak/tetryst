@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { processAction } from "./actions.ts";
 import { spawnNextPiece } from "./state.ts";
-import { GamePhase, GameMode, TetriminoType, RotationState } from "./types.ts";
+import { GamePhase, TetriminoType, RotationState } from "./types.ts";
 import { baseState } from "../test-utils/test-utils.ts";
 
 function playState(currentPieceKeypresses = 0) {

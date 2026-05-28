@@ -9,7 +9,13 @@ import { createInitialState, startGame, spawnNextPiece } from "../core/state.ts"
 import { renderFrame } from "../render/canvas.ts";
 import { KeyboardHandler } from "../input/keyboard.ts";
 import { loadBindings, saveBindings, resetBindings } from "../core/key-bindings.ts";
-import { ACTION_LABELS } from "../render/key-bindings-ui.ts";
+import {
+  ACTION_LABELS,
+  RESTORE_KEYS_IDX, DAS_ROW_IDX, ARR_ROW_IDX, SDR_ROW_IDX,
+  STANDARD_PRESET_IDX, FAST_PRESET_IDX, INSTANT_PRESET_IDX,
+  TOTAL_BINDING_ROWS, DAS_STEP, ARR_STEP, SDR_STEP, DAS_PRESETS,
+} from "../render/key-bindings-ui.ts";
+import { loadDASSettings, saveDASSettings, clampDASSettings, type DASSettings } from "../core/das-settings.ts";
 import { playSFX } from "../audio/sfx.ts";
 import { playMusic, stopMusic, setSong, setTempoMultiplier } from "../audio/music.ts";
 import { AIController, createAttractAIController } from "../ai/ai-controller.ts";
@@ -42,6 +48,7 @@ export class Game {
   private isKeyBindingScreen = false;
   private bindingsSelectedIdx = 0;
   private bindingsWaitingForKey = false;
+  private dasSettings: DASSettings = loadDASSettings();
   private _preAttractAudio: boolean = true;
 
   constructor(ctx: CanvasRenderingContext2D) {
@@ -130,24 +137,50 @@ export class Game {
     if (this.state.phase === GamePhase.Menu || this.isAttractMode) {
       // ---- Key binding screen ----
       if (this.isKeyBindingScreen) {
-        if (action.type === "RotateCW" || action.type === "MoveLeft") {
-          this.bindingsSelectedIdx = (this.bindingsSelectedIdx - 1 + ACTION_LABELS.length + 1) % (ACTION_LABELS.length + 1);
+        const idx = this.bindingsSelectedIdx;
+        const isTimingRow = idx >= DAS_ROW_IDX && idx <= SDR_ROW_IDX;
+
+        // Up: RotateCW always navigates; MoveLeft only on non-timing rows
+        if (action.type === "RotateCW" || (!isTimingRow && action.type === "MoveLeft")) {
+          this.bindingsSelectedIdx = (idx - 1 + TOTAL_BINDING_ROWS) % TOTAL_BINDING_ROWS;
           return;
         }
-        if (action.type === "SoftDrop" || action.type === "MoveRight") {
-          this.bindingsSelectedIdx = (this.bindingsSelectedIdx + 1) % (ACTION_LABELS.length + 1);
+        // Down: SoftDrop always navigates; MoveRight only on non-timing rows
+        if (action.type === "SoftDrop" || (!isTimingRow && action.type === "MoveRight")) {
+          this.bindingsSelectedIdx = (idx + 1) % TOTAL_BINDING_ROWS;
+          return;
+        }
+        // Value adjustment on DAS/ARR/SDR rows
+        if (isTimingRow && (action.type === "MoveLeft" || action.type === "MoveRight")) {
+          const sign = action.type === "MoveLeft" ? -1 : 1;
+          if (idx === DAS_ROW_IDX) {
+            this.dasSettings = clampDASSettings({ ...this.dasSettings, dasDelay: this.dasSettings.dasDelay + sign * DAS_STEP });
+          } else if (idx === ARR_ROW_IDX) {
+            this.dasSettings = clampDASSettings({ ...this.dasSettings, arrRate: this.dasSettings.arrRate + sign * ARR_STEP });
+          } else {
+            this.dasSettings = clampDASSettings({ ...this.dasSettings, sdrRate: this.dasSettings.sdrRate + sign * SDR_STEP });
+          }
+          saveDASSettings(this.dasSettings);
           return;
         }
         if (action.type === "Start") {
-          if (this.bindingsSelectedIdx >= ACTION_LABELS.length) {
-            // "Restore Defaults" row
-            this.bindings = resetBindings();
-            this.keyboard.setBindings(this.bindings);
-            this.bindingsSelectedIdx = 0;
-          } else {
+          if (idx < ACTION_LABELS.length) {
             // Enter starts the rebind capture
             this.bindingsWaitingForKey = true;
             this.keyboard.setRawKeyHandler(this.onBindingKeyCapture);
+          } else if (idx === RESTORE_KEYS_IDX) {
+            this.bindings = resetBindings();
+            this.keyboard.setBindings(this.bindings);
+            this.bindingsSelectedIdx = 0;
+          } else if (idx === STANDARD_PRESET_IDX) {
+            this.dasSettings = { ...DAS_PRESETS.standard };
+            saveDASSettings(this.dasSettings);
+          } else if (idx === FAST_PRESET_IDX) {
+            this.dasSettings = { ...DAS_PRESETS.fast };
+            saveDASSettings(this.dasSettings);
+          } else if (idx === INSTANT_PRESET_IDX) {
+            this.dasSettings = { ...DAS_PRESETS.instant };
+            saveDASSettings(this.dasSettings);
           }
           return;
         }
@@ -370,6 +403,7 @@ export class Game {
         this.isKeyBindingScreen,
         this.bindingsSelectedIdx,
         this.bindingsWaitingForKey,
+        this.dasSettings,
       );
     } catch (err) {
       console.error("Game loop error:", err);

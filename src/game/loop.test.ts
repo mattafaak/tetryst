@@ -889,6 +889,7 @@ describe("Game integration", () => {
           victoryTriggered: false,
           needsLevelupSFX: false,
           needsTSpinSFX: false,
+          needsFinesseSFX: false,
         } satisfies LastLockResult,
       };
 
@@ -1286,9 +1287,9 @@ describe("key binding screen (31.5)", () => {
     pressKey("ArrowUp"); releaseKey("ArrowUp"); // RotateCW action → backward
     expect(g.bindingsSelectedIdx).toBe(0);
 
-    // From 0, press ArrowUp wraps to last slot (ACTION_LABELS.length = 11)
+    // From 0, press ArrowUp wraps to last slot (TOTAL_BINDING_ROWS - 1 = 17)
     pressKey("ArrowUp"); releaseKey("ArrowUp");
-    expect(g.bindingsSelectedIdx).toBe(11);
+    expect(g.bindingsSelectedIdx).toBe(17);
   });
 
   it("pressing a key already bound to another action removes the old binding (31.5b)", () => {
