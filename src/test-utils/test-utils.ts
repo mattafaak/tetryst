@@ -10,6 +10,7 @@ import {
 import { createBoard } from "../core/board.ts";
 import { resetLockState } from "../core/lock-delay.ts";
 import { BOARD_HEIGHT, BOARD_WIDTH } from "../core/constants.ts";
+export { pushPopup } from "../core/popups.ts";
 
 /**
  * Create a minimal GameState for testing, with sensible defaults.
