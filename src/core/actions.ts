@@ -13,33 +13,43 @@ import { MAX_LOCK_RESETS, SOFT_DROP_SCORE } from "./constants.ts";
 import { batchPushPopups } from "./popups.ts";
 import type { LockState, Piece } from "./types.ts";
 
+const KEYPRESS_COUNTED_ACTIONS = new Set([
+  "MoveLeft", "MoveRight", "RotateCW", "RotateCCW", "HardDrop", "Hold",
+]);
+
 export function processAction(
   state: GameState,
   action: InputAction
 ): GameState {
+  // Count keypresses only during active play (not menus, pause, game-over, etc.)
+  const s =
+    state.phase === GamePhase.Playing && KEYPRESS_COUNTED_ACTIONS.has(action.type)
+      ? { ...state, totalKeypresses: state.totalKeypresses + 1 }
+      : state;
+
   switch (action.type) {
     case "Start":
       return state; // handled by game loop before processAction
     case "Pause":
       return handlePause(state);
     case "MoveLeft":
-      return handleMove(state, -1, 0);
+      return handleMove(s, -1, 0);
     case "MoveRight":
-      return handleMove(state, 1, 0);
+      return handleMove(s, 1, 0);
     case "SoftDrop":
       return handleSoftDrop(state);
     case "HardDrop":
-      return handleHardDrop(state);
+      return handleHardDrop(s);
     case "RotateCW":
       if (state.phase === GamePhase.EntryDelay || state.phase === GamePhase.LineClear) {
         return { ...state, bufferedRotation: "CW" };
       }
-      return handleRotateCW(state);
+      return handleRotateCW(s);
     case "RotateCCW":
       if (state.phase === GamePhase.EntryDelay || state.phase === GamePhase.LineClear) {
         return { ...state, bufferedRotation: "CCW" };
       }
-      return handleRotateCCW(state);
+      return handleRotateCCW(s);
     case "Hold":
       if (
         (state.phase === GamePhase.EntryDelay || state.phase === GamePhase.LineClear) &&
@@ -47,7 +57,7 @@ export function processAction(
       ) {
         return { ...state, bufferedHold: true };
       }
-      return handleHold(state);
+      return handleHold(s);
     case "Mute":
       return state;
     case "KeyBindings":

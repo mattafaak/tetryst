@@ -29,7 +29,7 @@ interface LockResult {
  * use to play SFX and trigger victory externally.
  */
 export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
-  let s = { ...state };
+  let s = { ...state, piecesPlaced: state.piecesPlaced + 1 };
 
   const tSpinResult = detectTSpin(s.board, lockedPiece, s.lockState.lastRotationKickIndex);
   const clearResult = clearLines(s.board);

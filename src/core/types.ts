@@ -119,6 +119,10 @@ export interface GameState {
   modeTimer: number;
   popups: PopupItem[];
   lastLockResult?: LastLockResult;
+  piecesPlaced: number;
+  totalKeypresses: number;
+  finesseFaults: number;
+  currentPieceKeypresses: number;
 }
 
 export type InputAction =

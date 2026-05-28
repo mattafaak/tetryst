@@ -34,6 +34,10 @@ export function createInitialState(mode: GameMode = GameMode.Marathon): GameStat
     mode,
     modeTimer: mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
     popups: [],
+    piecesPlaced: 0,
+    totalKeypresses: 0,
+    finesseFaults: 0,
+    currentPieceKeypresses: 0,
   };
 }
 
@@ -79,6 +83,10 @@ export function startGame(state: GameState, startLevel: number = 0): GameState {
     clearedRowIndices: [],
     modeTimer: state.mode === GameMode.Ultra ? ULTRA_DURATION_MS : 0,
     popups: [],
+    piecesPlaced: 0,
+    totalKeypresses: 0,
+    finesseFaults: 0,
+    currentPieceKeypresses: 0,
   };
 }
 
