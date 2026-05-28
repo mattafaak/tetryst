@@ -64,6 +64,49 @@ describe("detectTSpin", () => {
     expect(result.isMini).toBe(true);
   });
 
+  // TDG §7 kick exception: kick tests #4/#5 (0-indexed: 3,4) → always full T-spin
+  it("kick index 3 overrides Mini → full T-spin", () => {
+    const board = emptyBoard();
+    const piece = makeTSPiece(RotationState.ZERO, 3, 18);
+    // Same geometry as Mini test: TL+BL+BR occupied, TR free → normally Mini
+    board[18][3] = TetriminoType.Z; // TL (back)
+    board[20][3] = TetriminoType.Z; // BL (front)
+    board[20][5] = TetriminoType.Z; // BR (front)
+
+    // Without kick exception → Mini
+    const mini = detectTSpin(board, piece, null);
+    expect(mini.isMini).toBe(true);
+
+    // With kick index 3 → full T-spin (TDG §7 kick exception)
+    const full = detectTSpin(board, piece, 3);
+    expect(full.isTSpin).toBe(true);
+    expect(full.isMini).toBe(false);
+  });
+
+  it("kick index 4 overrides Mini → full T-spin", () => {
+    const board = emptyBoard();
+    const piece = makeTSPiece(RotationState.ZERO, 3, 18);
+    board[18][3] = TetriminoType.Z; // TL (back)
+    board[20][3] = TetriminoType.Z; // BL (front)
+    board[20][5] = TetriminoType.Z; // BR (front)
+
+    const full = detectTSpin(board, piece, 4);
+    expect(full.isTSpin).toBe(true);
+    expect(full.isMini).toBe(false);
+  });
+
+  it("kick index 0/1/2 does NOT override Mini", () => {
+    const board = emptyBoard();
+    const piece = makeTSPiece(RotationState.ZERO, 3, 18);
+    board[18][3] = TetriminoType.Z; // TL (back)
+    board[20][3] = TetriminoType.Z; // BL (front)
+    board[20][5] = TetriminoType.Z; // BR (front)
+
+    expect(detectTSpin(board, piece, 0).isMini).toBe(true);
+    expect(detectTSpin(board, piece, 1).isMini).toBe(true);
+    expect(detectTSpin(board, piece, 2).isMini).toBe(true);
+  });
+
   it("should consider out-of-bounds as occupied", () => {
     const board = emptyBoard();
     const piece = makeTSPiece(RotationState.TWO, 3, -1);

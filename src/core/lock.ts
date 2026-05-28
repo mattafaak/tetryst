@@ -31,7 +31,7 @@ interface LockResult {
 export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
   let s = { ...state };
 
-  const tSpinResult = detectTSpin(s.board, lockedPiece);
+  const tSpinResult = detectTSpin(s.board, lockedPiece, s.lockState.lastRotationKickIndex);
   const clearResult = clearLines(s.board);
   s.board = clearResult.board;
 

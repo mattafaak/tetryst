@@ -100,7 +100,11 @@ function getCornerInfo(
  *   3. If both back corners (stem side) are occupied -> full T-spin.
  *   4. If exactly 3 corners but NOT both back corners -> T-spin Mini.
  */
-export function detectTSpin(board: Board, piece: Piece): TSpinResult {
+export function detectTSpin(
+  board: Board,
+  piece: Piece,
+  lastKickIndex?: number | null,
+): TSpinResult {
   if (piece.type !== TetriminoType.T) {
     return { isTSpin: false, isMini: false };
   }
@@ -128,8 +132,13 @@ export function detectTSpin(board: Board, piece: Piece): TSpinResult {
     return { isTSpin: true, isMini: false };
   }
 
+  // TDG §7 kick exception: kick tests #4/#5 (0-indexed: 3,4) always produce
+  // a full T-spin, even when the 3-corner check would yield Mini.
+  if (lastKickIndex != null && lastKickIndex >= 3) {
+    return { isTSpin: true, isMini: false };
+  }
+
   // Exactly 3 corners but NOT both back -> T-spin Mini
-  // (both front corners on the flat-edge side are occupied)
   return { isTSpin: true, isMini: true };
 }
 

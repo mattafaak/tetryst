@@ -32,6 +32,7 @@ export function resetLockState(): LockState {
     resets: 0,
     onGround: false,
     lowestY: -1,
+    lastRotationKickIndex: null,
   };
 }
 

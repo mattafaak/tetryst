@@ -122,6 +122,7 @@ describe("lock-delay", () => {
         resets: 0,
         onGround: false,
         lowestY: -1,
+        lastRotationKickIndex: null,
       });
     });
   });

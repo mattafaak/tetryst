@@ -75,6 +75,7 @@ export interface LockState {
   resets: number;
   onGround: boolean;
   lowestY: number; // piece top y-coord at lowest position reached; reset resets when piece falls lower
+  lastRotationKickIndex: number | null; // TDG §7: kick index ≥3 → always full T-spin, not Mini
 }
 
 export interface NextQueueItem {

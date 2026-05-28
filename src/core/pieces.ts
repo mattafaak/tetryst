@@ -37,9 +37,9 @@ export function movePiece(piece: Piece, dx: number, dy: number): Piece {
 export function tryRotateCW(
   piece: Piece,
   board: Board
-): { piece: Piece; kicked: boolean } | null {
+): { piece: Piece; kicked: boolean; kickIndex: number } | null {
   if (piece.type === TetriminoType.O) {
-    return { piece, kicked: false };
+    return { piece, kicked: false, kickIndex: 0 };
   }
 
   const newRotation = srsCW(piece.rotation);
@@ -60,6 +60,7 @@ export function tryRotateCW(
       return {
         piece: testPiece,
         kicked: i > 0,
+        kickIndex: i,
       };
     }
   }
@@ -70,9 +71,9 @@ export function tryRotateCW(
 export function tryRotateCCW(
   piece: Piece,
   board: Board
-): { piece: Piece; kicked: boolean } | null {
+): { piece: Piece; kicked: boolean; kickIndex: number } | null {
   if (piece.type === TetriminoType.O) {
-    return { piece, kicked: false };
+    return { piece, kicked: false, kickIndex: 0 };
   }
 
   const newRotation = srsCCW(piece.rotation);
@@ -93,6 +94,7 @@ export function tryRotateCCW(
       return {
         piece: testPiece,
         kicked: i > 0,
+        kickIndex: i,
       };
     }
   }

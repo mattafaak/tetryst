@@ -208,7 +208,8 @@ function handleRotateCW(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, result.piece);
 
   // Recheck groundedness after rotation — kicks can move the piece on or off the ground
-  newState.lockState = updateLockStateAfterMove(state, result.piece);
+  const newLockState = updateLockStateAfterMove(state, result.piece);
+  newState.lockState = { ...newLockState, lastRotationKickIndex: result.kickIndex };
 
   return newState;
 }
@@ -228,7 +229,8 @@ function handleRotateCCW(state: GameState): GameState {
   newState.ghostY = getGhostY(newState.board, result.piece);
 
   // Recheck groundedness after rotation — kicks can move the piece on or off the ground
-  newState.lockState = updateLockStateAfterMove(state, result.piece);
+  const newLockState = updateLockStateAfterMove(state, result.piece);
+  newState.lockState = { ...newLockState, lastRotationKickIndex: result.kickIndex };
 
   return newState;
 }
