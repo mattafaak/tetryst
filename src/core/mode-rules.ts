@@ -9,6 +9,7 @@ export function checkModeVictory(state: GameState): boolean {
       return state.lines >= SPRINT_LINE_TARGET;
     case GameMode.Ultra:
       return state.modeTimer <= 0;
+    /* c8 ignore next 2 -- GameMode enum is exhaustive; default is unreachable */
     default:
       return false;
   }

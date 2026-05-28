@@ -782,6 +782,24 @@ describe("getGhostY", () => {
     expect(ghostY).toBeGreaterThanOrEqual(piece.pos.y);
   });
 
+  it("ghost is at the lowest valid Y: ghostY+1 always collides for all types × rotations (36.2)", () => {
+    const board = createBoard();
+    const types = [
+      TetriminoType.I, TetriminoType.O, TetriminoType.T,
+      TetriminoType.S, TetriminoType.Z, TetriminoType.J, TetriminoType.L,
+    ];
+    const rotations = [RotationState.ZERO, RotationState.R, RotationState.TWO, RotationState.L];
+
+    for (const type of types) {
+      for (const rotation of rotations) {
+        const piece = { type, pos: { x: 3, y: 0 }, rotation };
+        const ghostY = getGhostY(board, piece);
+        const oneBelow = { ...piece, pos: { ...piece.pos, y: ghostY + 1 } };
+        expect(checkCollision(board, oneBelow)).toBe(true);
+      }
+    }
+  });
+
   it("should return O-piece unchanged (same position, same rotation) through CW rotation", () => {
     const board = createBoard();
     const piece = spawnPiece(TetriminoType.O);

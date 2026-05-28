@@ -108,6 +108,22 @@ describe("createFirstBag", () => {
 });
 
 describe("distribution uniformity", () => {
+  it("strict 7-bag exhaustion: each type appears exactly N times per N complete bags (36.1)", () => {
+    const counts: Record<string, number> = {};
+    for (const t of ALL_TYPES) counts[t] = 0;
+
+    let bag: TetriminoType[] = [];
+    for (let i = 0; i < 700; i++) {
+      const result = drawFromBag(bag);
+      counts[result.piece]++;
+      bag = result.bag;
+    }
+
+    for (const t of ALL_TYPES) {
+      expect(counts[t]).toBe(100);
+    }
+  });
+
   it("has reasonably uniform distribution over 1000 draws", () => {
     const counts: Record<string, number> = {};
     for (const t of ALL_TYPES) {

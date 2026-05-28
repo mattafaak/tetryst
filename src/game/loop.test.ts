@@ -12,7 +12,7 @@ import { triggerFlash, clearEffects } from "../render/effects.ts";
 import { Game } from "./loop.ts";
 import { GamePhase, GameMode, TetriminoType, RotationState } from "../core/types.ts";
 import type { GameState, Cell, LastLockResult } from "../core/types.ts";
-import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT, ENTRY_DELAY } from "../core/constants.ts";
+import { BOARD_WIDTH, BOARD_HEIGHT, BUFFER_HEIGHT, ENTRY_DELAY, SPRINT_LINE_TARGET } from "../core/constants.ts";
 
 // ── Mocks ────────────────────────────────────────────────────────────────
 
@@ -368,6 +368,100 @@ describe("Game integration", () => {
       const g = game as unknown as { state: { mode: GameMode; modeTimer: number } };
       expect(g.state.mode).toBe(GameMode.Sprint);
       expect(g.state.modeTimer).toBeGreaterThan(0);
+    });
+
+    it("Sprint end-to-end: clearing 40 lines transitions to Victory and saves modeTimer (36.4)", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("ArrowRight"); releaseKey("ArrowRight"); // → Sprint
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState; prevPhase: GamePhase };
+      expect(g.state.mode).toBe(GameMode.Sprint);
+      expect(g.state.phase).toBe(GamePhase.Playing);
+
+      // Set up: 39 lines cleared, board with one row needing only I-piece to complete
+      const board = Array.from({ length: BOARD_HEIGHT }, () =>
+        Array<Cell>(BOARD_WIDTH).fill(null),
+      );
+      // Fill bottom row except cols 0-3 (I-piece will fill those)
+      for (let x = 4; x < BOARD_WIDTH; x++) {
+        board[BOARD_HEIGHT - 1][x] = TetriminoType.Z;
+      }
+
+      saveHighScoreMock.mockClear();
+      vi.mocked(stopMusic).mockClear();
+
+      g.state = {
+        ...g.state,
+        board,
+        lines: SPRINT_LINE_TARGET - 1, // one line away from victory
+        modeTimer: 8888,
+        activePiece: {
+          type: TetriminoType.I,
+          pos: { x: 0, y: BOARD_HEIGHT - 2 },
+          rotation: RotationState.ZERO,
+        },
+        lockState: { timer: 0, resets: 0, onGround: true, lowestY: BOARD_HEIGHT - 2, lastRotationKickIndex: null },
+      };
+      g.prevPhase = GamePhase.Playing;
+
+      // Hard-drop clears the row → lines=40 → Victory
+      pressKey("Space"); releaseKey("Space");
+      advanceFrames(20, 16);
+
+      expect(g.state.phase).toBe(GamePhase.Victory);
+      expect(saveHighScoreMock).toHaveBeenCalledWith(
+        expect.objectContaining({ score: 8888, mode: GameMode.Sprint }),
+      );
+      expect(stopMusic).toHaveBeenCalled();
+    });
+  });
+
+  describe("high score field selection (36.3)", () => {
+    it("Sprint GameOver saves modeTimer (not score) as high score value", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("ArrowRight"); releaseKey("ArrowRight"); // → Sprint
+      pressKey("Enter"); releaseKey("Enter");
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState; prevPhase: GamePhase };
+      expect(g.state.mode).toBe(GameMode.Sprint);
+
+      saveHighScoreMock.mockClear();
+      g.state = { ...g.state, phase: GamePhase.GameOver, score: 999, modeTimer: 12345 };
+      g.prevPhase = GamePhase.Playing;
+      advanceFrames(1);
+
+      expect(saveHighScoreMock).toHaveBeenCalledOnce();
+      expect(saveHighScoreMock).toHaveBeenCalledWith(
+        expect.objectContaining({ score: 12345, mode: GameMode.Sprint }),
+      );
+    });
+
+    it("Marathon GameOver saves score (not modeTimer) as high score value", () => {
+      game = new Game(mockCtx);
+      game.start();
+      advanceFrames(5);
+      pressKey("Enter"); releaseKey("Enter"); // → Marathon
+      advanceFrames(10);
+
+      const g = game as unknown as { state: GameState; prevPhase: GamePhase };
+      expect(g.state.mode).toBe(GameMode.Marathon);
+
+      saveHighScoreMock.mockClear();
+      g.state = { ...g.state, phase: GamePhase.GameOver, score: 50000, modeTimer: 99999 };
+      g.prevPhase = GamePhase.Playing;
+      advanceFrames(1);
+
+      expect(saveHighScoreMock).toHaveBeenCalledOnce();
+      expect(saveHighScoreMock).toHaveBeenCalledWith(
+        expect.objectContaining({ score: 50000, mode: GameMode.Marathon }),
+      );
     });
   });
 
