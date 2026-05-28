@@ -3,7 +3,7 @@
 
 export type SFXName =
   | "move" | "rotate" | "lock" | "clear"
-  | "tetris" | "tspin" | "hold" | "levelup" | "gameover";
+  | "tetris" | "tspin" | "hold" | "levelup" | "gameover" | "finesse";
 
 export interface OscEvent {
   type: "osc";
@@ -89,6 +89,12 @@ export const SFX_DEFS: Record<SFXName, SFXDef> = {
   gameover: {
     events: [
       { type: "osc", waveType: "pulse25", startFreq: 400, endFreq: 90, duration: 0.70, delay: 0, volume: 0.25, decay: false },
+    ],
+  },
+  // Short descending blip — quiet notification of a suboptimal placement
+  finesse: {
+    events: [
+      { type: "osc", waveType: "pulse25", startFreq: 180, endFreq: 110, duration: 0.07, delay: 0, volume: 0.09, decay: true },
     ],
   },
 };

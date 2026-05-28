@@ -106,3 +106,15 @@ describe("finesse fault detection — piecesPlaced still increments", () => {
     expect(result.state.finesseFaults).toBe(0);
   });
 });
+
+describe("finesse fault detection — needsFinesseSFX in LockResult", () => {
+  it("needsFinesseSFX is true when fault occurs", () => {
+    const result = lockAndExecute(TetriminoType.T, T_SPAWN_X, T_SPAWN_ROT, 2);
+    expect(result.needsFinesseSFX).toBe(true);
+  });
+
+  it("needsFinesseSFX is false when no fault", () => {
+    const result = lockAndExecute(TetriminoType.T, T_SPAWN_X, T_SPAWN_ROT, 0);
+    expect(result.needsFinesseSFX).toBe(false);
+  });
+});

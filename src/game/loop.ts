@@ -322,6 +322,7 @@ export class Game {
             }
             if (r.needsLevelupSFX) playSFX("levelup");
             if (r.needsTSpinSFX) playSFX("tspin");
+            if (r.needsFinesseSFX) playSFX("finesse");
           }
 
           // Screen flash for major events
@@ -582,6 +583,7 @@ export class Game {
       }
       if (result.needsLevelupSFX) playSFX("levelup");
       if (result.needsTSpinSFX) playSFX("tspin");
+      if (result.needsFinesseSFX) playSFX("finesse");
     }
     if (result.needsLevelupSFX) {
       setTempoMultiplier(1.0 + this.state.level * 0.015);

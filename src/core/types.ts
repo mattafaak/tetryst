@@ -89,6 +89,7 @@ export interface LastLockResult {
   isTSpinMini: boolean;
   needsLevelupSFX: boolean;
   needsTSpinSFX: boolean;
+  needsFinesseSFX: boolean;
   victoryTriggered: boolean;
 }
 

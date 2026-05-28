@@ -22,6 +22,7 @@ import {
 } from "../core/constants.ts";
 import { loadTopScores, getScoresGeneration } from "../core/high-scores.ts";
 import { getBindingsGeneration } from "../core/key-bindings.ts";
+import { computeGameStats } from "../core/stats.ts";
 import { renderBackground } from "./background.ts";
 import { renderEffects, setParticleLayout } from "./effects.ts";
 import { type InputAction } from "../core/types.ts";
@@ -127,6 +128,12 @@ function fmtScore(n: number): string {
 // when the score hasn't changed between frames (common in slow-paced play).
 let _lastFmtScore = 0;
 let _lastFmtResult = "0";
+
+function fmtGameStats(state: GameState): string {
+  const { pps, kpp, finesseFaults } = computeGameStats(state);
+  const fStr = `${finesseFaults} fault${finesseFaults === 1 ? "" : "s"}`;
+  return `${pps.toFixed(2)} PPS  ·  ${kpp.toFixed(2)} KPP  ·  ${fStr}`;
+}
 
 // Offscreen canvas cache — only redrawn when the board reference changes
 let boardCacheCanvas: HTMLCanvasElement | null = null;
@@ -621,6 +628,7 @@ function drawGameOver(
   ctx.font = FONT_STAT;
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
+  ctx.fillText(fmtGameStats(state), cx, cy + 26);
 
   drawBestScores(ctx, state.mode, cx, cy + 40);
 
@@ -681,6 +689,7 @@ function drawVictory(
   ctx.font = FONT_STAT;
   ctx.fillStyle = TEXT_DIM;
   ctx.fillText(`Level ${state.level + 1}   ·   ${state.lines} lines`, cx, cy + 8);
+  ctx.fillText(fmtGameStats(state), cx, cy + 26);
 
   drawBestScores(ctx, state.mode, cx, cy + 40);
 

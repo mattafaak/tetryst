@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { computeGameStats } from "./stats.ts";
 import { baseState } from "../test-utils/test-utils.ts";
+import { GameMode } from "./types.ts";
+import { ULTRA_DURATION_MS } from "./constants.ts";
 
 describe("computeGameStats — PPS", () => {
   it("pps = piecesPlaced / (modeTimer / 1000)", () => {
@@ -56,5 +58,43 @@ describe("computeGameStats — finesseFaults", () => {
   it("finesseFaults is 0 when state has 0", () => {
     const s = baseState({ piecesPlaced: 5, modeTimer: 5000, totalKeypresses: 15, finesseFaults: 0 });
     expect(computeGameStats(s).finesseFaults).toBe(0);
+  });
+});
+
+describe("computeGameStats — Ultra mode timer direction", () => {
+  it("Ultra pps uses ULTRA_DURATION_MS - modeTimer as elapsed when timer has counted down", () => {
+    // Ultra timer counts DOWN from ULTRA_DURATION_MS. At end, modeTimer=0.
+    // elapsedMs = ULTRA_DURATION_MS - 0 = ULTRA_DURATION_MS
+    const elapsed = ULTRA_DURATION_MS / 1000;
+    const pieces = 20;
+    const s = baseState({
+      mode: GameMode.Ultra,
+      piecesPlaced: pieces,
+      modeTimer: 0,
+      totalKeypresses: 60,
+      finesseFaults: 0,
+    });
+    expect(computeGameStats(s).pps).toBeCloseTo(pieces / elapsed, 3);
+  });
+
+  it("Ultra pps mid-game uses time elapsed so far", () => {
+    // Halfway through Ultra: modeTimer = ULTRA_DURATION_MS / 2 (half remaining)
+    const half = ULTRA_DURATION_MS / 2;
+    const elapsed = half / 1000; // half of duration has elapsed
+    const pieces = 10;
+    const s = baseState({
+      mode: GameMode.Ultra,
+      piecesPlaced: pieces,
+      modeTimer: half,
+      totalKeypresses: 30,
+      finesseFaults: 0,
+    });
+    expect(computeGameStats(s).pps).toBeCloseTo(pieces / elapsed, 3);
+  });
+
+  it("Marathon pps is unaffected by Ultra formula", () => {
+    // Marathon timer counts UP — existing behavior unchanged
+    const s = baseState({ piecesPlaced: 20, modeTimer: 10000, totalKeypresses: 60, finesseFaults: 0 });
+    expect(computeGameStats(s).pps).toBeCloseTo(2.0, 3);
   });
 });

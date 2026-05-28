@@ -17,6 +17,7 @@ interface LockResult {
   popupInfo: Array<{ text: string; color: string }>;
   needsLevelupSFX: boolean;
   needsTSpinSFX: boolean;
+  needsFinesseSFX: boolean;
 }
 
 /**
@@ -178,6 +179,7 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
     isTSpinMini: tSpinResult.isMini,
     needsLevelupSFX,
     needsTSpinSFX,
+    needsFinesseSFX: hasFault,
     victoryTriggered,
   };
 
@@ -192,5 +194,6 @@ export function executeLock(state: GameState, lockedPiece: Piece): LockResult {
     popupInfo,
     needsLevelupSFX,
     needsTSpinSFX,
+    needsFinesseSFX: hasFault,
   };
 }
