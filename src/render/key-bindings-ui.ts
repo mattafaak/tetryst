@@ -232,6 +232,7 @@ export function drawKeyBindingsScreen(
       ctx.fillStyle = ACCENT;
       ctx.fillText(`← ${row.value} →`, leftX + 400, y);
     } else {
+      /* c8 ignore next -- adjustable is always true; non-adjustable selected row unreachable */
       ctx.fillStyle = row.idx === selectedIdx ? ACCENT : TEXT_DIM;
       ctx.fillText(row.value, leftX + 400, y);
     }

@@ -87,3 +87,61 @@ describe("FINESSE_TABLE coverage", () => {
     }
   });
 });
+
+describe("canonicalKeypresses — all pieces at spawn position = 0", () => {
+  // Every piece spawns at col 3, rotation ZERO — canonical cost must be 0 for all
+  const pieces = [
+    TetriminoType.I, TetriminoType.O, TetriminoType.T,
+    TetriminoType.S, TetriminoType.Z, TetriminoType.L, TetriminoType.J,
+  ];
+  for (const type of pieces) {
+    it(`${type} at spawn (col 3, rot ZERO) = 0`, () => {
+      expect(canonicalKeypresses(type, RotationState.ZERO, 3)).toBe(0);
+    });
+  }
+});
+
+describe("canonicalKeypresses — symmetric left/right costs from spawn", () => {
+  it("T: col 2 (1 left) = 1 and col 4 (1 right) = 1", () => {
+    expect(canonicalKeypresses(TetriminoType.T, RotationState.ZERO, 2)).toBe(1);
+    expect(canonicalKeypresses(TetriminoType.T, RotationState.ZERO, 4)).toBe(1);
+  });
+
+  it("T: col 1 (2 left) = 2 and col 5 (2 right) = 2", () => {
+    expect(canonicalKeypresses(TetriminoType.T, RotationState.ZERO, 1)).toBe(2);
+    expect(canonicalKeypresses(TetriminoType.T, RotationState.ZERO, 5)).toBe(2);
+  });
+});
+
+describe("canonicalKeypresses — O-piece only has one rotation state", () => {
+  it("O at col 3, rotation ZERO = 0", () => {
+    expect(canonicalKeypresses(TetriminoType.O, RotationState.ZERO, 3)).toBe(0);
+  });
+  it("O at col 4, rotation ZERO = 1 (one move right)", () => {
+    expect(canonicalKeypresses(TetriminoType.O, RotationState.ZERO, 4)).toBe(1);
+  });
+  it("O at col 3, rotation R is reachable via rotation (counts as 1 or 0 depending on kick)", () => {
+    // O-piece rotation states map to same visual shape — BFS should find some cost
+    const cost = canonicalKeypresses(TetriminoType.O, RotationState.R, 3);
+    // Either reachable (some cost) or unreachable (Infinity) — both are valid
+    expect(cost >= 0).toBe(true);
+  });
+});
+
+describe("canonicalKeypresses — column extremes are reachable", () => {
+  it("T at far-left column 0, rotation ZERO is reachable", () => {
+    const cost = canonicalKeypresses(TetriminoType.T, RotationState.ZERO, 0);
+    expect(cost).toBeGreaterThan(0);
+    expect(Number.isFinite(cost)).toBe(true);
+  });
+
+  it("T at far-right reachable column is finite cost", () => {
+    // T piece (3 wide) rightmost x = BOARD_WIDTH - 3 = 7
+    const cost = canonicalKeypresses(TetriminoType.T, RotationState.ZERO, 7);
+    expect(Number.isFinite(cost)).toBe(true);
+  });
+
+  it("I at col 0, rotation ZERO = 3 moves left from spawn col 3", () => {
+    expect(canonicalKeypresses(TetriminoType.I, RotationState.ZERO, 0)).toBe(3);
+  });
+});

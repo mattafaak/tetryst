@@ -120,6 +120,40 @@ describe("KeyboardHandler", () => {
       for (const listener of keyDownListeners) listener(event);
       expect(event.preventDefault).not.toHaveBeenCalled();
     });
+
+    it("OS held-key auto-repeat (keydown without release) fires only once", () => {
+      // Browsers fire repeated keydown events while a key is held.
+      // The handler must ignore these to prevent double-firing.
+      handler.attach();
+      pressKey("ArrowLeft"); // first press — fires
+      pressKey("ArrowLeft"); // OS repeat while still held — must be ignored
+      pressKey("ArrowLeft"); // OS repeat again
+      expect(actions).toHaveLength(1);
+      expect(actions[0]).toEqual({ type: "MoveLeft" });
+    });
+
+    it("keyup for unknown key does not throw", () => {
+      handler.attach();
+      expect(() => releaseKey("F99")).not.toThrow();
+    });
+
+    it("detach removes all key listeners — update after detach fires nothing", () => {
+      handler.attach();
+      pressKey("ArrowLeft");
+      handler.detach();
+      actions.length = 0;
+      handler.update(1000); // no keys held after detach/clear
+      expect(actions).toHaveLength(0);
+    });
+
+    it("setMenuMode clears held-key state", () => {
+      handler.attach();
+      pressKey("ArrowLeft"); // DAS key held
+      actions.length = 0;
+      handler.setMenuMode(true); // clears keys map
+      handler.update(500); // would have ARR-fired without the clear
+      expect(actions).toHaveLength(0);
+    });
   });
 
   describe("non-DAS keys fire once per press (no auto-repeat)", () => {

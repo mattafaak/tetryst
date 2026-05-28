@@ -105,4 +105,48 @@ describe("clampDASSettings", () => {
       sdrRate: 0,
     });
   });
+  it("clamps to exact upper bounds", () => {
+    expect(clampDASSettings({ dasDelay: 500, arrRate: 200, sdrRate: 200 })).toEqual({
+      dasDelay: 500,
+      arrRate: 200,
+      sdrRate: 200,
+    });
+  });
+  it("values at bounds are not changed", () => {
+    const s = { dasDelay: 0, arrRate: 0, sdrRate: 0 };
+    expect(clampDASSettings(s)).toEqual(s);
+  });
+});
+
+describe("loadDASSettings — boundary values round-trip", () => {
+  it("dasDelay=0 round-trips", () => {
+    saveDASSettings({ dasDelay: 0, arrRate: 50, sdrRate: 50 });
+    expect(loadDASSettings().dasDelay).toBe(0);
+  });
+  it("dasDelay=500 round-trips", () => {
+    saveDASSettings({ dasDelay: 500, arrRate: 50, sdrRate: 50 });
+    expect(loadDASSettings().dasDelay).toBe(500);
+  });
+  it("arrRate=200 round-trips", () => {
+    saveDASSettings({ dasDelay: 300, arrRate: 200, sdrRate: 50 });
+    expect(loadDASSettings().arrRate).toBe(200);
+  });
+  it("all-zero settings round-trip (Instant preset)", () => {
+    saveDASSettings({ dasDelay: 0, arrRate: 0, sdrRate: 0 });
+    expect(loadDASSettings()).toEqual({ dasDelay: 0, arrRate: 0, sdrRate: 0 });
+  });
+});
+
+describe("loadDASSettings — partial object falls back to defaults", () => {
+  it("object with only dasDelay present falls back to defaults", () => {
+    storage.setItem("tetryst_das", JSON.stringify({ dasDelay: 200 }));
+    expect(loadDASSettings()).toEqual(DEFAULT_DAS_SETTINGS);
+  });
+  it("object with extra fields is still parsed correctly if core fields valid", () => {
+    storage.setItem("tetryst_das", JSON.stringify({ dasDelay: 100, arrRate: 10, sdrRate: 20, extra: "ignored" }));
+    const s = loadDASSettings();
+    expect(s.dasDelay).toBe(100);
+    expect(s.arrRate).toBe(10);
+    expect(s.sdrRate).toBe(20);
+  });
 });

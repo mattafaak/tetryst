@@ -5,7 +5,14 @@ import {
   getActionDisplayNames,
   buildReverseLookup,
   buildControlsHint,
+  DAS_ROW_IDX,
+  ARR_ROW_IDX,
+  SDR_ROW_IDX,
+  STANDARD_PRESET_IDX,
+  INSTANT_PRESET_IDX,
+  RESTORE_KEYS_IDX,
 } from "./key-bindings-ui.ts";
+import type { DASSettings } from "../core/das-settings.ts";
 import type { InputAction } from "../core/types.ts";
 
 describe("keyCodeDisplayName", () => {
@@ -186,5 +193,103 @@ describe("drawKeyBindingsScreen", () => {
     };
     drawKeyBindingsScreen(ctx, 800, 600, bindings, 0, false);
     expect(ctx.fillText).toHaveBeenCalled();
+  });
+
+  // ── Timing section rendering ────────────────────────────────────────────
+
+  const defaultDAS: DASSettings = { dasDelay: 300, arrRate: 50, sdrRate: 50 };
+  const stdBindings: Record<string, InputAction> = {
+    ArrowLeft: { type: "MoveLeft" },
+    ArrowRight: { type: "MoveRight" },
+    ArrowDown: { type: "SoftDrop" },
+  };
+
+  it("renders without throwing with Restore row selected", () => {
+    expect(() => {
+      drawKeyBindingsScreen(ctx, 800, 600, stdBindings, RESTORE_KEYS_IDX, false, defaultDAS);
+    }).not.toThrow();
+  });
+
+  it("renders without throwing with DAS row selected", () => {
+    expect(() => {
+      drawKeyBindingsScreen(ctx, 800, 600, stdBindings, DAS_ROW_IDX, false, defaultDAS);
+    }).not.toThrow();
+  });
+
+  it("renders without throwing with ARR row selected", () => {
+    expect(() => {
+      drawKeyBindingsScreen(ctx, 800, 600, stdBindings, ARR_ROW_IDX, false, defaultDAS);
+    }).not.toThrow();
+  });
+
+  it("renders without throwing with SDR row selected", () => {
+    expect(() => {
+      drawKeyBindingsScreen(ctx, 800, 600, stdBindings, SDR_ROW_IDX, false, defaultDAS);
+    }).not.toThrow();
+  });
+
+  it("renders without throwing with Standard preset selected", () => {
+    expect(() => {
+      drawKeyBindingsScreen(ctx, 800, 600, stdBindings, STANDARD_PRESET_IDX, false, defaultDAS);
+    }).not.toThrow();
+  });
+
+  it("renders without throwing with Instant preset selected", () => {
+    const instant: DASSettings = { dasDelay: 0, arrRate: 0, sdrRate: 0 };
+    expect(() => {
+      drawKeyBindingsScreen(ctx, 800, 600, stdBindings, INSTANT_PRESET_IDX, false, instant);
+    }).not.toThrow();
+  });
+
+  it("renders DAS value text when DAS row selected", () => {
+    vi.mocked(ctx.fillText).mockClear();
+    drawKeyBindingsScreen(ctx, 800, 600, stdBindings, DAS_ROW_IDX, false, defaultDAS);
+    const texts = vi.mocked(ctx.fillText).mock.calls.map(([t]) => String(t));
+    const hasDASValue = texts.some((t) => t.includes("300") && t.includes("ms"));
+    expect(hasDASValue).toBe(true);
+  });
+
+  it("shows arrow decoration (← value →) when a timing row is focused", () => {
+    vi.mocked(ctx.fillText).mockClear();
+    drawKeyBindingsScreen(ctx, 800, 600, stdBindings, ARR_ROW_IDX, false, defaultDAS);
+    const texts = vi.mocked(ctx.fillText).mock.calls.map(([t]) => String(t));
+    const hasArrows = texts.some((t) => t.includes("←") && t.includes("→"));
+    expect(hasArrows).toBe(true);
+  });
+
+  it("shows preset labels in rendered output", () => {
+    vi.mocked(ctx.fillText).mockClear();
+    drawKeyBindingsScreen(ctx, 800, 600, stdBindings, STANDARD_PRESET_IDX, false, defaultDAS);
+    const texts = vi.mocked(ctx.fillText).mock.calls.map(([t]) => String(t));
+    expect(texts.some((t) => t === "Standard")).toBe(true);
+    expect(texts.some((t) => t === "Fast")).toBe(true);
+    expect(texts.some((t) => t === "Instant")).toBe(true);
+  });
+
+  it("shows correct hint text for timing rows", () => {
+    vi.mocked(ctx.fillText).mockClear();
+    drawKeyBindingsScreen(ctx, 800, 600, stdBindings, DAS_ROW_IDX, false, defaultDAS);
+    const texts = vi.mocked(ctx.fillText).mock.calls.map(([t]) => String(t));
+    // Timing-row hint includes "adjust value"
+    const hasTimingHint = texts.some((t) => t.includes("adjust"));
+    expect(hasTimingHint).toBe(true);
+  });
+
+  it("shows correct hint text for preset rows", () => {
+    vi.mocked(ctx.fillText).mockClear();
+    drawKeyBindingsScreen(ctx, 800, 600, stdBindings, STANDARD_PRESET_IDX, false, defaultDAS);
+    const texts = vi.mocked(ctx.fillText).mock.calls.map(([t]) => String(t));
+    // Preset-row hint includes "apply preset"
+    const hasPresetHint = texts.some((t) => t.includes("apply") || t.includes("preset"));
+    expect(hasPresetHint).toBe(true);
+  });
+
+  it("shows standard action-row hint for action rows", () => {
+    vi.mocked(ctx.fillText).mockClear();
+    drawKeyBindingsScreen(ctx, 800, 600, stdBindings, 0, false, defaultDAS);
+    const texts = vi.mocked(ctx.fillText).mock.calls.map(([t]) => String(t));
+    // Action-row hint includes "rebind"
+    const hasRebindHint = texts.some((t) => t.includes("rebind"));
+    expect(hasRebindHint).toBe(true);
   });
 });

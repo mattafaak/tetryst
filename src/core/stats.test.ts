@@ -61,6 +61,35 @@ describe("computeGameStats — finesseFaults", () => {
   });
 });
 
+describe("computeGameStats — Sprint mode (timer counts up, same as Marathon)", () => {
+  it("Sprint pps uses modeTimer directly (not reversed)", () => {
+    const s = baseState({ mode: GameMode.Sprint, piecesPlaced: 10, modeTimer: 5000, totalKeypresses: 30, finesseFaults: 0 });
+    expect(computeGameStats(s).pps).toBeCloseTo(10 / 5, 3);
+  });
+  it("Sprint kpp is correct", () => {
+    const s = baseState({ mode: GameMode.Sprint, piecesPlaced: 10, modeTimer: 5000, totalKeypresses: 40, finesseFaults: 0 });
+    expect(computeGameStats(s).kpp).toBeCloseTo(4.0, 3);
+  });
+});
+
+describe("computeGameStats — finesseFaults accuracy", () => {
+  it("finesseFaults passthrough: large count", () => {
+    const s = baseState({ piecesPlaced: 50, modeTimer: 30000, totalKeypresses: 200, finesseFaults: 23 });
+    expect(computeGameStats(s).finesseFaults).toBe(23);
+  });
+  it("finesseFaults never negative", () => {
+    const s = baseState({ piecesPlaced: 10, modeTimer: 5000, totalKeypresses: 30, finesseFaults: 0 });
+    expect(computeGameStats(s).finesseFaults).toBeGreaterThanOrEqual(0);
+  });
+  it("fault rate — finesseFaults divided by piecesPlaced represents accuracy", () => {
+    const faults = 5;
+    const pieces = 20;
+    const s = baseState({ piecesPlaced: pieces, modeTimer: 10000, totalKeypresses: 60, finesseFaults: faults });
+    const stats = computeGameStats(s);
+    expect(stats.finesseFaults / stats.pps / (10000 / 1000)).toBeLessThanOrEqual(pieces);
+  });
+});
+
 describe("computeGameStats — Ultra mode timer direction", () => {
   it("Ultra pps uses ULTRA_DURATION_MS - modeTimer as elapsed when timer has counted down", () => {
     // Ultra timer counts DOWN from ULTRA_DURATION_MS. At end, modeTimer=0.

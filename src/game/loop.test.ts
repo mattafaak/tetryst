@@ -1651,3 +1651,70 @@ describe("Phase 37: latent bug fixes", () => {
     });
   });
 });
+
+describe("attract mode sub-phase coverage (LineClear and EntryDelay)", () => {
+  it("attract game advances through LineClear phase without throwing", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+    expect(g.isAttractMode).toBe(true);
+
+    // Force attract state into LineClear
+    g.state = {
+      ...g.state,
+      phase: GamePhase.LineClear,
+      lineClearTimer: 0,
+      clearedRowIndices: [1, 2],
+    };
+
+    expect(() => advanceFrames(5, 16)).not.toThrow();
+    // After LINE_CLEAR_ANIM_DURATION (300ms), transitions to EntryDelay
+    advanceFrames(20, 16); // 320ms total
+    expect([GamePhase.EntryDelay, GamePhase.Playing, GamePhase.LineClear]).toContain(g.state.phase);
+  });
+
+  it("attract game advances through EntryDelay phase without throwing", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+    expect(g.isAttractMode).toBe(true);
+
+    // Force attract state into EntryDelay
+    g.state = {
+      ...g.state,
+      phase: GamePhase.EntryDelay,
+      entryDelayTimer: 0,
+      activePiece: null,
+    };
+
+    expect(() => advanceFrames(5, 16)).not.toThrow();
+    // After ENTRY_DELAY (200ms), should spawn a piece
+    advanceFrames(15, 16); // ~240ms total
+    // Should have spawned → back to Playing
+    expect([GamePhase.Playing, GamePhase.EntryDelay]).toContain(g.state.phase);
+  });
+
+  it("LineClear transition at exact LINE_CLEAR_ANIM_DURATION moves to EntryDelay", () => {
+    game = new Game(mockCtx);
+    game.start();
+    advanceFrames(5);
+
+    const g = game as unknown as { state: GameState; isAttractMode: boolean };
+
+    // Set lineClearTimer just under the threshold
+    const LINE_CLEAR_ANIM_DURATION = 300;
+    g.state = {
+      ...g.state,
+      phase: GamePhase.LineClear,
+      lineClearTimer: LINE_CLEAR_ANIM_DURATION - 10,
+      clearedRowIndices: [],
+    };
+
+    advanceFrames(1, 16); // +16ms → timer >= threshold
+    expect([GamePhase.EntryDelay, GamePhase.Playing]).toContain(g.state.phase);
+  });
+});

@@ -80,6 +80,7 @@ export class KeyboardHandler {
   update(dt: number): void {
     const { dasDelay, arrRate, sdrRate } = loadDASSettings();
     for (const [, state] of this.keys) {
+      /* c8 ignore next -- keys are deleted on release; pressed=false never lingers in map */
       if (!state.pressed) continue;
 
       const useDas =

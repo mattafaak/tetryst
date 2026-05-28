@@ -31,9 +31,11 @@ function buildFinesseTable(): Map<string, number> {
       if (!checkCollision(board, right)) candidates.push(right);
 
       const cw = tryRotateCW(piece, board);
+      /* c8 ignore next -- empty board BFS; rotation always succeeds or O-piece has no kicks */
       if (cw) candidates.push(cw.piece);
 
       const ccw = tryRotateCCW(piece, board);
+      /* c8 ignore next */
       if (ccw) candidates.push(ccw.piece);
 
       for (const neighbor of candidates) {

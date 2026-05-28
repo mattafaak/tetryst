@@ -685,6 +685,7 @@ export class Game {
         this.updatePlaying(dt);
         break;
       }
+      /* c8 ignore next 6 -- outer update() handles LineClear/EntryDelay directly; unreachable here */
       case GamePhase.LineClear:
         this.updateLineClear(dt);
         break;

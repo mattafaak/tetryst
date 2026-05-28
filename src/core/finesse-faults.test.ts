@@ -118,3 +118,45 @@ describe("finesse fault detection — needsFinesseSFX in LockResult", () => {
     expect(result.needsFinesseSFX).toBe(false);
   });
 });
+
+describe("finesse fault detection — all 7 piece types at spawn = no fault", () => {
+  const pieces = [
+    TetriminoType.I, TetriminoType.O, TetriminoType.T,
+    TetriminoType.S, TetriminoType.Z, TetriminoType.L, TetriminoType.J,
+  ];
+  for (const type of pieces) {
+    it(`${type} at spawn (col 3, rot ZERO) with 0 keypresses → no fault`, () => {
+      const result = lockAndExecute(type, T_SPAWN_X, RotationState.ZERO, 0);
+      expect(result.state.finesseFaults).toBe(0);
+      expect(result.needsFinesseSFX).toBe(false);
+    });
+  }
+});
+
+describe("finesse fault detection — fault threshold: exactly canonical is not a fault", () => {
+  it("T moved 3 left (canonical=3) with exactly 3 keypresses → no fault", () => {
+    const x = T_SPAWN_X - 3;
+    const canonical = canonicalKeypresses(TetriminoType.T, T_SPAWN_ROT, x);
+    const result = lockAndExecute(TetriminoType.T, x, T_SPAWN_ROT, canonical);
+    expect(result.state.finesseFaults).toBe(0);
+  });
+
+  it("T moved 3 left with canonical+1 keypresses → fault", () => {
+    const x = T_SPAWN_X - 3;
+    const canonical = canonicalKeypresses(TetriminoType.T, T_SPAWN_ROT, x);
+    const result = lockAndExecute(TetriminoType.T, x, T_SPAWN_ROT, canonical + 1);
+    expect(result.state.finesseFaults).toBe(1);
+  });
+});
+
+describe("finesse fault detection — lastLockResult carries needsFinesseSFX", () => {
+  it("lastLockResult.needsFinesseSFX is true on fault", () => {
+    const result = lockAndExecute(TetriminoType.T, T_SPAWN_X, T_SPAWN_ROT, 3);
+    expect(result.state.lastLockResult?.needsFinesseSFX).toBe(true);
+  });
+
+  it("lastLockResult.needsFinesseSFX is false on no fault", () => {
+    const result = lockAndExecute(TetriminoType.T, T_SPAWN_X, T_SPAWN_ROT, 0);
+    expect(result.state.lastLockResult?.needsFinesseSFX).toBe(false);
+  });
+});
