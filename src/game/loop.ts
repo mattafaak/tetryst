@@ -54,6 +54,7 @@ export class Game {
     this.keyboard.setCallback((action: InputAction) => {
       this.handleInput(action);
     });
+    this.keyboard.setMenuMode(true); // starts in Menu phase
     this.keyboard.attach();
     this.lastTime = performance.now();
     this.recalcCellSize();
@@ -427,6 +428,7 @@ export class Game {
   private onPhaseTransition(newPhase: GamePhase): void {
     switch (newPhase) {
       case GamePhase.Playing:
+        this.keyboard.setMenuMode(false);
         if (this.audioEnabled) playMusic();
         // Transient popup feedback should not persist across pause boundaries.
         // Without this, popup timers freeze during pause and resume after,
@@ -437,6 +439,7 @@ export class Game {
         break;
       case GamePhase.LineClear:
       case GamePhase.EntryDelay:
+        this.keyboard.setMenuMode(false);
         // Resuming from Pause back to a non-Playing phase — restart music and
         // clear stale popups, same as resuming to Playing.
         if (this.prevPhase === GamePhase.Paused) {
@@ -445,8 +448,12 @@ export class Game {
         }
         break;
       case GamePhase.Paused:
+        this.keyboard.setMenuMode(true);
         if (this.audioEnabled) stopMusic();
         this.state = { ...this.state, popups: [] };
+        break;
+      case GamePhase.Menu:
+        this.keyboard.setMenuMode(true);
         break;
       case GamePhase.GameOver:
         if (!this.isAttractMode) {

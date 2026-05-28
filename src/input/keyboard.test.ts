@@ -577,4 +577,62 @@ describe("KeyboardHandler", () => {
       expect(actions).toHaveLength(1);
     });
   });
+
+  describe("menu mode — setMenuMode(true)", () => {
+    it("SoftDrop in menu mode fires once at t=0 then NOT before DAS_DELAY", () => {
+      handler.setMenuMode(true);
+      handler.attach();
+      pressKey("ArrowDown");
+      expect(actions).toHaveLength(1);
+
+      // Before DAS_DELAY: should NOT fire again
+      handler.update(ARR_RATE * 3); // 150ms — would have fired 3x under SDR
+      expect(actions).toHaveLength(1);
+    });
+
+    it("SoftDrop in menu mode fires second time after DAS_DELAY", () => {
+      handler.setMenuMode(true);
+      handler.attach();
+      pressKey("ArrowDown");
+      expect(actions).toHaveLength(1);
+
+      handler.update(DAS_DELAY);
+      expect(actions).toHaveLength(2); // DAS charged → second fire
+    });
+
+    it("RotateCW (Up) in menu mode fires once at t=0 then repeats after DAS_DELAY", () => {
+      handler.setMenuMode(true);
+      handler.attach();
+      pressKey("ArrowUp");
+      expect(actions).toHaveLength(1);
+
+      // Should NOT fire before DAS_DELAY (unlike before where it never repeated)
+      handler.update(DAS_DELAY - 1);
+      expect(actions).toHaveLength(1);
+
+      handler.update(2); // cross the threshold
+      expect(actions).toHaveLength(2);
+    });
+
+    it("setMenuMode clears held-key state to prevent ghost repeats", () => {
+      handler.attach();
+      pressKey("ArrowDown"); // SDR key held in game mode
+      actions.length = 0;
+
+      handler.setMenuMode(true); // switch to menu mode — should clear state
+      handler.update(DAS_DELAY * 2); // should NOT fire more repeats
+      expect(actions).toHaveLength(0);
+    });
+
+    it("SoftDrop in game mode (menu mode off) still fires immediately and repeats at ARR_RATE", () => {
+      // Ensure game mode (default) SDR behavior is preserved
+      handler.attach();
+      pressKey("ArrowDown");
+      expect(actions).toHaveLength(1);
+      actions.length = 0;
+
+      handler.update(ARR_RATE); // SDR: should fire again at ARR_RATE (50ms)
+      expect(actions).toHaveLength(1);
+    });
+  });
 });

@@ -16,12 +16,19 @@ const DAS_ACTION_TYPES = new Set(["MoveLeft", "MoveRight"]);
 /** Action types that get SDR — Soft Drop Rate: no initial delay, repeat every ARR_RATE. */
 const SDR_ACTION_TYPES = new Set(["SoftDrop"]);
 
+/** Actions that become DAS-repeated in menu mode (Up/Down navigation). */
+const MENU_NAV_ACTION_TYPES = new Set(["SoftDrop", "RotateCW"]);
+
 function isDasAction(action: InputAction): boolean {
   return DAS_ACTION_TYPES.has(action.type);
 }
 
 function isSdrAction(action: InputAction): boolean {
   return SDR_ACTION_TYPES.has(action.type);
+}
+
+function isMenuNavAction(action: InputAction): boolean {
+  return MENU_NAV_ACTION_TYPES.has(action.type);
 }
 
 type InputCallback = (action: InputAction) => void;
@@ -33,6 +40,7 @@ export class KeyboardHandler {
   private rawKeyHandler: ((code: string) => void) | null = null;
   private boundKeyDown: (e: KeyboardEvent) => void;
   private boundKeyUp: (e: KeyboardEvent) => void;
+  private menuMode: boolean = false;
 
   constructor(bindings: Record<string, InputAction>) {
     this.bindings = bindings;
@@ -50,6 +58,14 @@ export class KeyboardHandler {
     this.rawKeyHandler = handler;
   }
 
+  /** Switch between menu navigation mode and game mode.
+   *  In menu mode, SoftDrop (Down) and RotateCW (Up) use DAS timing
+   *  instead of SDR/fire-once. Clears held-key state on switch. */
+  setMenuMode(on: boolean): void {
+    this.menuMode = on;
+    this.keys.clear();
+  }
+
   attach(): void {
     window.addEventListener("keydown", this.boundKeyDown);
     window.addEventListener("keyup", this.boundKeyUp);
@@ -65,8 +81,13 @@ export class KeyboardHandler {
     for (const [, state] of this.keys) {
       if (!state.pressed) continue;
 
+      const useDas =
+        isDasAction(state.action) ||
+        (this.menuMode && isMenuNavAction(state.action));
+
       // SDR: soft drop repeats immediately at ARR_RATE with no initial DAS delay
-      if (isSdrAction(state.action)) {
+      // Only applies in game mode; in menu mode, SoftDrop uses DAS instead.
+      if (!this.menuMode && isSdrAction(state.action)) {
         state.sdrTimer += dt;
         while (state.sdrTimer >= ARR_RATE) {
           state.sdrTimer -= ARR_RATE;
@@ -75,8 +96,8 @@ export class KeyboardHandler {
         continue;
       }
 
-      // DAS: left/right wait DAS_DELAY then repeat at ARR_RATE
-      if (!isDasAction(state.action)) continue;
+      // DAS: wait DAS_DELAY then repeat at ARR_RATE
+      if (!useDas) continue;
 
       if (!state.dasCharged) {
         state.dasTimer += dt;
