@@ -1,5 +1,5 @@
 import { type InputAction } from "../core/types.ts";
-import { DAS_DELAY, ARR_RATE } from "../core/constants.ts";
+import { loadDASSettings } from "../core/das-settings.ts";
 
 interface KeyState {
   action: InputAction;
@@ -78,6 +78,7 @@ export class KeyboardHandler {
   }
 
   update(dt: number): void {
+    const { dasDelay, arrRate, sdrRate } = loadDASSettings();
     for (const [, state] of this.keys) {
       if (!state.pressed) continue;
 
@@ -85,31 +86,31 @@ export class KeyboardHandler {
         isDasAction(state.action) ||
         (this.menuMode && isMenuNavAction(state.action));
 
-      // SDR: soft drop repeats immediately at ARR_RATE with no initial DAS delay
+      // SDR: soft drop repeats immediately at sdrRate with no initial DAS delay
       // Only applies in game mode; in menu mode, SoftDrop uses DAS instead.
       if (!this.menuMode && isSdrAction(state.action)) {
         state.sdrTimer += dt;
-        while (state.sdrTimer >= ARR_RATE) {
-          state.sdrTimer -= ARR_RATE;
+        while (state.sdrTimer >= sdrRate) {
+          state.sdrTimer -= sdrRate;
           this.fire(state.action);
         }
         continue;
       }
 
-      // DAS: wait DAS_DELAY then repeat at ARR_RATE
+      // DAS: wait dasDelay then repeat at arrRate
       if (!useDas) continue;
 
       if (!state.dasCharged) {
         state.dasTimer += dt;
-        if (state.dasTimer >= DAS_DELAY) {
+        if (state.dasTimer >= dasDelay) {
           state.dasCharged = true;
           state.arrTimer = 0;
           this.fire(state.action);
         }
       } else {
         state.arrTimer += dt;
-        while (state.arrTimer >= ARR_RATE) {
-          state.arrTimer -= ARR_RATE;
+        while (state.arrTimer >= arrRate) {
+          state.arrTimer -= arrRate;
           this.fire(state.action);
         }
       }

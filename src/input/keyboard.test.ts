@@ -9,6 +9,7 @@ import { KeyboardHandler } from "./keyboard.ts";
 import type { InputAction } from "../core/types.ts";
 import { DAS_DELAY, ARR_RATE } from "../core/constants.ts";
 import { DEFAULT_BINDINGS } from "../core/key-bindings.ts";
+import { saveDASSettings } from "../core/das-settings.ts";
 
 // ── Mock window ──────────────────────────────────────────────────────────
 
@@ -632,6 +633,124 @@ describe("KeyboardHandler", () => {
       actions.length = 0;
 
       handler.update(ARR_RATE); // SDR: should fire again at ARR_RATE (50ms)
+      expect(actions).toHaveLength(1);
+    });
+  });
+
+  describe("DAS settings runtime — reads from loadDASSettings() on each update()", () => {
+    let mockData: Record<string, string>;
+
+    beforeEach(() => {
+      mockData = {};
+      vi.stubGlobal("localStorage", {
+        getItem: (key: string) => mockData[key] ?? null,
+        setItem: (key: string, value: string) => { mockData[key] = value; },
+        removeItem: (key: string) => { delete mockData[key]; },
+        clear: () => { for (const k in mockData) delete mockData[k]; },
+      });
+    });
+
+    it("uses custom dasDelay from saved settings", () => {
+      saveDASSettings({ dasDelay: 100, arrRate: 50, sdrRate: 50 });
+      handler = new KeyboardHandler(DEFAULT_BINDINGS);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowLeft");
+      actions.length = 0;
+
+      // dasDelay=100ms — DAS should charge at 100ms (not the default 300ms)
+      handler.update(100);
+      expect(actions).toHaveLength(1);
+    });
+
+    it("does NOT fire DAS before custom dasDelay", () => {
+      saveDASSettings({ dasDelay: 200, arrRate: 50, sdrRate: 50 });
+      handler = new KeyboardHandler(DEFAULT_BINDINGS);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowLeft");
+      actions.length = 0;
+
+      handler.update(150); // before dasDelay=200
+      expect(actions).toHaveLength(0);
+    });
+
+    it("uses custom arrRate for ARR repeats after DAS charged", () => {
+      saveDASSettings({ dasDelay: 300, arrRate: 20, sdrRate: 50 });
+      handler = new KeyboardHandler(DEFAULT_BINDINGS);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowLeft");
+      actions.length = 0;
+
+      handler.update(300); // charge DAS
+      actions.length = 0;
+
+      // arrRate=20ms — should fire at 20ms, not the default 50ms
+      handler.update(20);
+      expect(actions).toHaveLength(1);
+    });
+
+    it("does NOT fire ARR before custom arrRate", () => {
+      saveDASSettings({ dasDelay: 300, arrRate: 80, sdrRate: 50 });
+      handler = new KeyboardHandler(DEFAULT_BINDINGS);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowLeft");
+      actions.length = 0;
+
+      handler.update(300); // charge DAS
+      actions.length = 0;
+
+      handler.update(50); // before arrRate=80ms
+      expect(actions).toHaveLength(0);
+    });
+
+    it("uses custom sdrRate for SoftDrop repeat", () => {
+      saveDASSettings({ dasDelay: 300, arrRate: 50, sdrRate: 100 });
+      handler = new KeyboardHandler(DEFAULT_BINDINGS);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowDown");
+      actions.length = 0;
+
+      handler.update(50); // less than custom sdrRate=100ms
+      expect(actions).toHaveLength(0);
+
+      handler.update(50); // total 100ms = custom sdrRate
+      expect(actions).toHaveLength(1);
+    });
+
+    it("falls back to DEFAULT_DAS_SETTINGS when no settings saved", () => {
+      // No settings in mockData → defaults apply (dasDelay=300)
+      handler = new KeyboardHandler(DEFAULT_BINDINGS);
+      handler.setCallback((a) => actions.push(a));
+      keyDownListeners = [];
+      keyUpListeners = [];
+      handler.attach();
+
+      pressKey("ArrowLeft");
+      actions.length = 0;
+
+      handler.update(200); // before default dasDelay=300
+      expect(actions).toHaveLength(0);
+
+      handler.update(100); // total 300ms = default dasDelay
       expect(actions).toHaveLength(1);
     });
   });
